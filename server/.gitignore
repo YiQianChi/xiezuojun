@@ -1,0 +1,13 @@
+xiezuojun-server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+__debugbin*
+/tmp/
+vendor/
+.env
+*.bak
