@@ -121,6 +121,19 @@ type ModelCapability struct {
 
 var DefaultModels = []ModelConfig{
 	{
+		Name:     "智谱GLM-4-Flash",
+		Provider: "zhipu",
+		ModelID:  "glm-4-flash",
+		MaxTokens: 4096,
+		CostPer1K: 0.001,
+		Priority:  0, // 最优先（低成本）
+		Capability: ModelCapability{
+			ContextWindow: 128000,
+			SupportsJSON:  true,
+			Quality:       "medium",
+		},
+	},
+	{
 		Name:     "智谱GLM-5-Turbo",
 		Provider: "zhipu",
 		ModelID:  "glm-5-turbo",

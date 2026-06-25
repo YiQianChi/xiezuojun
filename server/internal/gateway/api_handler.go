@@ -3,6 +3,7 @@
 package gateway
 
 import (
+	"io"
 	"net/http"
 	"strconv"
 
@@ -74,6 +75,7 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
 
 	ch, err := g.GenerateStream(c.Request.Context(), genReq)
 	if err != nil {
@@ -81,17 +83,26 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 		return
 	}
 
-	for chunk := range ch {
-		if chunk.Error != "" {
-			c.SSEvent("error", chunk.Error)
-			return
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case <-c.Request.Context().Done():
+			return false
+		case chunk, ok := <-ch:
+			if !ok {
+				return false
+			}
+			if chunk.Error != "" {
+				c.SSEvent("error", gin.H{"error": chunk.Error})
+				return false
+			}
+			if chunk.Done {
+				c.SSEvent("done", "")
+				return false
+			}
+			c.SSEvent("content", gin.H{"content": chunk.Content})
+			return true
 		}
-		if chunk.Done {
-			c.SSEvent("done", "")
-			return
-		}
-		c.SSEvent("content", chunk.Content)
-	}
+	})
 }
 
 // HandleGetUsage 获取用量信息

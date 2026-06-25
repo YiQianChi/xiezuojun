@@ -115,6 +115,7 @@ func (c *Client) Complete(ctx context.Context, model string, messages []Message)
 
 func (c *Client) readSSE(r io.Reader, ch chan<- StreamMessage) {
 	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer for large SSE lines
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !strings.HasPrefix(line, "data: ") {
