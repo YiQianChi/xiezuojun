@@ -7,10 +7,12 @@ import (
 // Project 写作项目（一本书/一个剧本）
 type Project struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"index" json:"user_id"`
+	UserID    string    `gorm:"type:char(36);index" json:"user_id"`
 	Name      string    `gorm:"size:200" json:"name"`
 	CoverURL  string    `gorm:"size:500" json:"cover_url"`
-	Status    int       `gorm:"default:1" json:"status"` // 1=正常 0=删除
+	Genre     string    `gorm:"size:50" json:"genre"`     // 类型：小说/剧本/散文
+	Tags      string    `gorm:"size:500" json:"tags"`     // 逗号分隔的标签
+	Status    int       `gorm:"default:1" json:"status"`   // 1=正常 0=删除
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

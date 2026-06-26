@@ -7,7 +7,7 @@ import (
 // WordCountLog 字数统计日志（按天/按次记录）
 type WordCountLog struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"index" json:"user_id"`
+	UserID    string    `gorm:"type:char(36);index" json:"user_id"`
 	ProjectID uint      `gorm:"index" json:"project_id"`
 	DocID     uint      `gorm:"index" json:"doc_id"`
 	Delta     int       `json:"delta"` // 正=新增，负=删除

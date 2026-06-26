@@ -32,8 +32,9 @@ func NewClient(apiKey, baseURL string) *Client {
 
 // StreamMessage 流式消息
 type StreamMessage struct {
-	Content string
-	Error   string
+	Content  string
+	Reasoning string // 思维链内容（不发送给前端）
+	Error    string
 }
 
 // Stream 发起流式请求
@@ -129,7 +130,8 @@ func (c *Client) readSSE(r io.Reader, ch chan<- StreamMessage) {
 		var chunk struct {
 			Choices []struct {
 				Delta struct {
-					Content string `json:"content"`
+					Content          string `json:"content"`
+					ReasoningContent string `json:"reasoning_content"`
 				} `json:"delta"`
 			} `json:"choices"`
 			Error struct {
@@ -144,9 +146,13 @@ func (c *Client) readSSE(r io.Reader, ch chan<- StreamMessage) {
 			return
 		}
 		if len(chunk.Choices) > 0 {
+			// 分别提取 content 和 reasoning_content
 			content := chunk.Choices[0].Delta.Content
+			reasoning := chunk.Choices[0].Delta.ReasoningContent
 			if content != "" {
 				ch <- StreamMessage{Content: content}
+			} else if reasoning != "" {
+				ch <- StreamMessage{Reasoning: reasoning}
 			}
 		}
 	}

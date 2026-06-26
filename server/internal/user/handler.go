@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
@@ -29,6 +30,7 @@ type RegisterReq struct {
 	Password string `json:"password" binding:"required,min=6"`
 }
 
+// Register 用户注册
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -50,6 +52,7 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	user := model.User{
+		UserID:       uuid.New().String(),
 		Email:        req.Email,
 		PasswordHash: string(hash),
 		Nickname:     req.Email,
@@ -60,7 +63,7 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	access, refresh, err := h.jwtManager.GeneratePair(user.ID, user.Email, user.Plan)
+	access, refresh, err := h.jwtManager.GeneratePair(user.UserID, user.Email, user.Plan)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
@@ -68,7 +71,7 @@ func (h *Handler) Register(c *gin.Context) {
 
 	// 保存 refresh token
 	rt := model.RefreshToken{
-		UserID:    user.ID,
+		UserID:    user.UserID,
 		Token:     refresh,
 		DeviceID:  c.GetHeader("X-Device-ID"),
 		IP:        c.ClientIP(),
@@ -79,10 +82,11 @@ func (h *Handler) Register(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"user": gin.H{
-				"id":       user.ID,
-				"email":    user.Email,
+				"id":      user.ID,
+				"user_id": user.UserID,
+				"email":   user.Email,
 				"nickname": user.Nickname,
-				"plan":     user.Plan,
+				"plan":    user.Plan,
 			},
 			"access_token":  access,
 			"refresh_token": refresh,
@@ -95,6 +99,7 @@ type LoginReq struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// Login 用户登录
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -113,14 +118,14 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	access, refresh, err := h.jwtManager.GeneratePair(user.ID, user.Email, user.Plan)
+	access, refresh, err := h.jwtManager.GeneratePair(user.UserID, user.Email, user.Plan)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}
 
 	rt := model.RefreshToken{
-		UserID:    user.ID,
+		UserID:    user.UserID,
 		Token:     refresh,
 		DeviceID:  c.GetHeader("X-Device-ID"),
 		IP:        c.ClientIP(),
@@ -131,11 +136,12 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"user": gin.H{
-				"id":       user.ID,
-				"email":    user.Email,
+				"id":      user.ID,
+				"user_id": user.UserID,
+				"email":   user.Email,
 				"nickname": user.Nickname,
-				"plan":     user.Plan,
-				"avatar":   user.Avatar,
+				"plan":    user.Plan,
+				"avatar":  user.Avatar,
 			},
 			"access_token":  access,
 			"refresh_token": refresh,
@@ -143,6 +149,7 @@ func (h *Handler) Login(c *gin.Context) {
 	})
 }
 
+// Refresh 刷新 access token
 func (h *Handler) Refresh(c *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
@@ -166,12 +173,12 @@ func (h *Handler) Refresh(c *gin.Context) {
 	}
 
 	var user model.User
-	if err := h.db.First(&user, rt.UserID).Error; err != nil {
+	if err := h.db.Where("user_id = ?", rt.UserID).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 		return
 	}
 
-	access, newRefresh, err := h.jwtManager.GeneratePair(user.ID, user.Email, user.Plan)
+	access, newRefresh, err := h.jwtManager.GeneratePair(user.UserID, user.Email, user.Plan)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
@@ -180,7 +187,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 	// 更新 refresh token（轮换）
 	h.db.Where("id = ?", rt.ID).Delete(&model.RefreshToken{})
 	newRT := model.RefreshToken{
-		UserID:    user.ID,
+		UserID:    user.UserID,
 		Token:     newRefresh,
 		DeviceID:  rt.DeviceID,
 		IP:        c.ClientIP(),
@@ -198,16 +205,18 @@ func (h *Handler) Refresh(c *gin.Context) {
 
 // ============== 用户信息 ==============
 
+// Me 获取当前用户信息
 func (h *Handler) Me(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	var user model.User
-	if err := h.db.First(&user, userID).Error; err != nil {
+	if err := h.db.Where("user_id = ?", userID).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": user})
 }
 
+// UpdateProfile 更新用户资料
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	var req struct {
@@ -227,16 +236,17 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		updates["avatar"] = req.Avatar
 	}
 
-	if err := h.db.Model(&model.User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
+	if err := h.db.Model(&model.User{}).Where("user_id = ?", userID).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "updated"})
 }
 
+// UsageStats 获取用户用量统计
 func (h *Handler) UsageStats(c *gin.Context) {
 	userID, _ := c.Get("userID")
-	uid := userID.(uint)
+	uid := userID.(string)
 
 	// 计算总字数（所有文档 word_count 之和）
 	var totalWords int64
@@ -246,7 +256,7 @@ func (h *Handler) UsageStats(c *gin.Context) {
 		Select("COALESCE(SUM(documents.word_count), 0)").
 		Scan(&totalWords)
 
-	// 计算本月字数（简化：按 created_at 过滤）
+	// 计算本月字数（按 created_at 过滤）
 	var monthWords int64
 	now := time.Now()
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())

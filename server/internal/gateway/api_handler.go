@@ -12,7 +12,7 @@ import (
 
 // GenerateHTTPRequest HTTP API 请求体
 type GenerateHTTPRequest struct {
-	ProjectID  string `json:"project_id" binding:"required"`
+	ProjectID  string `json:"project_id"`
 	DocumentID string `json:"document_id"`
 	Mode       string `json:"mode" binding:"required"`
 	Content    string `json:"content" binding:"required"`
@@ -31,6 +31,11 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 	userIDStr := ""
 	if val, exists := c.Get("userID"); exists {
 		userIDStr = strconv.FormatUint(uint64(val.(uint)), 10)
+	}
+
+	// 项目 ID 为空时给默认值
+	if req.ProjectID == "" {
+		req.ProjectID = "default"
 	}
 
 	// 构建 AI 生成请求
@@ -98,6 +103,10 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 			if chunk.Done {
 				c.SSEvent("done", "")
 				return false
+			}
+			// 只发送有实际内容的 chunk（跳过思维链）
+			if chunk.Content == "" {
+				return true
 			}
 			c.SSEvent("content", gin.H{"content": chunk.Content})
 			return true

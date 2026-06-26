@@ -9,7 +9,7 @@ import (
 
 // Claims JWT 自定义 Claims
 type Claims struct {
-	UserID uint   `json:"user_id"`
+	UserID string `json:"user_id"`
 	Email  string `json:"email"`
 	Plan   string `json:"plan"`
 	jwt.RegisteredClaims
@@ -31,7 +31,7 @@ func NewJWTManager(secret string) *JWTManager {
 }
 
 // GeneratePair 生成 access + refresh token
-func (m *JWTManager) GeneratePair(userID uint, email, plan string) (accessToken, refreshToken string, err error) {
+func (m *JWTManager) GeneratePair(userID string, email, plan string) (accessToken, refreshToken string, err error) {
 	// Access Token
 	accessClaims := Claims{
 		UserID: userID,

@@ -3,6 +3,7 @@ package ai
 import (
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -12,10 +13,18 @@ import (
 type Handler struct {
 	db     *gorm.DB
 	client *Client
+	model  string // 默认模型名，从构造参数或环境变量获取
 }
 
-func NewHandler(db *gorm.DB, client *Client) *Handler {
-	return &Handler{db: db, client: client}
+func NewHandler(db *gorm.DB, client *Client, defaultModel string) *Handler {
+	m := defaultModel
+	if m == "" {
+		m = os.Getenv("AI_MODEL")
+	}
+	if m == "" {
+		m = "glm-5-turbo"
+	}
+	return &Handler{db: db, client: client, model: m}
 }
 
 // Request AI 流式生成请求
@@ -87,7 +96,7 @@ func (h *Handler) GenerateOutline(c *gin.Context) {
 	}
 
 	prompt := buildOutlinePrompt(req.Title, req.Description)
-	content, err := h.client.Complete(c.Request.Context(), "glm-5-turbo", []Message{
+	content, err := h.client.Complete(c.Request.Context(), h.model, []Message{
 		{Role: "user", Content: prompt},
 	})
 	if err != nil {
@@ -118,7 +127,7 @@ func (h *Handler) PlotContinue(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 
-	ch, err := h.client.Stream(c.Request.Context(), "glm-5-turbo", []Message{
+	ch, err := h.client.Stream(c.Request.Context(), h.model, []Message{
 		{Role: "user", Content: prompt},
 	})
 	if err != nil {

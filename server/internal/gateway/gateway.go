@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"gorm.io/gorm"
+
 	"xiezuojun-server/internal/ai"
 )
 
@@ -244,6 +246,11 @@ func (g *DefaultGateway) CheckQuota(userID string, tier string) (*QuotaStatus, e
 // TrackUsage 记录用量（手动调用）
 func (g *DefaultGateway) TrackUsage(record UsageRecord) error {
 	return g.usageTracker.Track(record)
+}
+
+// SetDB 设置数据库（供 UsageTracker 持久化）
+func (g *DefaultGateway) SetDB(db *gorm.DB) {
+	g.usageTracker.db = db
 }
 
 // acquireSlot 获取并发槽位

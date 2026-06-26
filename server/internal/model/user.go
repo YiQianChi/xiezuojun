@@ -6,7 +6,8 @@ import (
 
 // User 用户表
 type User struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
+	ID           uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID       string    `gorm:"type:char(36);uniqueIndex;size:36" json:"user_id"`
 	Email        string    `gorm:"uniqueIndex;size:255" json:"email"`
 	Phone        string    `gorm:"size:20;index" json:"phone"`
 	Nickname     string    `gorm:"size:50" json:"nickname"`
@@ -25,7 +26,7 @@ func (User) TableName() string {
 // RefreshToken 刷新令牌表（支持多端+踢设备）
 type RefreshToken struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"index" json:"user_id"`
+	UserID    string    `gorm:"type:char(36);index" json:"user_id"`
 	Token     string    `gorm:"uniqueIndex;size:512" json:"token"`
 	DeviceID  string    `gorm:"size:100" json:"device_id"`
 	IP        string    `gorm:"size:45" json:"ip"`
