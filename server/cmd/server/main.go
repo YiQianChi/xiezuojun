@@ -79,6 +79,7 @@ func main() {
 	// handlers
 	userHandler := user.NewHandler(db, jwtManager)
 	projectHandler := project.NewHandler(db, dataRoot, pathConfig, userLocks)
+	projectHandler.MigrateFolderFiles()
 
 	apiKey := os.Getenv("AI_API_KEY")
 	if apiKey == "" {
@@ -129,6 +130,8 @@ func main() {
 	authd.GET("/documents", projectHandler.ListDocuments)
 	authd.POST("/documents", projectHandler.CreateDocument)
 	authd.GET("/documents/:id", projectHandler.GetDocument)
+
+	authd.PATCH("/documents/:id/move", projectHandler.MoveDocument)
 
 	// 文档更新：包装原 handler，成功后异步提取记忆
 	authd.PATCH("/documents/:id", func(c *gin.Context) {

@@ -1,6 +1,8 @@
 package project
 
 import (
+	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -72,6 +74,50 @@ func (h *Handler) updateStructure(userID string, projectID uint, projName string
 	_ = h.ds.saveStructureJSON(userID, projectID, projName, structure)
 }
 
+// MigrateFolderFiles 将所有有 parentID 的文档文件迁移到文件夹目录
+// 用于一次性迁移存量数据，幂等执行（已迁移的跳过）
+func (h *Handler) MigrateFolderFiles() {
+	var docs []model.Document
+	h.db.Where("status = 1 AND parent_id IS NOT NULL").Find(&docs)
+	if len(docs) == 0 {
+		return
+	}
+
+	// 按 project 分组处理
+	projCache := make(map[uint]*projectInfo)
+	for _, doc := range docs {
+		proj, ok := projCache[doc.ProjectID]
+		if !ok {
+			var err error
+			proj, err = h.getProject(doc.ProjectID)
+			if err != nil || proj == nil {
+				continue
+			}
+			projCache[doc.ProjectID] = proj
+		}
+
+		// 文件夹类型：创建目录
+		if doc.Type == "volume" {
+			_ = h.ds.ensureFolderDir(proj.UserID, proj.ID, proj.Name, doc.ID)
+			continue
+		}
+
+		// 文档类型：从根目录迁移到文件夹目录
+		if doc.ParentID != nil && *doc.ParentID > 0 {
+			oldPath := h.ds.docPath(proj.UserID, proj.ID, proj.Name, doc.ID)
+			newPath := h.ds.docPath(proj.UserID, proj.ID, proj.Name, doc.ID, *doc.ParentID)
+			// 新路径不存在但旧路径存在 → 需要迁移
+			if _, err := os.Stat(oldPath); err == nil {
+				if _, err := os.Stat(newPath); err != nil {
+					_ = h.ds.ensureFolderDir(proj.UserID, proj.ID, proj.Name, *doc.ParentID)
+					os.Rename(oldPath, newPath)
+				}
+			}
+		}
+	}
+	log.Printf("[MIGRATE] folder file migration checked: %d docs with parent_id", len(docs))
+}
+
 // updateQuota 更新用户配额统计
 func (h *Handler) updateQuota(userID string) {
 	q, err := store.RecalcQuota(h.paths, userID)
@@ -84,6 +130,9 @@ func (h *Handler) updateQuota(userID string) {
 // saveDocWithMeta 保存文档内容并更新结构/变更日志
 func (h *Handler) saveDocWithMeta(userID string, projectID uint, projName string, doc model.Document, content string) error {
 	err := h.ds.saveDocContent(userID, projectID, projName, doc.ID, content)
+	if doc.ParentID != nil && *doc.ParentID > 0 {
+		_ = h.ds.ensureFolderDir(userID, projectID, projName, *doc.ParentID)
+	}
 	if err != nil {
 		return err
 	}
@@ -94,8 +143,29 @@ func (h *Handler) saveDocWithMeta(userID string, projectID uint, projName string
 // updateDocWithMeta 更新文档文件并刷新结构/配额/变更日志
 func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName string, doc model.Document, content string) {
 	_ = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content)
+	if doc.ParentID != nil && *doc.ParentID > 0 {
+		_ = h.ds.ensureFolderDir(userID, projectID, projName, *doc.ParentID)
+	}
 	h.updateStructure(userID, projectID, projName, doc.ID, doc.Title, doc.Type, "update")
 	h.updateQuota(userID)
+}
+
+// rebuildStructure 从 DB 全量重建 .structure.json
+func (h *Handler) rebuildStructure(userID string, projectID uint, projName string) {
+	var docs []model.Document
+	h.db.Where("project_id = ? AND status = 1", projectID).Order("sort_order ASC, id ASC").Find(&docs)
+	structure := make([]map[string]interface{}, 0, len(docs))
+	for i, d := range docs {
+		entry := map[string]interface{}{
+			"id": d.ID, "title": d.Title, "type": d.Type, "status": "active",
+		}
+		if d.ParentID != nil {
+			entry["parent_id"] = *d.ParentID
+		}
+		entry["sort_order"] = i
+		structure = append(structure, entry)
+	}
+	_ = h.ds.saveStructureJSON(userID, projectID, projName, structure)
 }
 
 // findDoc 通过 ID 查文档（返回 *model.Document）

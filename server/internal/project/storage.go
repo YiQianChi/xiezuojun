@@ -20,23 +20,23 @@ func NewDocStore(paths *store.PathConfig, locks *store.UserLocks) *DocStore {
 	return &DocStore{paths: paths, locks: locks}
 }
 
-// docPath 返回文档正文路径
-// docPath returns the document file path
-func (ds *DocStore) docPath(userID string, projectID uint, projectName string, docID uint) string {
+// docPath 返回文档正文路径（根据 parentID 决定是否在文件夹下）
+func (ds *DocStore) docPath(userID string, projectID uint, projectName string, docID uint, parentID ...uint) string {
+	if len(parentID) > 0 && parentID[0] > 0 {
+		return ds.paths.DocPath(userID, projectID, projectName, docID, parentID[0])
+	}
 	return ds.paths.DocPath(userID, projectID, projectName, docID)
 }
 
-// saveDocContent 原子写入文档正文
-// saveDocContent writes document content atomically
-func (ds *DocStore) saveDocContent(userID string, projectID uint, projectName string, docID uint, content string) error {
-	path := ds.docPath(userID, projectID, projectName, docID)
+// saveDocContent 原子写入文档正文（支持文件夹层级）
+func (ds *DocStore) saveDocContent(userID string, projectID uint, projectName string, docID uint, content string, parentID ...uint) error {
+	path := ds.docPath(userID, projectID, projectName, docID, parentID...)
 	return store.AtomicWrite(path, []byte(content), 0644)
 }
 
-// loadDocContent 读取文档正文
-// loadDocContent reads document content
-func (ds *DocStore) loadDocContent(userID string, projectID uint, projectName string, docID uint) (string, error) {
-	data, err := os.ReadFile(ds.docPath(userID, projectID, projectName, docID))
+// loadDocContent 读取文档正文（支持文件夹层级）
+func (ds *DocStore) loadDocContent(userID string, projectID uint, projectName string, docID uint, parentID ...uint) (string, error) {
+	data, err := os.ReadFile(ds.docPath(userID, projectID, projectName, docID, parentID...))
 	if err != nil {
 		return "", err
 	}
@@ -61,6 +61,65 @@ func (ds *DocStore) loadDocContentFallback(docID uint) (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+// ensureFolderDir 确保文件夹目录存在
+func (ds *DocStore) ensureFolderDir(userID string, projectID uint, projectName string, folderID uint) error {
+	dir := ds.paths.FolderPath(userID, projectID, projectName, folderID)
+	return os.MkdirAll(dir, 0755)
+}
+
+// moveDocFile 移动文档文件到新位置（创建文件夹目录 + mv 文件）
+func (ds *DocStore) moveDocFile(userID string, projectID uint, projectName string, docID uint, oldParentID *uint, newParentID *uint) error {
+	var oldPath string
+	if oldParentID != nil && *oldParentID > 0 {
+		oldPath = ds.paths.DocPath(userID, projectID, projectName, docID, *oldParentID)
+	} else {
+		oldPath = ds.paths.DocPath(userID, projectID, projectName, docID)
+	}
+
+	var newPath string
+	if newParentID != nil && *newParentID > 0 {
+		newPath = ds.paths.DocPath(userID, projectID, projectName, docID, *newParentID)
+	} else {
+		newPath = ds.paths.DocPath(userID, projectID, projectName, docID)
+	}
+
+	if oldPath == newPath {
+		return nil
+	}
+
+	if newParentID != nil && *newParentID > 0 {
+		if err := os.MkdirAll(ds.paths.FolderPath(userID, projectID, projectName, *newParentID), 0755); err != nil {
+			return fmt.Errorf("mkdir folder: %w", err)
+		}
+	}
+
+	if err := os.Rename(oldPath, newPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("mv file: %w", err)
+	}
+	return nil
+}
+
+// removeFolderDir 删除空文件夹目录
+func (ds *DocStore) removeFolderDir(userID string, projectID uint, projectName string, folderID uint) error {
+	dir := ds.paths.FolderPath(userID, projectID, projectName, folderID)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, e := range entries {
+		if e.Name() != ".placeholder" {
+			return nil
+		}
+	}
+	return os.Remove(dir)
 }
 
 // ensureProjectDir 创建项目目录和基础文件
@@ -103,11 +162,15 @@ func (ds *DocStore) loadStructureJSON(userID string, projectID uint, projectName
 	return structure, nil
 }
 
-// trashMove 移入回收站
-// trashMove moves file to trash
-func (ds *DocStore) trashMove(userID string, projectID uint, projectName string, docID uint, meta interface{}) error {
-	docPath := ds.docPath(userID, projectID, projectName, docID)
-	return store.TrashMove(docPath, meta)
+// trashMove 移入回收站（支持文件夹层级）
+func (ds *DocStore) trashMove(userID string, projectID uint, projectName string, docID uint, parentID *uint, meta interface{}) error {
+	var path string
+	if parentID != nil && *parentID > 0 {
+		path = ds.docPath(userID, projectID, projectName, docID, *parentID)
+	} else {
+		path = ds.docPath(userID, projectID, projectName, docID)
+	}
+	return store.TrashMove(path, meta)
 }
 
 // countWords 统计字数

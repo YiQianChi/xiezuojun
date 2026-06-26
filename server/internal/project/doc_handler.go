@@ -77,7 +77,11 @@ func (h *Handler) GetDocument(c *gin.Context) {
 	content := ""
 	proj, err := h.getProject(doc.ProjectID)
 	if err == nil && proj != nil {
-		content, _ = h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID)
+		if doc.ParentID != nil && *doc.ParentID > 0 {
+			content, _ = h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID, *doc.ParentID)
+		} else {
+			content, _ = h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID)
+		}
 	}
 	if content == "" {
 		content, _ = h.ds.loadDocContentFallback(doc.ID)
@@ -104,9 +108,13 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 	proj, err := h.getProject(doc.ProjectID)
 	if err == nil && proj != nil {
 		h.locks.Lock(proj.UserID)
-		_ = h.ds.trashMove(proj.UserID, proj.ID, proj.Name, doc.ID, map[string]interface{}{
+		_ = h.ds.trashMove(proj.UserID, proj.ID, proj.Name, doc.ID, doc.ParentID, map[string]interface{}{
 			"id": doc.ID, "title": doc.Title, "type": doc.Type,
 		})
+		// 如果删除的是文件夹且目录空了，删除目录
+		if doc.Type == "volume" {
+			_ = h.ds.removeFolderDir(proj.UserID, proj.ID, proj.Name, doc.ID)
+		}
 		h.locks.Unlock(proj.UserID)
 	}
 

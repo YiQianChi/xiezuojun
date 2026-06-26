@@ -138,6 +138,12 @@ func (h *Handler) ExportProject(c *gin.Context) {
 	docContents := make([]map[string]interface{}, 0)
 	for _, doc := range docs {
 		content, _ := h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID)
+		// 如果新路径找不到，尝试旧路径（兼容未迁移的数据）
+		if content == "" && doc.ParentID != nil && *doc.ParentID > 0 {
+			content, _ = h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID, *doc.ParentID)
+		} else if content == "" {
+			content, _ = h.ds.loadDocContentFallback(doc.ID)
+		}
 		docContents = append(docContents, map[string]interface{}{
 			"id": doc.ID, "title": doc.Title, "type": doc.Type, "content": content,
 		})

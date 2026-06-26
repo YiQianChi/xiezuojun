@@ -48,9 +48,19 @@ func (p *PathConfig) ProjectDir(userID string, projectID uint, projectName strin
 	return filepath.Join(p.UserDir(userID), SanitizeName(projectName, projectID))
 }
 
-// DocPath 返回文档正文路径
-func (p *PathConfig) DocPath(userID string, projectID uint, projectName string, docID uint) string {
-	return filepath.Join(p.ProjectDir(userID, projectID, projectName), fmt.Sprintf("%d.md", docID))
+// FolderPath 返回文件夹目录路径（项目根下的子目录）
+func (p *PathConfig) FolderPath(userID string, projectID uint, projectName string, folderID uint) string {
+	return filepath.Join(p.ProjectDir(userID, projectID, projectName), fmt.Sprintf("folder-%d", folderID))
+}
+
+// DocPath 返回文档正文路径（支持文件夹层级）
+// 如果 parentFolderID > 0，文件放在文件夹目录下；否则放项目根目录
+func (p *PathConfig) DocPath(userID string, projectID uint, projectName string, docID uint, parentFolderID ...uint) string {
+	base := p.ProjectDir(userID, projectID, projectName)
+	if len(parentFolderID) > 0 && parentFolderID[0] > 0 {
+		base = filepath.Join(base, fmt.Sprintf("folder-%d", parentFolderID[0]))
+	}
+	return filepath.Join(base, fmt.Sprintf("%d.md", docID))
 }
 
 // MemoryDir 返回记忆目录
