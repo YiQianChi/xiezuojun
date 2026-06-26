@@ -7,7 +7,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -21,6 +23,7 @@ import (
 	"xiezuojun-server/internal/memory"
 	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/project"
+	"xiezuojun-server/internal/store"
 	"xiezuojun-server/internal/user"
 )
 
@@ -45,6 +48,7 @@ func main() {
 		&model.Document{},
 		&model.DocumentVersion{},
 		&model.WordCountLog{},
+		&model.UsageRecord{},
 	); err != nil {
 		log.Fatal("auto migrate failed:", err)
 	}
@@ -60,20 +64,33 @@ func main() {
 		dataRoot = "./data"
 	}
 
+	// 初始化存储层
+	docRoot := os.Getenv("DOC_ROOT")
+	if docRoot == "" {
+		docRoot = filepath.Join(dataRoot, "documents")
+	}
+	memRoot := os.Getenv("MEMORY_ROOT")
+	if memRoot == "" {
+		memRoot = filepath.Join(dataRoot, "memory")
+	}
+	pathConfig := &store.PathConfig{DocRoot: docRoot, MemRoot: memRoot}
+	userLocks := &store.UserLocks{}
+
 	// handlers
 	userHandler := user.NewHandler(db, jwtManager)
-	projectHandler := project.NewHandler(db, dataRoot)
-
-	// AI gateway — 传入 MemoryStorage 作为 MemoryReader
-	memStorage := memory.NewMemoryStorage(dataRoot)
-	memHandler := memory.NewHandler(memStorage, db)
+	projectHandler := project.NewHandler(db, dataRoot, pathConfig, userLocks)
 
 	apiKey := os.Getenv("AI_API_KEY")
 	if apiKey == "" {
 		apiKey = "sk-test"
 	}
 	aiClient := ai.NewClient(apiKey, os.Getenv("AI_BASE_URL"))
+
+	memHandler := memory.NewHandler(db, memRoot)
+	memHandler.SetAIClient(aiClient)
+	memStorage := memHandler.Storage()
 	gw := gateway.NewGateway(aiClient, memStorage)
+	gw.SetDB(db)
 
 	// 设置文档内容加载器（供 AI generate 时读取文档前文）
 	gw.SetDocContentLoader(func(docID uint64) (string, error) {
@@ -103,8 +120,11 @@ func main() {
 
 	authd.GET("/projects", projectHandler.ListProjects)
 	authd.POST("/projects", projectHandler.CreateProject)
+	authd.GET("/projects/search", projectHandler.SearchProjects)
+	authd.GET("/projects/:id", projectHandler.GetProject)
 	authd.PATCH("/projects/:id", projectHandler.UpdateProject)
 	authd.DELETE("/projects/:id", projectHandler.DeleteProject)
+	authd.GET("/projects/:id/export", projectHandler.ExportProject)
 
 	authd.GET("/documents", projectHandler.ListDocuments)
 	authd.POST("/documents", projectHandler.CreateDocument)
@@ -142,7 +162,7 @@ func main() {
 
 			userIDStr := ""
 			if val, exists := c.Get("userID"); exists {
-				userIDStr = fmt.Sprintf("%d", val.(uint))
+				userIDStr, _ = val.(string)
 			}
 
 			var doc model.Document
@@ -172,6 +192,40 @@ func main() {
 
 	authd.DELETE("/documents/:id", projectHandler.DeleteDocument)
 
+	// 回收站路由
+	authd.GET("/trash", projectHandler.TrashListHandler)
+	authd.POST("/trash/restore", projectHandler.RestoreDocument)
+	authd.DELETE("/trash", projectHandler.EmptyTrash)
+
+	// 回收站定时清理（每小时一次）
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("[trash-cleanup] panic: %v", r)
+					}
+				}()
+				// 遍历所有活跃用户做清理
+				var userIDs []string
+				if err := db.Model(&model.User{}).Pluck("id", &userIDs).Error; err != nil {
+					return
+				}
+				for _, uid := range userIDs {
+					n, err := store.TrashCleanup(pathConfig, uid)
+					if err != nil {
+						log.Printf("[trash-cleanup] uid=%s err=%v", uid, err)
+					}
+					if n > 0 {
+						log.Printf("[trash-cleanup] uid=%s cleaned=%d", uid, n)
+					}
+				}
+			}()
+		}
+	}()
+
 	// ===== 记忆系统 API =====
 	authd.GET("/memory/files", memHandler.ListFiles)
 	authd.GET("/memory/file", memHandler.GetFile)
@@ -186,6 +240,12 @@ func main() {
 	authd.GET("/memory/summaries", memHandler.ListSummaries)
 	authd.GET("/memory/summaries/:chapter_id", memHandler.GetSummary)
 	authd.PUT("/memory/summaries/:chapter_id", memHandler.WriteSummary)
+
+	// 三层记忆
+	authd.GET("/memory/:project_id", memHandler.GetProjectMemory)
+	authd.PUT("/memory/:project_id/:file", memHandler.UpdateMemoryFile)
+	authd.POST("/memory/:project_id/extract", memHandler.ExtractMemory)
+	authd.POST("/memory/:project_id/distill", memHandler.DistillMemory)
 
 	// AI 路由
 	aiGroup := authd.Group("")
