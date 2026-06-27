@@ -40,6 +40,12 @@ func (h *Handler) MoveDocument(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot set parent to self"})
 			return
 		}
+		// 防止循环引用：新 parent 不能是自身的后代
+		if h.isDescendant(doc.ProjectID, uint(pid), doc.ID) {
+			c.Writer.Header().Set("X-Move-Debug", "docID="+strconv.FormatUint(uint64(doc.ID), 10)+",newParent="+strconv.FormatUint(uint64(pid), 10))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot move into own descendant", "debug": gin.H{"doc_id": doc.ID, "new_parent": pid, "project_id": doc.ProjectID}})
+			return
+		}
 		updates["parent_id"] = uint(pid)
 	}
 

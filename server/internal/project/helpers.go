@@ -168,6 +168,41 @@ func (h *Handler) rebuildStructure(userID string, projectID uint, projName strin
 	_ = h.ds.saveStructureJSON(userID, projectID, projName, structure)
 }
 
+// isDescendant 检查 candidate 是否是 ancestor 自身或其后代（在 projectID 项目内）。
+// 用于防止把节点拖到自己的子孙下造成循环引用。
+func (h *Handler) isDescendant(projectID uint, candidate, ancestor uint) bool {
+	if candidate == ancestor {
+		return true
+	}
+	var docs []model.Document
+	if err := h.db.Select("id", "parent_id").
+		Where("project_id = ? AND status = 1", projectID).
+		Find(&docs).Error; err != nil {
+		return false
+	}
+	// 构建 child -> parent 映射
+	parentOf := make(map[uint]uint, len(docs))
+	for _, d := range docs {
+		if d.ParentID != nil {
+			parentOf[d.ID] = *d.ParentID
+		}
+	}
+	// 从 candidate 沿 parent 向上爬，看是否能到 ancestor
+	cur := candidate
+	for i := 0; i < len(docs)+1; i++ {
+		if cur == ancestor {
+			return true
+		}
+		next, ok := parentOf[cur]
+		if !ok {
+			return false
+		}
+		cur = next
+	}
+	// 防御性：循环跳出，认为存在异常环
+	return true
+}
+
 // findDoc 通过 ID 查文档（返回 *model.Document）
 func (h *Handler) findDoc(id string) (*model.Document, error) {
 	uid, err := strconv.Atoi(id)
