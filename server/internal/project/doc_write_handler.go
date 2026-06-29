@@ -78,6 +78,30 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 		return
 	}
 
+	if req.HasContent && !req.Force && !sameUpdateInstant(doc.UpdatedAt, req.LastKnownUpdatedAt) {
+		content := ""
+		proj, err := h.getProject(doc.ProjectID)
+		if err == nil && proj != nil {
+			if doc.ParentID != nil && *doc.ParentID > 0 {
+				content, _ = h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID, *doc.ParentID)
+			} else {
+				content, _ = h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID)
+			}
+		}
+		if content == "" {
+			content, _ = h.ds.loadDocContentFallback(doc.ID)
+		}
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "云端已有新版本，本地草稿已保留",
+			"code":  "document_conflict",
+			"data": gin.H{
+				"document": doc,
+				"content":  content,
+			},
+		})
+		return
+	}
+
 	updates := map[string]interface{}{"updated_at": time.Now()}
 	if req.Title != "" {
 		updates["title"] = req.Title
@@ -111,5 +135,10 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 		Doc: uintToStr(doc.ID), Summary: "更新: " + req.Title,
 	})
 
-	c.JSON(http.StatusOK, gin.H{"message": "updated"})
+	var updatedDoc model.Document
+	if err := h.db.First(&updatedDoc, doc.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "updated", "data": updatedDoc})
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -21,9 +22,11 @@ type Handler struct {
 }
 
 type documentUpdateRequest struct {
-	Title      string `json:"title"`
-	Content    string `json:"content"`
-	HasContent bool   `json:"-"`
+	Title              string `json:"title"`
+	Content            string `json:"content"`
+	LastKnownUpdatedAt string `json:"last_known_updated_at"`
+	Force              bool   `json:"force"`
+	HasContent         bool   `json:"-"`
 }
 
 func (r *documentUpdateRequest) UnmarshalJSON(data []byte) error {
@@ -37,6 +40,17 @@ func (r *documentUpdateRequest) UnmarshalJSON(data []byte) error {
 	}
 	_, r.HasContent = raw["content"]
 	return nil
+}
+
+func sameUpdateInstant(a time.Time, b string) bool {
+	if b == "" {
+		return true
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, b)
+	if err != nil {
+		return false
+	}
+	return a.UTC().Truncate(time.Millisecond).Equal(parsed.UTC().Truncate(time.Millisecond))
 }
 
 // NewHandler 创建 Handler
