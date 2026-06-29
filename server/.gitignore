@@ -1,4 +1,7 @@
 xiezuojun-server
+xiezuojun-server-new
+server
+/data/
 *.exe
 *.exe~
 *.dll

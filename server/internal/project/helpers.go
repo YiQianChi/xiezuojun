@@ -129,9 +129,16 @@ func (h *Handler) updateQuota(userID string) {
 
 // saveDocWithMeta 保存文档内容并更新结构/变更日志
 func (h *Handler) saveDocWithMeta(userID string, projectID uint, projName string, doc model.Document, content string) error {
-	err := h.ds.saveDocContent(userID, projectID, projName, doc.ID, content)
+	var parentID uint
 	if doc.ParentID != nil && *doc.ParentID > 0 {
-		_ = h.ds.ensureFolderDir(userID, projectID, projName, *doc.ParentID)
+		parentID = *doc.ParentID
+		_ = h.ds.ensureFolderDir(userID, projectID, projName, parentID)
+	}
+	var err error
+	if parentID > 0 {
+		err = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content, parentID)
+	} else {
+		err = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content)
 	}
 	if err != nil {
 		return err
@@ -142,9 +149,15 @@ func (h *Handler) saveDocWithMeta(userID string, projectID uint, projName string
 
 // updateDocWithMeta 更新文档文件并刷新结构/配额/变更日志
 func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName string, doc model.Document, content string) {
-	_ = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content)
+	var parentID uint
 	if doc.ParentID != nil && *doc.ParentID > 0 {
-		_ = h.ds.ensureFolderDir(userID, projectID, projName, *doc.ParentID)
+		parentID = *doc.ParentID
+		_ = h.ds.ensureFolderDir(userID, projectID, projName, parentID)
+	}
+	if parentID > 0 {
+		_ = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content, parentID)
+	} else {
+		_ = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content)
 	}
 	h.updateStructure(userID, projectID, projName, doc.ID, doc.Title, doc.Type, "update")
 	h.updateQuota(userID)
@@ -201,6 +214,26 @@ func (h *Handler) isDescendant(projectID uint, candidate, ancestor uint) bool {
 	}
 	// 防御性：循环跳出，认为存在异常环
 	return true
+}
+
+const maxFolderDepth = 3
+
+// folderDepth 返回 docId 在项目内的文件夹嵌套深度（顶层=0）
+func (h *Handler) folderDepth(projectID uint, docID uint) int {
+	depth := 0
+	cur := docID
+	for i := 0; i < maxFolderDepth+1; i++ {
+		var doc model.Document
+		if err := h.db.Select("parent_id").Where("id = ? AND project_id = ? AND status = 1", cur, projectID).First(&doc).Error; err != nil {
+			break
+		}
+		if doc.ParentID == nil {
+			break
+		}
+		cur = *doc.ParentID
+		depth++
+	}
+	return depth
 }
 
 // findDoc 通过 ID 查文档（返回 *model.Document）

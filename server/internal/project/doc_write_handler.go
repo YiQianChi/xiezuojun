@@ -30,6 +30,16 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		Type: req.Type, Title: req.Title, SortOrder: req.SortOrder,
 		WordCount: countWords(req.Content), Status: 1,
 	}
+
+	// 文件夹层级限制：最多 3 层
+	if req.Type == "volume" && req.ParentID != nil {
+		parentDepth := h.folderDepth(req.ProjectID, *req.ParentID)
+		if parentDepth >= maxFolderDepth-1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "文件夹最多嵌套 3 层，请选择更上层的文件夹"})
+			return
+		}
+	}
+
 	if err := h.db.Create(&doc).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

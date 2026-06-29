@@ -46,6 +46,14 @@ func (h *Handler) MoveDocument(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot move into own descendant", "debug": gin.H{"doc_id": doc.ID, "new_parent": pid, "project_id": doc.ProjectID}})
 			return
 		}
+		// 文件夹层级限制：最多 3 层
+		if doc.Type == "volume" {
+			newParentDepth := h.folderDepth(doc.ProjectID, uint(pid))
+			if newParentDepth >= maxFolderDepth-1 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "文件夹最多嵌套 3 层，请选择更上层的文件夹"})
+				return
+			}
+		}
 		updates["parent_id"] = uint(pid)
 	}
 
