@@ -119,9 +119,9 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	if err == nil && proj != nil {
 		projName := proj.Name
 		h.locks.Lock(proj.UserID)
-		// 内容变更时保存文件 + 同步 structure
+		// 自动保存只更新当前正文；用户主动保存时才创建历史版本。
 		if req.HasContent {
-			h.updateDocWithMeta(proj.UserID, proj.ID, projName, *doc, req.Content, true)
+			h.updateDocWithMeta(proj.UserID, proj.ID, projName, *doc, req.Content, req.CreateVersion)
 		} else if req.Title != "" {
 			// 仅标题变更，只更新 structure.json
 			h.updateStructure(proj.UserID, proj.ID, projName, doc.ID, req.Title, doc.Type, "update")

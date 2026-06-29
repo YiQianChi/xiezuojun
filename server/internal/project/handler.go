@@ -26,6 +26,7 @@ type documentUpdateRequest struct {
 	Content            string `json:"content"`
 	LastKnownUpdatedAt string `json:"last_known_updated_at"`
 	Force              bool   `json:"force"`
+	CreateVersion      bool   `json:"create_version"`
 	HasContent         bool   `json:"-"`
 }
 
