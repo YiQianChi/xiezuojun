@@ -26,7 +26,7 @@ type Document struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	ProjectID  uint      `gorm:"index" json:"project_id"`
 	ParentID   *uint     `gorm:"index" json:"parent_id"` // 支持卷/章嵌套
-	Type       string    `gorm:"size:20" json:"type"`    // volume | chapter | note
+	Type       string    `gorm:"size:20" json:"type"`    // volume | chapter | note | outline | characters | worldbuilding
 	Title      string    `gorm:"size:200" json:"title"`
 	SortOrder  int       `gorm:"default:0" json:"sort_order"`
 	WordCount  int       `gorm:"default:0" json:"word_count"`

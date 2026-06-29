@@ -113,6 +113,15 @@ func (h *Handler) CreateProject(c *gin.Context) {
 		return
 	}
 
+	// 创建默认作品结构：一级资料文件 + 二级「文章」正文目录
+	h.locks.Lock(proj.UserID)
+	err = h.createDefaultProjectDocuments(proj)
+	h.locks.Unlock(proj.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "create default docs: " + err.Error()})
+		return
+	}
+
 	// 追加 changelog
 	_ = store.AppendChangelog(h.paths, proj.UserID, store.ChangeEntry{
 		Action: "create_project", Project: proj.Name, Summary: "创建项目",
