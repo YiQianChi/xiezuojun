@@ -19,8 +19,8 @@ import (
 	"xiezuojun-server/internal/ai"
 	"xiezuojun-server/internal/auth"
 	"xiezuojun-server/internal/gateway"
-	"xiezuojun-server/internal/middleware"
 	"xiezuojun-server/internal/memory"
+	"xiezuojun-server/internal/middleware"
 	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/project"
 	"xiezuojun-server/internal/store"
@@ -80,6 +80,7 @@ func main() {
 	userHandler := user.NewHandler(db, jwtManager)
 	projectHandler := project.NewHandler(db, dataRoot, pathConfig, userLocks)
 	projectHandler.MigrateFolderFiles()
+	go projectHandler.RebuildMissingSearchText()
 
 	apiKey := os.Getenv("AI_API_KEY")
 	if apiKey == "" {
@@ -122,6 +123,7 @@ func main() {
 	authd.GET("/projects", projectHandler.ListProjects)
 	authd.POST("/projects", projectHandler.CreateProject)
 	authd.GET("/projects/search", projectHandler.SearchProjects)
+	authd.GET("/projects/:id/search", projectHandler.SearchDocuments)
 	authd.GET("/projects/:id", projectHandler.GetProject)
 	authd.PATCH("/projects/:id", projectHandler.UpdateProject)
 	authd.DELETE("/projects/:id", projectHandler.DeleteProject)

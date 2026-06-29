@@ -47,7 +47,7 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 								d.SortOrder = i
 							}
 							result = append(result, d)
-								break
+							break
 						}
 					}
 				}
@@ -100,7 +100,7 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Model(&model.Document{}).Where("id = ?", id).Update("status", 0).Error; err != nil {
+	if err := h.db.Model(&model.Document{}).Where("id = ?", id).Updates(map[string]interface{}{"status": 0, "search_text": ""}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

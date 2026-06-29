@@ -28,7 +28,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 	doc := model.Document{
 		ProjectID: req.ProjectID, ParentID: req.ParentID,
 		Type: req.Type, Title: req.Title, SortOrder: req.SortOrder,
-		WordCount: countWords(req.Content), Status: 1,
+		WordCount: countWords(req.Content), SearchText: req.Content, Status: 1,
 	}
 
 	// 文件夹层级限制：最多 3 层
@@ -66,10 +66,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 func (h *Handler) UpdateDocument(c *gin.Context) {
 	userID := getUserID(c)
 	id := c.Param("id")
-	var req struct {
-		Title   string `json:"title"`
-		Content string `json:"content"`
-	}
+	var req documentUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -85,8 +82,9 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	if req.Title != "" {
 		updates["title"] = req.Title
 	}
-	if req.Content != "" {
+	if req.HasContent {
 		updates["word_count"] = countWords(req.Content)
+		updates["search_text"] = req.Content
 	}
 	if err := h.db.Model(&model.Document{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -98,11 +96,7 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 		projName := proj.Name
 		h.locks.Lock(proj.UserID)
 		// 内容变更时保存文件 + 同步 structure
-		if req.Content != "" {
-			title := req.Title
-			if title == "" {
-				title = doc.Title
-			}
+		if req.HasContent {
 			h.updateDocWithMeta(proj.UserID, proj.ID, projName, *doc, req.Content)
 		} else if req.Title != "" {
 			// 仅标题变更，只更新 structure.json

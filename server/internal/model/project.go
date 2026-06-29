@@ -10,9 +10,9 @@ type Project struct {
 	UserID    string    `gorm:"type:char(36);index" json:"user_id"`
 	Name      string    `gorm:"size:200" json:"name"`
 	CoverURL  string    `gorm:"size:500" json:"cover_url"`
-	Genre     string    `gorm:"size:50" json:"genre"`     // 类型：小说/剧本/散文
-	Tags      string    `gorm:"size:500" json:"tags"`     // 逗号分隔的标签
-	Status    int       `gorm:"default:1" json:"status"`   // 1=正常 0=删除
+	Genre     string    `gorm:"size:50" json:"genre"`    // 类型：小说/剧本/散文
+	Tags      string    `gorm:"size:500" json:"tags"`    // 逗号分隔的标签
+	Status    int       `gorm:"default:1" json:"status"` // 1=正常 0=删除
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -30,6 +30,7 @@ type Document struct {
 	Title      string    `gorm:"size:200" json:"title"`
 	SortOrder  int       `gorm:"default:0" json:"sort_order"`
 	WordCount  int       `gorm:"default:0" json:"word_count"`
+	SearchText string    `gorm:"type:mediumtext" json:"-"` // 搜索缓存；正文权威源仍是文件
 	Status     int       `gorm:"default:1" json:"status"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`

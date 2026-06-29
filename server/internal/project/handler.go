@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -13,10 +14,29 @@ import (
 // Handler 项目/文档 API
 type Handler struct {
 	db       *gorm.DB
-	dataRoot string          // 旧路径前缀，兼容期保留
+	dataRoot string // 旧路径前缀，兼容期保留
 	paths    *store.PathConfig
 	locks    *store.UserLocks
 	ds       *DocStore
+}
+
+type documentUpdateRequest struct {
+	Title      string `json:"title"`
+	Content    string `json:"content"`
+	HasContent bool   `json:"-"`
+}
+
+func (r *documentUpdateRequest) UnmarshalJSON(data []byte) error {
+	type alias documentUpdateRequest
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, (*alias)(r)); err != nil {
+		return err
+	}
+	_, r.HasContent = raw["content"]
+	return nil
 }
 
 // NewHandler 创建 Handler
