@@ -132,6 +132,9 @@ func main() {
 	authd.GET("/documents", projectHandler.ListDocuments)
 	authd.POST("/documents", projectHandler.CreateDocument)
 	authd.GET("/documents/:id", projectHandler.GetDocument)
+	authd.GET("/documents/:id/versions", projectHandler.ListDocumentVersions)
+	authd.GET("/document-versions/:version_id", projectHandler.GetDocumentVersion)
+	authd.POST("/document-versions/:version_id/restore", projectHandler.RestoreDocumentVersion)
 
 	authd.PATCH("/documents/:id/move", projectHandler.MoveDocument)
 

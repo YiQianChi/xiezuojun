@@ -121,7 +121,7 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 		h.locks.Lock(proj.UserID)
 		// 内容变更时保存文件 + 同步 structure
 		if req.HasContent {
-			h.updateDocWithMeta(proj.UserID, proj.ID, projName, *doc, req.Content)
+			h.updateDocWithMeta(proj.UserID, proj.ID, projName, *doc, req.Content, true)
 		} else if req.Title != "" {
 			// 仅标题变更，只更新 structure.json
 			h.updateStructure(proj.UserID, proj.ID, projName, doc.ID, req.Title, doc.Type, "update")

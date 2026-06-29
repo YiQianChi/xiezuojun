@@ -148,7 +148,7 @@ func (h *Handler) saveDocWithMeta(userID string, projectID uint, projName string
 }
 
 // updateDocWithMeta 更新文档文件并刷新结构/配额/变更日志
-func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName string, doc model.Document, content string) {
+func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName string, doc model.Document, content string, createVersion bool) {
 	var parentID uint
 	if doc.ParentID != nil && *doc.ParentID > 0 {
 		parentID = *doc.ParentID
@@ -161,6 +161,11 @@ func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName stri
 	}
 	h.updateStructure(userID, projectID, projName, doc.ID, doc.Title, doc.Type, "update")
 	h.updateQuota(userID)
+	if createVersion {
+		if err := h.snapshotDocumentVersion(doc, content); err != nil {
+			log.Printf("[doc-version] snapshot doc=%d failed: %v", doc.ID, err)
+		}
+	}
 }
 
 // rebuildStructure 从 DB 全量重建 .structure.json
