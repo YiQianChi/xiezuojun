@@ -1,0 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
+
+:root {
+  color-scheme: light;
+
+  /* Colors */
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #fff;
+  --bg-tertiary: #e8e8ed;
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --text-tertiary: #aeaeb2;
+  --accent: #007aff;
+  --accent-hover: #0066d6;
+  --accent-light: #007aff14;
+  --accent-subtle: #007aff0a;
+  --border: #00000014;
+  --border-subtle: #0000000a;
+  --glass-bg: #ffffffb8;
+  --glass-bg-solid: #ffffffe0;
+  --glass-bg-heavy: #ffffffd1;
+  --glass-border: #ffffff80;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px #0000000a;
+  --shadow-md: 0 2px 8px #0000000f, 0 0 1px #00000014;
+  --shadow-lg: 0 8px 30px #00000014, 0 2px 8px #0000000a;
+  --shadow-xl: 0 20px 60px #0000001f, 0 4px 16px #0000000f;
+  --shadow-inner: inset 0 1px 0 #fff9;
+  --shadow-glow: 0 0 20px #007aff26;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* Sizes */
+  --nav-height: 56px;
+  --status-bar-height: 28px;
+
+  /* Fonts */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-serif: "Noto Serif SC", "PingFang SC", "SimSun", serif;
+  --font-mono: "SF Mono", "Fira Code", Menlo, Consolas, monospace;
+
+  /* Transitions */
+  --transition-fast: .15s cubic-bezier(.25, .46, .45, .94);
+  --transition-normal: .25s cubic-bezier(.25, .46, .45, .94);
+  --transition-spring: .4s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Scrollbar */
+* { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.15) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; margin: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 100px; border: 3px solid transparent; background-clip: content-box; min-width: 30px; min-height: 30px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+::-webkit-scrollbar-thumb:active { background: rgba(0,0,0,0.38); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+p { margin: 0; }
+h1, h2, h3, h4, h5, h6 { margin: 0; }
+
+/* 通用按钮 */
+.btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn.primary:hover {
+  background: var(--accent-hover);
+}
+
+/* 输入框 */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  font-size: 14px;
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+/* 通用 modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal {
+  background: var(--bg-secondary);
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 380px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.modal h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
