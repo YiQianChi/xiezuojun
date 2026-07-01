@@ -1,94 +1,35 @@
 <template>
   <div class="editor-page">
     <!-- 顶部栏 -->
-    <div class="editor-header">
-      <button @click="goBack" class="back-btn">← 返回书架</button>
-      <div class="doc-name">
-        <span class="proj-name">{{ projectName || '未命名项目' }}</span>
-        <template v-if="currentDocName && mode === 'write'">
-          <span class="doc-sep">·</span>
-          <span class="chapter-name">{{ currentDocName }}</span>
-        </template>
-      </div>
-
-      <div class="mode-switcher" role="tablist">
-        <button
-          class="mode-tab plan"
-          :class="{ active: mode === 'plan' }"
-          @click="switchMode('plan')"
-          title="计划：构思梗概/世界观/人物/大纲"
-        ><span class="dot"></span>计划</button>
-        <button
-          class="mode-tab write"
-          :class="{ active: mode === 'write' }"
-          @click="switchMode('write')"
-          title="写作：正文创作 + AI 续写/改写"
-        ><span class="dot"></span>写作</button>
-        <button
-          class="mode-tab review"
-          :class="{ active: mode === 'review' }"
-          @click="switchMode('review')"
-          title="审核：人设一致性、情节漏洞、伏笔、节奏"
-        ><span class="dot"></span>审核</button>
-      </div>
-
-      <div class="header-actions">
-        <button v-if="mode === 'write'" @click="openSaveVersionModal" class="btn" :disabled="!activeDocId || savingVersion">
-          {{ savingVersion ? '保存中...' : '保存版本' }}
-        </button>
-        <button v-if="mode === 'write'" @click="openVersionModal" class="btn" :disabled="!activeDocId">版本历史</button>
-      </div>
-    </div>
+    <EditorHeader
+      :project-name="projectName"
+      :current-doc-name="currentDocName"
+      :mode="mode"
+      :active-doc-id="activeDocId"
+      :saving-version="savingVersion"
+      @back="goBack"
+      @switch-mode="switchMode"
+      @save-version="openSaveVersionModal"
+      @open-history="openVersionModal"
+    />
 
     <div class="editor-body">
       <!-- 左侧文档树 -->
-      <aside class="doc-tree">
-        <div class="side-tabs">
-          <button
-            class="side-tab"
-            :class="{ active: sideTab === 'chapter' }"
-            @click="sideTab = 'chapter'"
-          >章节</button>
-          <button
-            class="side-tab"
-            :class="{ active: sideTab === 'setting' }"
-            @click="sideTab = 'setting'"
-          >设定</button>
-        </div>
-        <div class="branch-switcher">
-          <label>故事线</label>
-          <select v-model.number="activeBranchId" @change="switchBranch" :disabled="branches.length <= 1">
-            <option v-for="branch in branches" :key="branch.id" :value="branch.id">
-              {{ branch.name }}
-            </option>
-          </select>
-        </div>
-        <div class="tree-list">
-          <div v-if="loadingDocs" class="tree-loading">加载中...</div>
-          <div v-else-if="filteredRootNodes.length === 0" class="tree-empty">
-            <template v-if="sideTab === 'chapter'">
-              还没有章节<br>
-              <button @click="initDefaultStructure" class="btn small">初始化默认结构</button>
-            </template>
-            <template v-else>
-              还没有设定<br>
-              <span class="tree-empty-hint">大纲 / 人物 / 世界观 会显示在这里</span>
-            </template>
-          </div>
-          <DocTreeNode
-            v-else
-            v-for="node in filteredRootNodes"
-            :key="node.id"
-            :node="node"
-            :all-docs="documents"
-            :active-id="activeDocId"
-            :depth="0"
-            @select="openDoc"
-            @context-menu="openDocContextMenu"
-            @drop-node="handleDropNode"
-          />
-        </div>
-      </aside>
+      <EditorSidebar
+        :side-tab="sideTab"
+        :branches="branches"
+        :active-branch-id="activeBranchId"
+        :documents="documents"
+        :filtered-root-nodes="filteredRootNodes"
+        :active-doc-id="activeDocId"
+        :loading-docs="loadingDocs"
+        @update:side-tab="sideTab = $event"
+        @switch-branch="switchBranch"
+        @init-default="initDefaultStructure"
+        @select-doc="openDoc"
+        @context-menu="openDocContextMenu"
+        @drop-node="handleDropNode"
+      />
 
       <!-- 编辑器 -->
       <div class="editor-main" v-show="mode === 'write'">
@@ -150,6 +91,16 @@
           @update:query="onSearchQueryUpdate"
           @update:scope="onSearchScopeChange"
           @jump-project="onJumpProject"
+        />
+
+        <!-- AI 参考面板（写作模式） -->
+        <AIContextPanel
+          :open="contextPanelOpen"
+          :include-settings="includeSettings"
+          :used-settings="usedSettings"
+          @update:open="contextPanelOpen = $event"
+          @update:include-settings="includeSettings = $event"
+          @jump="jumpToSetting"
         />
       </div>
 
@@ -216,79 +167,30 @@
     </div>
 
     <!-- 新建文档弹窗 -->
-    <div v-if="showCreateDocModal" class="modal-overlay" @click="showCreateDocModal = false">
-      <div class="modal" @click.stop>
-        <h3>{{ createDocType === 'volume' ? '新建文件夹' : '新建章节' }}</h3>
-        <input v-model="newDocName" :placeholder="createDocType === 'volume' ? '文件夹名' : '章节名'" class="input" @keyup.enter="createDoc" autofocus />
-        <div class="modal-actions">
-          <button class="btn" @click="showCreateDocModal = false">取消</button>
-          <button class="btn primary" @click="createDoc">创建</button>
-        </div>
-      </div>
-    </div>
+    <CreateDocModal
+      v-model="showCreateDocModal"
+      :doc-type="createDocType"
+      @create="onCreateDocConfirm"
+    />
 
     <!-- 保存版本名称弹窗 -->
-    <div v-if="showSaveVersionModal" class="modal-overlay" @click="closeSaveVersionModal">
-      <div class="modal save-version-modal" @click.stop>
-        <h3>保存版本</h3>
-        <p class="modal-tip">请输入保存版本名称，例如 第一版v1.0</p>
-        <input
-          v-model="versionLabel"
-          class="input"
-          placeholder="第一版v1.0"
-          autofocus
-          @keyup.enter="confirmSaveVersion"
-        />
-        <div class="modal-actions">
-          <button class="btn" @click="closeSaveVersionModal">取消</button>
-          <button class="btn primary" @click="confirmSaveVersion" :disabled="savingVersion || !versionLabel.trim()">
-            {{ savingVersion ? '保存中...' : '保存' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <SaveVersionModal
+      v-model="showSaveVersionModal"
+      :saving="savingVersion"
+      @save="onSaveVersionConfirm"
+    />
 
     <!-- 版本历史弹窗 -->
-    <div v-if="showVersionModal" class="modal-overlay" @click="closeVersionModal">
-      <div class="modal version-modal" @click.stop>
-        <div class="version-header">
-          <div>
-            <h3>版本历史</h3>
-            <p>最近 3 个手动保存版本</p>
-          </div>
-          <button class="icon-btn" @click="closeVersionModal">×</button>
-        </div>
-        <div v-if="loadingVersions" class="empty-tip">加载中...</div>
-        <div v-else class="version-layout">
-          <div class="version-list">
-            <div v-if="versions.length === 0" class="empty-tip">暂无手动保存版本</div>
-            <div
-              v-for="v in versions"
-              :key="v.id"
-              class="version-item"
-              :class="{ active: selectedVersion?.id === v.id }"
-              @click="selectVersion(v)"
-            >
-              <div class="version-time">{{ v.label || '未命名版本' }}</div>
-              <div class="note">{{ formatDate(v.created_at) }} · {{ v.word_count || 0 }} 字</div>
-            </div>
-          </div>
-          <div class="version-preview">
-            <div v-if="!selectedVersion" class="empty-tip">选择一个版本查看预览</div>
-            <template v-else>
-              <div class="preview-toolbar">
-                <span>{{ selectedVersion.label || '未命名版本' }} · {{ formatDate(selectedVersion.created_at) }}</span>
-                <div class="preview-actions">
-                  <button class="btn" @click="startCompareWithCurrent">对比当前</button>
-                  <button class="btn primary" @click="restoreSelectedVersion" :disabled="restoringVersion">{{ restoringVersion ? '恢复中...' : '恢复此版本' }}</button>
-                </div>
-              </div>
-              <pre>{{ selectedVersion.content_snapshot || '' }}</pre>
-            </template>
-          </div>
-        </div>
-      </div>
-    </div>
+    <VersionHistoryModal
+      v-model="showVersionModal"
+      :loading="loadingVersions"
+      :restoring="restoringVersion"
+      :versions="versions"
+      :selected-version="selectedVersion"
+      @select="selectVersion"
+      @compare="startCompareWithCurrent"
+      @restore="restoreSelectedVersion"
+    />
   </div>
 </template>
 
@@ -300,10 +202,15 @@ import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Mark } from '@tiptap/core'
 import { documentApi, branchApi, aiApi, searchApi, projectApi } from '../core/api'
-import DocTreeNode from '../components/DocTreeNode.vue'
 import SearchPanel, { type ProjectMatch } from '../components/SearchPanel.vue'
 import PlanView from '../components/PlanView.vue'
 import ReviewView from '../components/ReviewView.vue'
+import EditorHeader from '../components/editor/EditorHeader.vue'
+import EditorSidebar from '../components/editor/EditorSidebar.vue'
+import AIContextPanel from '../components/editor/AIContextPanel.vue'
+import CreateDocModal from '../components/editor/CreateDocModal.vue'
+import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
+import VersionHistoryModal from '../components/editor/VersionHistoryModal.vue'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
@@ -471,6 +378,26 @@ const SETTING_TYPES = ['outline', 'characters', 'worldbuilding']
 // 顶部工作模式：计划 / 写作 / 审核
 type EditorMode = 'plan' | 'write' | 'review'
 const mode = ref<EditorMode>('write')
+
+// AI 参考的设定文档（从后端返回）
+interface UsedSetting {
+  id: number
+  title: string
+  type: 'outline' | 'characters' | 'worldbuilding'
+  used: boolean
+  tokens: number
+}
+const usedSettings = ref<UsedSetting[]>([])
+const includeSettings = ref(true)  // 是否让 AI 参考项目设定
+const contextPanelOpen = ref(true) // 右侧参考面板展开/收起
+
+async function jumpToSetting(docId: number) {
+  const doc = documents.value.find(d => d.id === docId)
+  if (doc) {
+    sideTab.value = 'setting'
+    await openDoc(doc, { keepSearch: true })
+  }
+}
 
 function switchMode(next: EditorMode) {
   if (mode.value === next) return
@@ -747,6 +674,12 @@ function openCreateDocModal(parentId: number | null = null, type: 'volume' | 'ch
   showCreateDocModal.value = true
 }
 
+// 拆分组件 CreateDocModal 触发（emit create）
+async function onCreateDocConfirm(name: string) {
+  newDocName.value = name
+  await createDoc()
+}
+
 async function createDoc() {
   if (!newDocName.value.trim()) return
   try {
@@ -880,10 +813,19 @@ async function runAIAction(action: AIAction) {
       mode: action,
       content: buildAIPrompt(action, selectedText),
       stream: false,
+      include_settings: includeSettings.value,
     })
     const data = res.data?.data || res.data
     const result = cleanAIResult(data?.content || '')
     if (!result) throw new Error('AI 返回为空')
+
+    // 保存本次 AI 参考的设定（用于右侧面板展示）
+    if (Array.isArray(data?.used_settings)) {
+      usedSettings.value = data.used_settings.map((s: any) => ({
+        id: s.id, title: s.title, type: s.type,
+        used: !!s.used, tokens: s.tokens || 0,
+      }))
+    }
 
     // 直接插入编辑器正文
     const isContinue = action === 'continue'
@@ -1132,14 +1074,10 @@ function openSaveVersionModal() {
   showSaveVersionModal.value = true
 }
 
-function closeSaveVersionModal() {
-  if (savingVersion.value) return
-  showSaveVersionModal.value = false
-}
-
-async function confirmSaveVersion() {
-  if (!versionLabel.value.trim()) return
-  await saveVersion(versionLabel.value.trim())
+// 拆分组件 SaveVersionModal 触发（emit save）
+async function onSaveVersionConfirm(label: string) {
+  versionLabel.value = label
+  await saveVersion(label)
 }
 
 async function saveVersion(label: string) {
@@ -1380,11 +1318,6 @@ async function openVersionModal() {
   await loadVersions(true)
 }
 
-function closeVersionModal() {
-  showVersionModal.value = false
-  if (!compareActive.value) selectedVersion.value = null
-}
-
 async function loadVersions(selectFirst = false) {
   if (!activeDocId.value) return
   loadingVersions.value = true
@@ -1482,13 +1415,6 @@ async function restoreSelectedVersion() {
   } finally {
     restoringVersion.value = false
   }
-}
-
-function formatDate(value: string) {
-  if (!value) return ''
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return value
-  return d.toLocaleString('zh-CN', { hour12: false })
 }
 
 function goBack() {
@@ -2405,5 +2331,161 @@ function goBack() {
 :deep(.ProseMirror) .search-hit-active {
   background: rgba(255, 149, 0, 0.55);
   box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.9);
+}
+
+/* AI 参考面板（写作模式右侧浮层） */
+.context-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: 280px;
+  background: var(--bg-secondary, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  z-index: 300;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  transition: width 0.2s ease;
+  font-family: 'SF Pro Display', 'PingFang SC', -apple-system, sans-serif;
+}
+.context-panel.collapsed {
+  width: 24px;
+  background: transparent;
+  box-shadow: none;
+}
+.context-panel-toggle {
+  width: 24px;
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary, #86868b);
+  background: var(--bg-tertiary, #f0f0f0);
+  border-radius: 6px 0 0 6px;
+  transition: background 0.15s;
+}
+.context-panel.collapsed .context-panel-toggle {
+  background: var(--bg-secondary, #ffffff);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+.context-panel-toggle:hover { background: rgba(0, 0, 0, 0.08); color: var(--text-primary, #1d1d1f); }
+
+.context-panel-inner {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.context-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.context-header h4 {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-tertiary, #aeaeb2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.toggle-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary, #86868b);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-inline input[type="checkbox"] {
+  accent-color: var(--accent, #007aff);
+  width: 12px; height: 12px;
+  margin: 0;
+}
+
+.context-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px 12px;
+}
+.context-empty {
+  padding: 30px 12px;
+  text-align: center;
+  color: var(--text-tertiary, #aeaeb2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.context-empty .ctx-icon { font-size: 24px; margin-bottom: 8px; opacity: 0.6; }
+.context-empty .hint { color: var(--text-tertiary, #aeaeb2); opacity: 0.8; font-size: 11px; }
+
+.context-stats {
+  font-size: 11px;
+  color: var(--text-tertiary, #aeaeb2);
+  padding: 4px 4px 8px;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
+  margin-bottom: 6px;
+}
+
+.context-chip {
+  background: rgba(0, 122, 255, 0.05);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.context-chip:hover { background: rgba(0, 122, 255, 0.1); }
+.context-chip.outline { border-left-color: #ff9500; }
+.context-chip.characters { border-left-color: #af52de; }
+.context-chip.worldbuilding { border-left-color: #34c759; }
+.context-chip.unused { opacity: 0.5; background: rgba(0, 0, 0, 0.03); }
+
+.chip-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.chip-type {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary, #86868b);
+  flex-shrink: 0;
+}
+.context-chip.outline .chip-type { background: rgba(255, 149, 0, 0.15); color: #c96f00; }
+.context-chip.characters .chip-type { background: rgba(175, 82, 222, 0.15); color: #8a3fb0; }
+.context-chip.worldbuilding .chip-type { background: rgba(52, 199, 89, 0.15); color: #268a3f; }
+
+.chip-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary, #1d1d1f);
+  font-weight: 500;
+}
+.chip-tokens {
+  font-size: 10px;
+  color: var(--text-tertiary, #aeaeb2);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.chip-unused {
+  font-size: 10px;
+  color: var(--text-tertiary, #aeaeb2);
+  flex-shrink: 0;
 }
 </style>

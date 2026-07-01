@@ -110,7 +110,7 @@ export const documentApi = {
 
 // AI 相关
 export const aiApi = {
-  generate(data: { project_id: string; document_id?: string; mode: string; content: string; stream?: boolean }) {
+  generate(data: { project_id: string; document_id?: string; mode: string; content: string; stream?: boolean; include_settings?: boolean }) {
     return api.post('/ai/generate', data, { timeout: 120000 })
   },
 }
