@@ -3,6 +3,7 @@ package project
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,9 +30,13 @@ func (h *Handler) loadDocumentContent(doc model.Document) string {
 	return content
 }
 
-func (h *Handler) snapshotDocumentVersion(doc model.Document, content string) error {
+func (h *Handler) snapshotDocumentVersion(doc model.Document, content string, label ...string) error {
 	if doc.Type == "volume" {
 		return nil
+	}
+	versionLabel := ""
+	if len(label) > 0 {
+		versionLabel = strings.TrimSpace(label[0])
 	}
 	return h.db.Transaction(func(tx *gorm.DB) error {
 		var latest model.DocumentVersion
@@ -44,6 +49,7 @@ func (h *Handler) snapshotDocumentVersion(doc model.Document, content string) er
 		}
 		version := model.DocumentVersion{
 			DocumentID:      doc.ID,
+			Label:           versionLabel,
 			ContentSnapshot: content,
 			WordCount:       countWords(content),
 		}

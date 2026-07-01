@@ -21,10 +21,27 @@ func (Project) TableName() string {
 	return "projects"
 }
 
+// StoryBranch 故事线/剧情分支。同一本书可从某一章分出新故事线。
+type StoryBranch struct {
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	ProjectID      uint      `gorm:"index" json:"project_id"`
+	Name           string    `gorm:"size:100" json:"name"`
+	BaseBranchID   *uint     `gorm:"index" json:"base_branch_id"`
+	ForkDocumentID *uint     `gorm:"index" json:"fork_document_id"`
+	Status         int       `gorm:"default:1" json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+func (StoryBranch) TableName() string {
+	return "story_branches"
+}
+
 // Document 文档/章节
 type Document struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	ProjectID  uint      `gorm:"index" json:"project_id"`
+	BranchID   *uint     `gorm:"index" json:"branch_id"` // nil=全故事线共享资料；有值=属于某条故事线
 	ParentID   *uint     `gorm:"index" json:"parent_id"` // 支持卷/章嵌套
 	Type       string    `gorm:"size:20" json:"type"`    // volume | chapter | note | outline | characters | worldbuilding
 	Title      string    `gorm:"size:200" json:"title"`
@@ -44,6 +61,7 @@ func (Document) TableName() string {
 type DocumentVersion struct {
 	ID              uint      `gorm:"primaryKey" json:"id"`
 	DocumentID      uint      `gorm:"index" json:"document_id"`
+	Label           string    `gorm:"size:50" json:"label"`
 	ContentSnapshot string    `gorm:"type:longtext" json:"content_snapshot"`
 	WordCount       int       `json:"word_count"`
 	CreatedAt       time.Time `json:"created_at"`

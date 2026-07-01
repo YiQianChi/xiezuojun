@@ -27,6 +27,7 @@ type documentUpdateRequest struct {
 	LastKnownUpdatedAt string `json:"last_known_updated_at"`
 	Force              bool   `json:"force"`
 	CreateVersion      bool   `json:"create_version"`
+	VersionLabel       string `json:"version_label"`
 	HasContent         bool   `json:"-"`
 }
 
@@ -113,9 +114,15 @@ func (h *Handler) CreateProject(c *gin.Context) {
 		return
 	}
 
+	mainBranch := model.StoryBranch{ProjectID: proj.ID, Name: "主线", Status: 1}
+	if err := h.db.Create(&mainBranch).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "create main branch: " + err.Error()})
+		return
+	}
+
 	// 创建默认作品结构：一级资料文件 + 二级「文章」正文目录
 	h.locks.Lock(proj.UserID)
-	err = h.createDefaultProjectDocuments(proj)
+	err = h.createDefaultProjectDocuments(proj, mainBranch.ID)
 	h.locks.Unlock(proj.UserID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create default docs: " + err.Error()})

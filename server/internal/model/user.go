@@ -4,14 +4,15 @@ import (
 	"time"
 )
 
-// User 用户表
+// User 用户主表：只放用户资料和主联系方式，登录方式放 user_auth_identities
+// 后续手机号、微信扫码登录都不需要改 users 主结构
 type User struct {
 	ID           uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	UserID       string    `gorm:"type:char(36);uniqueIndex;size:36" json:"user_id"`
-	Email        string    `gorm:"uniqueIndex;size:255" json:"email"`
+	Email        string    `gorm:"size:255;index" json:"email"`
 	Phone        string    `gorm:"size:20;index" json:"phone"`
 	Nickname     string    `gorm:"size:50" json:"nickname"`
-	PasswordHash string    `gorm:"size:255" json:"-"`
+	PasswordHash string    `gorm:"size:255" json:"-"` // 兼容旧账号；新登录密码同步写入 identity.credential_hash
 	Avatar       string    `gorm:"size:500" json:"avatar"`
 	Plan         string    `gorm:"size:20;default:'free'" json:"plan"` // free / vip / svip
 	Status       int       `gorm:"default:1" json:"status"`              // 1=正常 0=禁用
@@ -36,4 +37,42 @@ type RefreshToken struct {
 
 func (RefreshToken) TableName() string {
 	return "refresh_tokens"
+}
+
+// AuthIdentity 登录身份表：邮箱、手机号、微信等统一放这里
+// Provider: email / phone / wechat
+// Identifier: 邮箱地址 / 手机号 / openid或unionid
+// CredentialHash: 邮箱密码登录的 bcrypt hash；验证码/微信类可为空
+type AuthIdentity struct {
+	ID             uint       `gorm:"primaryKey" json:"id"`
+	UserID         string     `gorm:"type:char(36);index" json:"user_id"`
+	Provider       string     `gorm:"size:30;index:idx_provider_identifier,unique" json:"provider"`
+	Identifier     string     `gorm:"size:255;index:idx_provider_identifier,unique" json:"identifier"`
+	CredentialHash string     `gorm:"size:255" json:"-"`
+	VerifiedAt     *time.Time `json:"verified_at"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+func (AuthIdentity) TableName() string {
+	return "user_auth_identities"
+}
+
+// VerificationCode 通用验证码表：邮箱/手机验证码都复用
+// TargetType: email / phone
+// Scene: register / login / bind / reset_password
+type VerificationCode struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	TargetType string    `gorm:"size:30;index" json:"target_type"`
+	Target     string    `gorm:"size:255;index" json:"target"`
+	Scene      string    `gorm:"size:30;index" json:"scene"`
+	CodeHash   string    `gorm:"size:255" json:"-"`
+	IP         string    `gorm:"size:45" json:"ip"`
+	Used       bool      `gorm:"default:false;index" json:"used"`
+	ExpiresAt  time.Time `gorm:"index" json:"expires_at"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+func (VerificationCode) TableName() string {
+	return "verification_codes"
 }

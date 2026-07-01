@@ -30,7 +30,7 @@ func defaultDocContent(docType, title string) string {
 	}
 }
 
-func (h *Handler) createDefaultProjectDocuments(proj model.Project) error {
+func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uint) error {
 	defs := []defaultProjectDoc{
 		{Title: "大纲", Type: "outline", Content: defaultDocContent("outline", "大纲")},
 		{Title: "人物设定", Type: "characters", Content: defaultDocContent("characters", "人物设定")},
@@ -50,6 +50,9 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project) error {
 			SearchText: def.Content,
 			Status:     1,
 		}
+		if def.Title == articleRootTitle && def.Type == "volume" {
+			doc.BranchID = &branchID
+		}
 		if err := h.db.Create(&doc).Error; err != nil {
 			return err
 		}
@@ -63,6 +66,7 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project) error {
 
 	chapter := model.Document{
 		ProjectID:  proj.ID,
+		BranchID:   &branchID,
 		ParentID:   &articleRootID,
 		Type:       "chapter",
 		Title:      "第一章",

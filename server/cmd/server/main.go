@@ -44,7 +44,10 @@ func main() {
 	if err := db.AutoMigrate(
 		&model.User{},
 		&model.RefreshToken{},
+		&model.AuthIdentity{},
+		&model.VerificationCode{},
 		&model.Project{},
+		&model.StoryBranch{},
 		&model.Document{},
 		&model.DocumentVersion{},
 		&model.WordCountLog{},
@@ -108,6 +111,7 @@ func main() {
 
 	// 公开路由
 	api := r.Group("/api")
+	api.POST("/auth/email-code", userHandler.SendEmailCode)
 	api.POST("/auth/register", userHandler.Register)
 	api.POST("/auth/login", userHandler.Login)
 	api.POST("/auth/refresh", userHandler.Refresh)
@@ -127,6 +131,9 @@ func main() {
 	authd.GET("/projects/:id", projectHandler.GetProject)
 	authd.PATCH("/projects/:id", projectHandler.UpdateProject)
 	authd.DELETE("/projects/:id", projectHandler.DeleteProject)
+	authd.GET("/projects/:id/branches", projectHandler.ListStoryBranches)
+	authd.POST("/projects/:id/branches", projectHandler.CreateStoryBranch)
+	authd.PATCH("/story-branches/:branch_id", projectHandler.UpdateStoryBranch)
 	authd.GET("/projects/:id/export", projectHandler.ExportProject)
 
 	authd.GET("/documents", projectHandler.ListDocuments)

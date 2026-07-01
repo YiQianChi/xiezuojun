@@ -14,10 +14,10 @@ import (
 type ContextLevel int
 
 const (
-	LevelMemory   ContextLevel = iota // 作者记忆层
-	LevelProject                      // 项目层（设定、角色卡）
-	LevelScene                        // 场景层（前文）
-	LevelTask                         // 任务层（当前指令）
+	LevelMemory  ContextLevel = iota // 作者记忆层
+	LevelProject                     // 项目层（设定、角色卡）
+	LevelScene                       // 场景层（前文）
+	LevelTask                        // 任务层（当前指令）
 )
 
 // ContextBlock 上下文块
@@ -53,11 +53,11 @@ type BuildContextResult struct {
 
 // ModeTemplate 模式模板
 type ModeTemplate struct {
-	Name        string
+	Name         string
 	SystemPrompt string
-	Temperature float64
-	MaxTokens   int
-	StyleHints  []string // 风格提示词
+	Temperature  float64
+	MaxTokens    int
+	StyleHints   []string // 风格提示词
 }
 
 var ModeTemplates = map[string]ModeTemplate{
@@ -113,19 +113,19 @@ type ModelConfig struct {
 
 // ModelCapability 模型能力
 type ModelCapability struct {
-	ContextWindow int    // 上下文窗口大小
-	SupportsJSON  bool   // 是否支持 JSON 模式
-	SupportsVision bool  // 是否支持图片
-	Quality       string // high | medium | low
+	ContextWindow  int    // 上下文窗口大小
+	SupportsJSON   bool   // 是否支持 JSON 模式
+	SupportsVision bool   // 是否支持图片
+	Quality        string // high | medium | low
 }
 
 var DefaultModels = []ModelConfig{
 	{
-		Name:     "GLM-5.2",
-		Provider: "volcengine",
-		ModelID:  "GLM-5.2",
+		Name:      "GLM-4.5",
+		Provider:  "zhipu",
+		ModelID:   "glm-4.5",
 		MaxTokens: 8192,
-		CostPer1K: 0.006,
+		CostPer1K: 0.001,
 		Priority:  -1,
 		Capability: ModelCapability{
 			ContextWindow: 128000,
@@ -133,45 +133,13 @@ var DefaultModels = []ModelConfig{
 			Quality:       "high",
 		},
 	},
-	{
-		Name:     "GLM-4.7",
-		Provider: "volcengine",
-		ModelID:  "GLM-4.7",
-		MaxTokens: 8192,
-		CostPer1K: 0.005,
-		Priority:  0,
-		Capability: ModelCapability{
-			ContextWindow: 128000,
-			SupportsJSON:  true,
-			Quality:       "high",
-		},
-	},
-	{
-		Name:     "DeepSeek-V3.2",
-		Provider: "volcengine",
-		ModelID:  "DeepSeek-V3.2",
-		MaxTokens: 8192,
-		CostPer1K: 0.005,
-		Priority:  1,
-		Capability: ModelCapability{
-			ContextWindow: 128000,
-			SupportsJSON:  true,
-			Quality:       "high",
-		},
-	},
-	{
-		Name:     "Doubao-Seed-2.0-Code",
-		Provider: "volcengine",
-		ModelID:  "Doubao-Seed-2.0-Code",
-		MaxTokens: 8192,
-		CostPer1K: 0.003,
-		Priority:  2,
-		Capability: ModelCapability{
-			ContextWindow: 128000,
-			SupportsJSON:  false,
-			Quality:       "medium",
-		},
-	},
+	// 以下火山引擎模型已注释，切换到智谱
+	// {
+	// 	Name:     "GLM-5.2",
+	// 	Provider: "volcengine",
+	// 	ModelID:  "GLM-5.2",
+	// 	...
+	// },
 }
 
 // RouteRequest 路由请求
@@ -184,8 +152,8 @@ type RouteRequest struct {
 
 // RouteResult 路由结果
 type RouteResult struct {
-	Model       ModelConfig
-	Reason      string // 选择原因
+	Model         ModelConfig
+	Reason        string // 选择原因
 	EstimatedCost float64
 }
 
@@ -193,30 +161,30 @@ type RouteResult struct {
 
 // UsageRecord 用量记录
 type UsageRecord struct {
-	UserID      string
-	ProjectID   string
-	ModelID     string
+	UserID           string
+	ProjectID        string
+	ModelID          string
 	PromptTokens     int
 	CompletionTokens int
 	TotalTokens      int
-	Cost       float64
-	AIMode     string
-	Timestamp  time.Time
-	DurationMs int64
+	Cost             float64
+	AIMode           string
+	Timestamp        time.Time
+	DurationMs       int64
 }
 
 // QuotaConfig 配额配置
 type QuotaConfig struct {
-	FreeTier      Quota // 免费版
-	ProTier       Quota // 专业版
+	FreeTier       Quota // 免费版
+	ProTier        Quota // 专业版
 	EnterpriseTier Quota // 企业版
 }
 
 type Quota struct {
-	DailyTokens    int     // 每日 token 限额
-	MonthlyTokens  int     // 每月 token 限额
-	ConcurrentReqs int     // 并发请求数
-	MaxContextLen  int     // 最大上下文长度
+	DailyTokens    int // 每日 token 限额
+	MonthlyTokens  int // 每月 token 限额
+	ConcurrentReqs int // 并发请求数
+	MaxContextLen  int // 最大上下文长度
 }
 
 var DefaultQuota = QuotaConfig{
@@ -269,7 +237,7 @@ type Gateway interface {
 type GenerateRequest struct {
 	ProjectID  string
 	DocumentID string
-	UserID     string         // 用户 ID（用于读取记忆）
+	UserID     string // 用户 ID（用于读取记忆）
 	AIMode     string
 	UserPrompt string
 	SceneText  string         // 文档内容/前文（由 API handler 填入）
@@ -278,9 +246,9 @@ type GenerateRequest struct {
 }
 
 type GenerateResult struct {
-	Content      string
-	Usage        UsageRecord
-	ModelUsed    string
+	Content       string
+	Usage         UsageRecord
+	ModelUsed     string
 	ContextTokens int
 }
 
@@ -291,11 +259,11 @@ type StreamChunk struct {
 }
 
 type QuotaStatus struct {
-	Allowed       bool
-	Remaining     int
-	UsedToday     int
-	LimitToday    int
-	UsedMonth     int
-	LimitMonth    int
-	Reason        string
+	Allowed    bool
+	Remaining  int
+	UsedToday  int
+	LimitToday int
+	UsedMonth  int
+	LimitMonth int
+	Reason     string
 }

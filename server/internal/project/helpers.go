@@ -148,7 +148,7 @@ func (h *Handler) saveDocWithMeta(userID string, projectID uint, projName string
 }
 
 // updateDocWithMeta 更新文档文件并刷新结构/配额/变更日志
-func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName string, doc model.Document, content string, createVersion bool) {
+func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName string, doc model.Document, content string, createVersion bool, versionLabel ...string) {
 	var parentID uint
 	if doc.ParentID != nil && *doc.ParentID > 0 {
 		parentID = *doc.ParentID
@@ -162,10 +162,16 @@ func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName stri
 	h.updateStructure(userID, projectID, projName, doc.ID, doc.Title, doc.Type, "update")
 	h.updateQuota(userID)
 	if createVersion {
-		if err := h.snapshotDocumentVersion(doc, content); err != nil {
+		label := ""
+		if len(versionLabel) > 0 {
+			label = versionLabel[0]
+		}
+		if err := h.snapshotDocumentVersion(doc, content, label); err != nil {
 			log.Printf("[doc-version] snapshot doc=%d failed: %v", doc.ID, err)
 		}
 	}
+	// 同步更新 search_text（全文搜索依赖）
+	_ = h.db.Model(&model.Document{}).Where("id = ?", doc.ID).Update("search_text", content).Error
 }
 
 // rebuildStructure 从 DB 全量重建 .structure.json
@@ -176,6 +182,9 @@ func (h *Handler) rebuildStructure(userID string, projectID uint, projName strin
 	for i, d := range docs {
 		entry := map[string]interface{}{
 			"id": d.ID, "title": d.Title, "type": d.Type, "status": "active",
+		}
+		if d.BranchID != nil {
+			entry["branch_id"] = *d.BranchID
 		}
 		if d.ParentID != nil {
 			entry["parent_id"] = *d.ParentID

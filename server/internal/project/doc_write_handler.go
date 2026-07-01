@@ -14,6 +14,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 	userID := getUserID(c)
 	var req struct {
 		ProjectID uint   `json:"project_id" binding:"required"`
+		BranchID  *uint  `json:"branch_id"`
 		ParentID  *uint  `json:"parent_id"`
 		Type      string `json:"type" binding:"required"`
 		Title     string `json:"title" binding:"required"`
@@ -26,7 +27,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 	}
 
 	doc := model.Document{
-		ProjectID: req.ProjectID, ParentID: req.ParentID,
+		ProjectID: req.ProjectID, BranchID: req.BranchID, ParentID: req.ParentID,
 		Type: req.Type, Title: req.Title, SortOrder: req.SortOrder,
 		WordCount: countWords(req.Content), SearchText: req.Content, Status: 1,
 	}
@@ -121,7 +122,7 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 		h.locks.Lock(proj.UserID)
 		// 自动保存只更新当前正文；用户主动保存时才创建历史版本。
 		if req.HasContent {
-			h.updateDocWithMeta(proj.UserID, proj.ID, projName, *doc, req.Content, req.CreateVersion)
+			h.updateDocWithMeta(proj.UserID, proj.ID, projName, *doc, req.Content, req.CreateVersion, req.VersionLabel)
 		} else if req.Title != "" {
 			// 仅标题变更，只更新 structure.json
 			h.updateStructure(proj.UserID, proj.ID, projName, doc.ID, req.Title, doc.Type, "update")

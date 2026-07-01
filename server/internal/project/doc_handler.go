@@ -17,53 +17,21 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 		return
 	}
 
-	proj, err := h.getProject(uint(projectID))
-	if err == nil && proj != nil {
-		// 尝试从 .structure.json 获取文档 ID 列表和排序
-		structure, err := h.ds.loadStructureJSON(proj.UserID, proj.ID, proj.Name)
-		if err == nil && len(structure) > 0 {
-			// 收集 ID，从 DB 批量查出完整 Document
-			ids := make([]uint, 0, len(structure))
-			idSet := make(map[uint]int) // id -> structure index
-			for i, item := range structure {
-				if idVal, ok := item["id"]; ok {
-					id := uint(idVal.(float64))
-					ids = append(ids, id)
-					idSet[id] = i
-				}
-			}
-			var docs []model.Document
-			h.db.Where("id IN ? AND status = 1", ids).Find(&docs)
-			// 按 structure 顺序排列，并补充 structure 中的 sort_order
-			result := make([]model.Document, 0, len(structure))
-			for i, item := range structure {
-				if idVal, ok := item["id"]; ok {
-					id := uint(idVal.(float64))
-					for _, d := range docs {
-						if d.ID == id {
-							if so, ok := item["sort_order"]; ok {
-								d.SortOrder = int(so.(float64))
-							} else {
-								d.SortOrder = i
-							}
-							result = append(result, d)
-							break
-						}
-					}
-				}
-			}
-			c.JSON(http.StatusOK, gin.H{"data": result, "source": "file"})
-			return
-		}
+	branchID, _ := strconv.Atoi(c.Query("branch_id"))
+	if branchID == 0 {
+		branchID = int(h.ensureMainBranch(uint(projectID)))
 	}
 
-	// fallback: MySQL 查询
 	var docs []model.Document
-	if err := h.db.Where("project_id = ? AND status = 1", projectID).Order("sort_order, id").Find(&docs).Error; err != nil {
+	q := h.db.Where("project_id = ? AND status = 1", projectID)
+	if branchID > 0 {
+		q = q.Where("branch_id IS NULL OR branch_id = ?", branchID)
+	}
+	if err := q.Order("sort_order, id").Find(&docs).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": docs, "source": "db"})
+	c.JSON(http.StatusOK, gin.H{"data": docs, "source": "db", "branch_id": branchID})
 }
 
 // GetDocument 获取文档详情（含正文）

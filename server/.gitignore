@@ -1,6 +1,7 @@
 xiezuojun-server
 xiezuojun-server-new
 server
+migrate
 /data/
 *.exe
 *.exe~

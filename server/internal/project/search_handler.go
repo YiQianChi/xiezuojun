@@ -73,8 +73,11 @@ func (h *Handler) SearchDocuments(c *gin.Context) {
 
 	like := "%" + escapeLike(query) + "%"
 	var docs []model.Document
-	if err := h.db.Select("id", "title", "search_text", "updated_at").
-		Where("project_id = ? AND status = 1 AND type = ? AND search_text LIKE ? ESCAPE '\\\\'", projectID, "chapter", like).
+	// 支持大纲/人物设定/世界观/章节等多种正文类型
+	searchTypes := []string{"chapter", "outline", "characters", "worldbuilding"}
+	// 去掉自定义 ESCAPE，避免 MySQL "Incorrect arguments to ESCAPE" 错误
+	if err := h.db.Select("id", "title", "search_text", "updated_at", "type").
+		Where("project_id = ? AND status = 1 AND type IN (?) AND search_text LIKE ?", projectID, searchTypes, like).
 		Order("sort_order, id").
 		Limit(maxSearchDocs).
 		Find(&docs).Error; err != nil {
@@ -201,13 +204,17 @@ func makeSnippet(line string, byteIdx int, queryRunes int) string {
 	if queryRunes <= 0 {
 		queryRunes = 1
 	}
-	start := col - 25
+	// 用户要求：搜索词前后各显示 5 个字
+	start := col - 5
 	if start < 0 {
 		start = 0
 	}
-	end := col + queryRunes + 35
+	end := col + queryRunes + 5
 	if end > len(runes) {
 		end = len(runes)
+	}
+	if start > end {
+		start = end
 	}
 	snippet := string(runes[start:end])
 	if start > 0 {

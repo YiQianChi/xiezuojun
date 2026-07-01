@@ -3,6 +3,7 @@
 package gateway
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -30,7 +31,14 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 	// 获取 user_id（字符串形式）
 	userIDStr := ""
 	if val, exists := c.Get("userID"); exists {
-		userIDStr = strconv.FormatUint(uint64(val.(uint)), 10)
+		switch v := val.(type) {
+		case uint:
+			userIDStr = strconv.FormatUint(uint64(v), 10)
+		case string:
+			userIDStr = v
+		default:
+			userIDStr = fmt.Sprintf("%v", v)
+		}
 	}
 
 	// 项目 ID 为空时给默认值
