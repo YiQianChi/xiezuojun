@@ -3,21 +3,57 @@
     <!-- 顶部栏 -->
     <div class="editor-header">
       <button @click="goBack" class="back-btn">← 返回书架</button>
-      <div class="doc-name">{{ currentDocName || '未选择文档' }}</div>
+      <div class="doc-name">
+        <span class="proj-name">{{ projectName || '未命名项目' }}</span>
+        <template v-if="currentDocName && mode === 'write'">
+          <span class="doc-sep">·</span>
+          <span class="chapter-name">{{ currentDocName }}</span>
+        </template>
+      </div>
+
+      <div class="mode-switcher" role="tablist">
+        <button
+          class="mode-tab plan"
+          :class="{ active: mode === 'plan' }"
+          @click="switchMode('plan')"
+          title="计划：构思梗概/世界观/人物/大纲"
+        ><span class="dot"></span>计划</button>
+        <button
+          class="mode-tab write"
+          :class="{ active: mode === 'write' }"
+          @click="switchMode('write')"
+          title="写作：正文创作 + AI 续写/改写"
+        ><span class="dot"></span>写作</button>
+        <button
+          class="mode-tab review"
+          :class="{ active: mode === 'review' }"
+          @click="switchMode('review')"
+          title="审核：人设一致性、情节漏洞、伏笔、节奏"
+        ><span class="dot"></span>审核</button>
+      </div>
+
       <div class="header-actions">
-        <button @click="openSaveVersionModal" class="btn" :disabled="!activeDocId || savingVersion">
+        <button v-if="mode === 'write'" @click="openSaveVersionModal" class="btn" :disabled="!activeDocId || savingVersion">
           {{ savingVersion ? '保存中...' : '保存版本' }}
         </button>
-        <button @click="openVersionModal" class="btn" :disabled="!activeDocId">版本历史</button>
+        <button v-if="mode === 'write'" @click="openVersionModal" class="btn" :disabled="!activeDocId">版本历史</button>
       </div>
     </div>
 
     <div class="editor-body">
       <!-- 左侧文档树 -->
       <aside class="doc-tree">
-        <div class="tree-header">
-          <span>项目结构</span>
-          <button @click="openCreateDocModal()" class="add-btn" title="新建">+</button>
+        <div class="side-tabs">
+          <button
+            class="side-tab"
+            :class="{ active: sideTab === 'chapter' }"
+            @click="sideTab = 'chapter'"
+          >章节</button>
+          <button
+            class="side-tab"
+            :class="{ active: sideTab === 'setting' }"
+            @click="sideTab = 'setting'"
+          >设定</button>
         </div>
         <div class="branch-switcher">
           <label>故事线</label>
@@ -29,13 +65,19 @@
         </div>
         <div class="tree-list">
           <div v-if="loadingDocs" class="tree-loading">加载中...</div>
-          <div v-else-if="documents.length === 0" class="tree-empty">
-            还没有内容<br>
-            <button @click="initDefaultStructure" class="btn small">初始化默认结构</button>
+          <div v-else-if="filteredRootNodes.length === 0" class="tree-empty">
+            <template v-if="sideTab === 'chapter'">
+              还没有章节<br>
+              <button @click="initDefaultStructure" class="btn small">初始化默认结构</button>
+            </template>
+            <template v-else>
+              还没有设定<br>
+              <span class="tree-empty-hint">大纲 / 人物 / 世界观 会显示在这里</span>
+            </template>
           </div>
           <DocTreeNode
             v-else
-            v-for="node in rootNodes"
+            v-for="node in filteredRootNodes"
             :key="node.id"
             :node="node"
             :all-docs="documents"
@@ -49,7 +91,7 @@
       </aside>
 
       <!-- 编辑器 -->
-      <div class="editor-main">
+      <div class="editor-main" v-show="mode === 'write'">
         <div v-if="compareActive" class="compare-view">
           <div class="compare-topbar">
             <div>
@@ -94,7 +136,28 @@
             <editor-content v-if="editor" :editor="editor" />
           </div>
         </div>
+        <SearchPanel
+          :visible="searchVisible"
+          :scope="searchScope"
+          :query="searchQuery"
+          :total="searchTotal"
+          :active-index="searchActiveIndex"
+          :loading="searchLoading"
+          :project-matches="searchProjectMatches"
+          @close="closeSearch"
+          @next="searchNext"
+          @prev="searchPrev"
+          @update:query="onSearchQueryUpdate"
+          @update:scope="onSearchScopeChange"
+          @jump-project="onJumpProject"
+        />
       </div>
+
+      <!-- 计划模式 -->
+      <PlanView v-if="mode === 'plan'" :project-name="projectName" />
+
+      <!-- 审核模式 -->
+      <ReviewView v-if="mode === 'review'" :project-id="projectId" />
 
       <!-- AI 选区工具栏（选择时） -->
       <div
@@ -236,8 +299,67 @@ import { EditorContent } from '@tiptap/vue-3'
 import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Mark } from '@tiptap/core'
-import { documentApi, branchApi, aiApi } from '../core/api'
+import { documentApi, branchApi, aiApi, searchApi, projectApi } from '../core/api'
 import DocTreeNode from '../components/DocTreeNode.vue'
+import SearchPanel, { type ProjectMatch } from '../components/SearchPanel.vue'
+import PlanView from '../components/PlanView.vue'
+import ReviewView from '../components/ReviewView.vue'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
+
+// 搜索高亮 Decoration 插件 —— 只做视觉高亮，不改文档
+const searchPluginKey = new PluginKey('xzjSearchHighlight')
+
+interface SearchHighlightState {
+  query: string
+  activeOccurrence: number  // 当前章节内第几个匹配是"激活"的（从 0 起）
+  caseSensitive: boolean
+}
+
+function createSearchHighlightPlugin() {
+  return new Plugin({
+    key: searchPluginKey,
+    state: {
+      init(): SearchHighlightState {
+        return { query: '', activeOccurrence: -1, caseSensitive: false }
+      },
+      apply(tr, state: SearchHighlightState): SearchHighlightState {
+        const meta = tr.getMeta(searchPluginKey)
+        if (meta) return { ...state, ...meta }
+        return state
+      },
+    },
+    props: {
+      decorations(state) {
+        const pluginState: SearchHighlightState = this.getState(state) as any
+        if (!pluginState || !pluginState.query) return DecorationSet.empty
+        const needle = pluginState.caseSensitive ? pluginState.query : pluginState.query.toLowerCase()
+        if (!needle) return DecorationSet.empty
+        const decos: Decoration[] = []
+        let occurrence = 0
+        state.doc.descendants((node: any, pos: number) => {
+          if (!node.isText) return true
+          const text = pluginState.caseSensitive ? (node.text || '') : (node.text || '').toLowerCase()
+          let idx = 0
+          while (idx < text.length) {
+            const found = text.indexOf(needle, idx)
+            if (found < 0) break
+            const from = pos + found
+            const to = from + needle.length
+            const isActive = occurrence === pluginState.activeOccurrence
+            decos.push(Decoration.inline(from, to, {
+              class: isActive ? 'search-hit search-hit-active' : 'search-hit',
+            }))
+            occurrence++
+            idx = found + needle.length
+          }
+          return true
+        })
+        return DecorationSet.create(state.doc, decos)
+      },
+    },
+  })
+}
 
 // AI 高亮 Mark — 标记 AI 生成文本（绿色背景）
 const AIMark = Mark.create({
@@ -291,6 +413,7 @@ const savingVersion = ref(false)
 const restoringVersion = ref(false)
 const activeDocId = ref<number | null>(null)
 const currentDocName = ref('')
+const projectName = ref('')
 const loadingDocs = ref(false)
 const wordCount = ref(0)
 const saveStatus = ref('')
@@ -322,6 +445,17 @@ let saveTimer: any = null
 let selectionHandler: (() => void) | null = null
 const isSettingContent = ref(false)
 
+// 搜索面板状态（本章 / 全项目 两种模式）
+const searchVisible = ref(false)
+const searchScope = ref<'chapter' | 'project'>('chapter')
+const searchQuery = ref('')
+const searchTotal = ref(0)
+const searchActiveIndex = ref(0)
+const searchLoading = ref(false)
+const searchProjectMatches = ref<ProjectMatch[]>([])
+let searchProjectTimer: any = null
+let searchProjectSeq = 0
+
 // 根节点（parent_id 为空的）
 const rootNodes = computed(() => {
   return documents.value
@@ -329,12 +463,65 @@ const rootNodes = computed(() => {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 })
 
+// 左侧栏 Tab：章节 / 设定
+const sideTab = ref<'chapter' | 'setting'>('chapter')
+const CHAPTER_TYPES = ['volume', 'chapter']
+const SETTING_TYPES = ['outline', 'characters', 'worldbuilding']
+
+// 顶部工作模式：计划 / 写作 / 审核
+type EditorMode = 'plan' | 'write' | 'review'
+const mode = ref<EditorMode>('write')
+
+function switchMode(next: EditorMode) {
+  if (mode.value === next) return
+  mode.value = next
+  // 模式联动侧栏：计划 → 设定；写作/审核 → 章节
+  if (next === 'plan') sideTab.value = 'setting'
+  else sideTab.value = 'chapter'
+  // 关闭浮层，避免残留
+  aiToolbar.value.visible = false
+  aiInsert.value.active = false
+  contextMenu.value.visible = false
+  if (searchVisible.value) closeSearch()
+}
+
+const filteredRootNodes = computed(() => {
+  const types = sideTab.value === 'chapter' ? CHAPTER_TYPES : SETTING_TYPES
+  return rootNodes.value.filter(n => types.includes(n.type))
+})
+
+// 沿 parent_id 向上找到根节点的 type
+function findRootType(doc: any): string | null {
+  if (!doc) return null
+  let cur = doc
+  const seen = new Set<number>()
+  while (cur && cur.parent_id) {
+    if (seen.has(cur.id)) break
+    seen.add(cur.id)
+    const parent = documents.value.find(d => d.id === cur.parent_id)
+    if (!parent) break
+    cur = parent
+  }
+  return cur?.type || null
+}
+
 onMounted(async () => {
   initEditor()
   window.addEventListener('keydown', handleGlobalKeydown)
+  loadProjectName()
   await loadBranches()
   await loadDocs()
 })
+
+async function loadProjectName() {
+  try {
+    const res = await projectApi.get(projectId)
+    const data = res.data?.data || res.data
+    projectName.value = data?.name || ''
+  } catch (e) {
+    console.warn('加载项目名失败', e)
+  }
+}
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
@@ -368,6 +555,9 @@ function initEditor() {
       saveTimer = setTimeout(() => autoSave(), 1500)
     }
   })
+
+  // 注册搜索高亮 ProseMirror 插件
+  editor.value.registerPlugin(createSearchHighlightPlugin())
 
   selectionHandler = () => {
     if (!editor.value || !editor.value.isFocused) return
@@ -499,11 +689,23 @@ async function initDefaultStructure() {
   await loadDocs()
 }
 
-async function openDoc(doc: any) {
+async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   compareActive.value = false
   activeDocId.value = doc.id
   currentDocName.value = doc.title
   aiToolbar.value.visible = false
+  // 打开文档时自动跟随其所属分组切 Tab
+  const rootType = findRootType(doc)
+  if (rootType && SETTING_TYPES.includes(rootType)) sideTab.value = 'setting'
+  else if (rootType && CHAPTER_TYPES.includes(rootType)) sideTab.value = 'chapter'
+  // 切换章节时清空搜索状态与高亮（全项目跳转除外）
+  if (!opts?.keepSearch && (searchQuery.value || searchTotal.value)) {
+    searchQuery.value = ''
+    searchTotal.value = 0
+    searchActiveIndex.value = 0
+    searchProjectMatches.value = []
+    applyEditorSearch('', -1)
+  }
 
   try {
     const res = await documentApi.get(doc.id)
@@ -972,7 +1174,204 @@ function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
     autoSave()
+    return
   }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+    e.preventDefault()
+    openSearch(e.shiftKey ? 'project' : 'chapter')
+    return
+  }
+  if (e.key === 'Escape' && searchVisible.value) {
+    e.preventDefault()
+    closeSearch()
+    return
+  }
+}
+
+function openSearch(scope: 'chapter' | 'project' = 'chapter') {
+  // 如果面板已开且模式不同，切模式；否则打开
+  if (searchVisible.value && searchScope.value !== scope) {
+    onSearchScopeChange(scope)
+    return
+  }
+  searchScope.value = scope
+  searchVisible.value = true
+}
+
+function closeSearch() {
+  searchVisible.value = false
+  searchQuery.value = ''
+  searchTotal.value = 0
+  searchActiveIndex.value = 0
+  searchProjectMatches.value = []
+  searchLoading.value = false
+  if (searchProjectTimer) { clearTimeout(searchProjectTimer); searchProjectTimer = null }
+  applyEditorSearch('', -1)
+}
+
+// 数当前编辑器里 query 出现次数（本章模式用）
+function countMatches(query: string): number {
+  if (!editor.value || !query) return 0
+  const needle = query.toLowerCase()
+  let count = 0
+  editor.value.state.doc.descendants((node: any) => {
+    if (!node.isText) return true
+    const text = (node.text || '').toLowerCase()
+    let idx = 0
+    while (idx < text.length) {
+      const found = text.indexOf(needle, idx)
+      if (found < 0) break
+      count++
+      idx = found + needle.length
+    }
+    return true
+  })
+  return count
+}
+
+function onSearchQueryUpdate(q: string) {
+  searchQuery.value = q
+  if (searchScope.value === 'chapter') {
+    const total = countMatches(q)
+    searchTotal.value = total
+    searchActiveIndex.value = 0
+    applyEditorSearch(q, total > 0 ? 0 : -1)
+    scrollActiveHitIntoView()
+  } else {
+    // 全项目：debounce 后端搜索
+    if (searchProjectTimer) clearTimeout(searchProjectTimer)
+    if (!q.trim()) {
+      searchProjectMatches.value = []
+      searchTotal.value = 0
+      searchActiveIndex.value = 0
+      searchLoading.value = false
+      applyEditorSearch('', -1)
+      return
+    }
+    searchProjectTimer = setTimeout(() => runProjectSearch(q.trim()), 250)
+  }
+}
+
+function onSearchScopeChange(s: 'chapter' | 'project') {
+  searchScope.value = s
+  // 重置计数/结果，但保留 query 让用户切模式后立刻能看到结果
+  searchActiveIndex.value = 0
+  if (s === 'chapter') {
+    searchProjectMatches.value = []
+    searchLoading.value = false
+    const total = countMatches(searchQuery.value)
+    searchTotal.value = total
+    applyEditorSearch(searchQuery.value, total > 0 ? 0 : -1)
+    scrollActiveHitIntoView()
+  } else {
+    searchTotal.value = 0
+    // 全项目模式下编辑器高亮暂时保留 query 描当前文档命中（可选），也可以清掉
+    applyEditorSearch(searchQuery.value, -1)
+    if (searchQuery.value.trim()) runProjectSearch(searchQuery.value.trim())
+  }
+}
+
+async function runProjectSearch(q: string) {
+  const seq = ++searchProjectSeq
+  searchLoading.value = true
+  try {
+    const res = await searchApi.documents(projectId, q, 200)
+    if (seq !== searchProjectSeq) return  // 过期请求丢弃
+    const data = res.data?.data || res.data
+    const items = (data?.items || []) as any[]
+    const list: ProjectMatch[] = items.map((it: any) => ({
+      docId: it.doc_id,
+      title: it.title,
+      line: it.line,
+      col: it.col,
+      snippet: it.snippet,
+      occurrenceIndex: it.occurrence_index,
+    }))
+    searchProjectMatches.value = list
+    searchTotal.value = list.length
+    // 激活项：优先当前文档内的第一个
+    let idx = 0
+    if (activeDocId.value) {
+      const found = list.findIndex(m => m.docId === activeDocId.value)
+      if (found >= 0) idx = found
+    }
+    searchActiveIndex.value = idx
+    // 当前文档内的项：把编辑器高亮同步
+    updateProjectHighlightForCurrentDoc()
+  } catch (e: any) {
+    if (seq !== searchProjectSeq) return
+    console.error('全项目搜索失败', e)
+    searchProjectMatches.value = []
+    searchTotal.value = 0
+  } finally {
+    if (seq === searchProjectSeq) searchLoading.value = false
+  }
+}
+
+function updateProjectHighlightForCurrentDoc() {
+  if (searchScope.value !== 'project') return
+  const active = searchProjectMatches.value[searchActiveIndex.value]
+  let activeOccurrence = -1
+  if (active && active.docId === activeDocId.value) {
+    activeOccurrence = active.occurrenceIndex
+  }
+  applyEditorSearch(searchQuery.value, activeOccurrence)
+}
+
+function searchNext() {
+  if (searchTotal.value === 0) return
+  searchActiveIndex.value = (searchActiveIndex.value + 1) % searchTotal.value
+  if (searchScope.value === 'chapter') {
+    applyEditorSearch(searchQuery.value, searchActiveIndex.value)
+    scrollActiveHitIntoView()
+  } else {
+    onJumpProject(searchProjectMatches.value[searchActiveIndex.value])
+  }
+}
+
+function searchPrev() {
+  if (searchTotal.value === 0) return
+  searchActiveIndex.value = (searchActiveIndex.value - 1 + searchTotal.value) % searchTotal.value
+  if (searchScope.value === 'chapter') {
+    applyEditorSearch(searchQuery.value, searchActiveIndex.value)
+    scrollActiveHitIntoView()
+  } else {
+    onJumpProject(searchProjectMatches.value[searchActiveIndex.value])
+  }
+}
+
+async function onJumpProject(m: ProjectMatch) {
+  if (!m) return
+  const idx = searchProjectMatches.value.findIndex(x => x.docId === m.docId && x.occurrenceIndex === m.occurrenceIndex)
+  if (idx >= 0) searchActiveIndex.value = idx
+  if (m.docId !== activeDocId.value) {
+    const target = documents.value.find(d => d.id === m.docId)
+    if (target) {
+      await openDoc(target, { keepSearch: true })
+      // 等 setContent 的 isSettingContent 完成（openDoc 里 100ms）
+      await new Promise(r => setTimeout(r, 140))
+    }
+  }
+  updateProjectHighlightForCurrentDoc()
+  scrollActiveHitIntoView()
+}
+
+function applyEditorSearch(query: string, activeOccurrence: number) {
+  if (!editor.value) return
+  const view = editor.value.view
+  const tr = view.state.tr.setMeta(searchPluginKey, {
+    query,
+    activeOccurrence,
+    caseSensitive: false,
+  })
+  view.dispatch(tr)
+}
+
+function scrollActiveHitIntoView() {
+  nextTick(() => {
+    const el = document.querySelector('.ProseMirror .search-hit-active') as HTMLElement | null
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
 }
 
 async function openVersionModal() {
@@ -1137,16 +1536,82 @@ function goBack() {
 
 .doc-name {
   flex: 1;
+  min-width: 0;
   font-family: var(--font-serif);
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.doc-name .proj-name {
+  color: var(--text-primary);
+  font-weight: 600;
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.doc-name .doc-sep {
+  color: var(--text-tertiary, #aeaeb2);
+  font-weight: 400;
+  flex-shrink: 0;
+}
+.doc-name .chapter-name {
+  color: var(--text-secondary, #86868b);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
 }
+
+/* 顶部三模式切换器（iOS 分段控件） */
+.mode-switcher {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  margin: 0 12px;
+}
+.mode-tab {
+  border: none;
+  background: transparent;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.mode-tab .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+.mode-tab:hover:not(.active) { color: var(--text-primary); }
+.mode-tab.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+.mode-tab.plan.active { color: #af52de; }
+.mode-tab.write.active { color: #007aff; }
+.mode-tab.review.active { color: #ff9500; }
 
 .btn {
   padding: 6px 14px;
@@ -1207,6 +1672,41 @@ function goBack() {
   font-weight: 600;
   font-size: 13px;
   color: var(--text-primary);
+}
+
+/* 左侧栏 章节/设定 Tab */
+.side-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 10px 12px 6px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+}
+.side-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.side-tab:hover:not(.active) { color: var(--text-primary); }
+.side-tab.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  font-weight: 500;
+}
+
+.tree-empty-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
 .branch-switcher {
@@ -1894,5 +2394,16 @@ function goBack() {
   text-align: center;
   color: var(--text-secondary);
   padding: 24px;
+}
+
+/* 搜索命中高亮（ProseMirror Decoration） */
+:deep(.ProseMirror) .search-hit {
+  background: rgba(255, 214, 10, 0.35);
+  border-radius: 2px;
+  transition: background 0.15s ease;
+}
+:deep(.ProseMirror) .search-hit-active {
+  background: rgba(255, 149, 0, 0.55);
+  box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.9);
 }
 </style>

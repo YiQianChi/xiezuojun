@@ -46,6 +46,9 @@ export const projectApi = {
   list() {
     return api.get('/projects')
   },
+  get(id: string | number) {
+    return api.get(`/projects/${id}`)
+  },
   create(data: { name: string; description?: string }) {
     return api.post('/projects', data)
   },
@@ -64,6 +67,13 @@ export const branchApi = {
   },
   update(branchId: string | number, data: { name?: string; status?: number }) {
     return api.patch(`/story-branches/${branchId}`, data)
+  },
+}
+
+// 项目内搜索
+export const searchApi = {
+  documents(projectId: string | number, q: string, limit = 200) {
+    return api.get(`/projects/${projectId}/search`, { params: { q, limit } })
   },
 }
 
