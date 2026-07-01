@@ -214,8 +214,6 @@ import { useEditorSearch, createSearchHighlightPlugin } from '../composables/use
 import { useAIToolbar, AIMark, AIStrikethrough } from '../composables/useAIToolbar'
 import { useVersionManager } from '../composables/useVersionManager'
 
-// AI Marks (AIMark/AIStrikethrough) 抽到 composables/useAIToolbar.ts
-
 const route = useRoute()
 const router = useRouter()
 
@@ -231,8 +229,6 @@ const projectName = ref('')
 const loadingDocs = ref(false)
 const wordCount = ref(0)
 const saveStatus = ref('')
-
-// AI 状态（useAIToolbar 调用挪到 usedSettings 定义之后）
 
 const contextMenu = ref({ visible: false, x: 0, y: 0 })
 const docContextMenu = ref({ visible: false, x: 0, y: 0, doc: null as any })
@@ -455,8 +451,6 @@ function getSelection() {
   const text = editor.value.state.doc.textBetween(from, to, '\n')
   return { text, start: from, end: to }
 }
-
-// showAIToolbar 抽到 composables/useAIToolbar.ts
 
 function editorContentFromText(content: string) {
   return content
@@ -713,10 +707,6 @@ async function handleDropNode(srcId: number, dstId: number, position: 'before' |
     alert(e.response?.data?.error || '移动失败')
   }
 }
-
-// AI 相关函数 (runAIAction/buildAIPrompt/cleanAIResult/expandRangeToTextBoundaries/
-//   applyTextMark/removeTextMark/acceptAIResult/discardAIResult/regenerateAIResult)
-// 抽到 composables/useAIToolbar.ts
 
 function openContextMenu(e: MouseEvent) {
   contextMenu.value = { visible: true, x: e.clientX, y: e.clientY }
