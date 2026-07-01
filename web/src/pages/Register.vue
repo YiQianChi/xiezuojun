@@ -82,7 +82,7 @@ function normalizeError(err: any) {
   return raw || '注册失败，请稍后再试'
 }
 
-function validateRegister(showAll = true) {
+function validateRegister(showAll = false) {
   if (showAll) {
     touched.email = true
     touched.code = true

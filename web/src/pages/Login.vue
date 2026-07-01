@@ -83,7 +83,7 @@ function normalizeError(err: any) {
   return raw || '操作失败，请稍后再试'
 }
 
-function validateLogin(showAll = true) {
+function validateLogin(showAll = false) {
   if (showAll) {
     touched.email = true
     touched.password = mode.value === 'password'
