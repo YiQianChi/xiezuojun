@@ -113,26 +113,45 @@
 
       <!-- AI 选区工具栏（选择时） -->
       <div
-        v-if="aiToolbar.visible && !aiToolbar.result"
+        v-if="aiToolbar.visible"
         class="ai-toolbar"
         :style="{ left: aiToolbar.x + 'px', top: aiToolbar.y + 'px' }"
       >
-        <button @mousedown.prevent @click="runAIAction('continue')">续写</button>
-        <button @mousedown.prevent @click="runAIAction('rewrite')">改写</button>
-        <button @mousedown.prevent @click="runAIAction('polish')">润色</button>
-        <button @mousedown.prevent @click="runAIAction('expand')">扩写</button>
+        <button @mousedown.prevent @click="prepareAIAction('continue')">续写</button>
+        <button @mousedown.prevent @click="prepareAIAction('rewrite')">改写</button>
+        <button @mousedown.prevent @click="prepareAIAction('polish')">润色</button>
+        <button @mousedown.prevent @click="prepareAIAction('expand')">扩写</button>
       </div>
 
-      <!-- AI 结果浮动工具栏（插入正文后，等待采用/丢弃/重新生成） -->
-      <div
-        v-if="aiInsert.active"
-        class="ai-insert-toolbar"
-        :style="{ left: aiInsert.x + 'px', top: aiInsert.y + 'px' }"
-      >
-        <span class="ai-insert-label">AI 已生成</span>
-        <button @click="regenerateAIResult" :disabled="aiLoading">↻ 重新生成</button>
-        <button @click="discardAIResult">丢弃</button>
-        <button class="primary" @click="acceptAIResult">采用</button>
+      <!-- AI 底部固定栏（方向输入 / 生成中 / 结果预览） -->
+      <div v-if="aiPhase !== 'idle'" class="ai-bottom-bar">
+        <!-- 方向输入 -->
+        <template v-if="aiPhase === 'inputting'">
+          <span class="ai-bottom-hint">输入改写方向（可选）</span>
+          <input
+            ref="aiDirectionInputRef"
+            v-model="aiDirection"
+            class="ai-direction-input"
+            type="text"
+            placeholder="如：更悬疑 / 更简洁 / 增加心理描写..."
+            @keydown.enter.prevent="executeAIAction"
+            @keydown.escape.prevent="cancelInputting"
+          />
+          <button @click="executeAIAction">生成</button>
+          <button @click="cancelInputting">取消</button>
+        </template>
+        <!-- 生成中 -->
+        <template v-if="aiPhase === 'generating'">
+          <span class="ai-bottom-hint">{{ aiLoading ? 'AI 生成中...' : '生成中' }}</span>
+          <button @click="stopAIGeneration">停止</button>
+        </template>
+        <!-- 结果预览 -->
+        <template v-if="aiPhase === 'preview'">
+          <span class="ai-bottom-hint">AI 已生成</span>
+          <button @click="regenerateAIResult" :disabled="aiLoading">↻ 重新生成</button>
+          <button @click="discardAIResult">丢弃</button>
+          <button class="primary" @click="acceptAIResult">采用</button>
+        </template>
       </div>
 
       <!-- 编辑器右键菜单 -->
@@ -199,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EditorContent } from '@tiptap/vue-3'
 import { Editor } from '@tiptap/core'
@@ -324,13 +343,19 @@ const contextPanelOpen = ref(true) // 右侧参考面板展开/收起
 // AI 工具栏 & 交互 —— composable
 const {
   aiLoading,
+  aiPhase,
+  aiDirection,
   aiToolbar,
   aiInsert,
   showAIToolbar,
-  runAIAction,
+  prepareAIAction,
+  executeAIAction,
+  stopAIGeneration,
   acceptAIResult,
   discardAIResult,
   regenerateAIResult,
+  cancelInputting,
+  quickRewrite,
 } = useAIToolbar({
   editor,
   projectId,
@@ -338,6 +363,14 @@ const {
   includeSettings,
   usedSettings,
   saveStatus,
+})
+
+const aiDirectionInputRef = ref<HTMLInputElement | null>(null)
+// ponytail: focus direction input when entering inputting phase
+watch(aiPhase, (v) => {
+  if (v === 'inputting') {
+    nextTick(() => aiDirectionInputRef.value?.focus())
+  }
 })
 
 async function jumpToSetting(docId: number) {
@@ -398,11 +431,7 @@ async function handleReviewAiFix(issue: any) {
       .setTextSelection({ from: pos, to: pos + snippet.length })
       .run()
   }
-  // ponytail: directly set aiToolbar state so runAIAction picks it up
-  aiToolbar.value.text = snippet
-  aiToolbar.value.start = pos >= 0 ? pos : 0
-  aiToolbar.value.end = pos >= 0 ? pos + snippet.length : 0
-  await runAIAction('rewrite')
+  await quickRewrite(snippet, pos >= 0 ? pos : 0, pos >= 0 ? pos + snippet.length : 0)
 }
 
 function switchMode(next: EditorMode) {
@@ -412,6 +441,7 @@ function switchMode(next: EditorMode) {
   if (next === 'plan') sideTab.value = 'setting'
   else sideTab.value = 'chapter'
   // 关闭浮层，避免残留
+  if (aiPhase.value === 'generating') stopAIGeneration()
   aiToolbar.value.visible = false
   aiInsert.value.active = false
   contextMenu.value.visible = false
@@ -496,8 +526,8 @@ function initEditor() {
   selectionHandler = () => {
     if (!editor.value || !editor.value.isFocused) return
     if (isSettingContent.value) return
-    // AI 结果预览期间不响应选区变化，防止清空预览
-    if (aiToolbar.value.result) return
+    // AI 活动期间不响应选区变化，防止清空预览
+    if (aiPhase.value !== 'idle') return
     const sel = getSelection()
     if (sel.text.trim()) {
       showAIToolbar(sel)
@@ -510,9 +540,17 @@ function initEditor() {
 
 function getSelection() {
   if (!editor.value) return { text: '', start: 0, end: 0 }
-  const { from, to } = editor.value.state.selection
+  let { from, to } = editor.value.state.selection
   const text = editor.value.state.doc.textBetween(from, to, '\n')
-  return { text, start: from, end: to }
+  // ponytail: ProseMirror selection can miss the leading char at text-node boundaries.
+  // Cross-check with native selection length; if off by one at the start, correct it.
+  const native = window.getSelection()
+  if (native && native.rangeCount > 0 && native.toString().length > text.length) {
+    const before = from > 0 ? editor.value.state.doc.textBetween(from - 1, from, '\n') : ''
+    if (before) from = from - 1
+  }
+  const correctedText = editor.value.state.doc.textBetween(from, to, '\n')
+  return { text: correctedText, start: from, end: to }
 }
 
 function editorContentFromText(content: string) {

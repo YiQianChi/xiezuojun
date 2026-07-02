@@ -630,52 +630,72 @@
   padding: 1px 3px;
 }
 
-/* AI 结果浮动工具栏（插入正文后） */
-.ai-insert-toolbar {
-  position: absolute;
+/* AI 底部固定栏 — 方向输入 / 生成中 / 结果预览 */
+.ai-bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--bg-secondary, #fff);
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: var(--radius-sm, 8px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  padding: 5px 8px;
+  gap: 8px;
+  padding: 10px 24px;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border, #e0e0e0);
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
   z-index: 400;
-  font-size: 13px;
 }
 
-.ai-insert-label {
+.ai-bottom-hint {
+  font-size: 13px;
   color: var(--text-secondary, #86868b);
-  font-size: 12px;
-  margin-right: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.ai-insert-toolbar button {
-  border: 1px solid var(--border, #e0e0e0);
-  background: var(--bg-secondary, #fff);
+.ai-direction-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border, #d2d2d7);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+  background: var(--bg-primary, #f5f5f7);
   color: var(--text-primary, #1d1d1f);
-  padding: 4px 10px;
-  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.ai-direction-input:focus {
+  border-color: var(--accent, #007aff);
+  background: #fff;
+}
+
+.ai-bottom-bar button {
+  border: 1px solid var(--border, #d2d2d7);
+  background: #fff;
+  color: var(--text-primary, #1d1d1f);
+  padding: 6px 16px;
+  border-radius: 8px;
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s;
+  flex-shrink: 0;
 }
-
-.ai-insert-toolbar button:hover:not(:disabled) {
-  opacity: 0.85;
+.ai-bottom-bar button:hover:not(:disabled) {
+  background: rgba(0,0,0,0.04);
 }
-
-.ai-insert-toolbar button:disabled {
+.ai-bottom-bar button:disabled {
   opacity: 0.4;
   cursor: wait;
 }
-
-.ai-insert-toolbar button.primary {
+.ai-bottom-bar button.primary {
   background: var(--accent, #007aff);
   color: #fff;
   border-color: var(--accent, #007aff);
+}
+.ai-bottom-bar button.primary:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 /* 右键菜单 */

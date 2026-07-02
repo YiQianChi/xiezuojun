@@ -92,7 +92,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { aiApi, documentApi } from '../core/api'
+import { documentApi } from '../core/api'
+import { streamGenerate } from '../core/sse'
 
 const props = defineProps<{
   projectName: string
@@ -178,16 +179,23 @@ async function startStep(id: number) {
       contextParts.push(`【${s.title}】\n${s.preview}`)
     })
 
-    const res = await aiApi.generate({
-      project_id: String(props.projectId),
-      mode: 'plan',
-      content: `${step.prompt}\n\n已有构思参考：\n${contextParts.join('\n\n')}`,
-      stream: false,
-      include_settings: true,
-    })
+    let accumulated = ''
+    await streamGenerate(
+      {
+        project_id: String(props.projectId),
+        mode: 'plan',
+        content: `${step.prompt}\n\n已有构思参考：\n${contextParts.join('\n\n')}`,
+        include_settings: true,
+      },
+      {
+        onContent: (chunk) => {
+          accumulated += chunk
+          step.preview = accumulated  // 实时渲染
+        },
+      },
+    )
 
-    const data = res.data?.data || res.data
-    const result = data?.content || ''
+    const result = accumulated.trim()
     if (!result) throw new Error('AI 返回为空')
 
     step.preview = result
@@ -195,7 +203,7 @@ async function startStep(id: number) {
     step.editing = false
   } catch (e: any) {
     step.status = 'pending'
-    step.error = e.response?.data?.error || e.message || 'AI 生成失败，请重试'
+    step.error = e.message || 'AI 生成失败，请重试'
   }
 }
 
