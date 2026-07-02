@@ -1,9 +1,12 @@
 package project
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"xiezuojun-server/internal/model"
@@ -85,11 +88,16 @@ func (h *Handler) EmptyTrash(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	// ponytail: 也硬删软删 project 的 DB 行 + 磁盘文件
+	// ponytail: 软删 project 的磁盘文件挪到回收目录，不真删
 	var deadProjects []model.Project
 	h.db.Where("user_id = ? AND status = 0", userID).Find(&deadProjects)
+	dateStr := time.Now().Format("20060102")
 	for _, p := range deadProjects {
-		_ = os.RemoveAll(h.paths.ProjectDir(userID, p.ID, p.Name))
+		srcDir := h.paths.ProjectDir(userID, p.ID, p.Name)
+		dstDir := filepath.Join(filepath.Dir(h.paths.DocRoot), "recycleBin", dateStr,
+			fmt.Sprintf("%s_%s", store.SanitizeName(p.Name, p.ID), userID))
+		_ = os.MkdirAll(filepath.Dir(dstDir), 0755)
+		_ = os.Rename(srcDir, dstDir)
 	}
 	h.db.Where("user_id = ? AND status = 0", userID).Delete(&model.Project{})
 	c.JSON(http.StatusOK, gin.H{"message": "emptied", "cleaned": cleaned})
