@@ -6,18 +6,34 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/store"
 )
 
-// RestoreDocument 从回收站恢复文档
+// RestoreDocument 从回收站恢复
 func (h *Handler) RestoreDocument(c *gin.Context) {
 	userID := getUserID(c)
 	var req struct {
-		ProjectID uint `json:"project_id" binding:"required"`
-		DocID     uint `json:"doc_id" binding:"required"`
+		ProjectID uint `json:"project_id"`
+		DocID     uint `json:"doc_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// ponytail: project_id 有值但 doc_id=0 → 恢复整个 project（软删恢复）
+	if req.ProjectID > 0 && req.DocID == 0 {
+		if err := h.db.Model(&model.Project{}).Where("id = ?", req.ProjectID).Update("status", 1).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "restored"})
+		return
+	}
+
+	if req.DocID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "doc_id required"})
 		return
 	}
 
@@ -69,6 +85,8 @@ func (h *Handler) EmptyTrash(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// ponytail: 也硬删软删的 project
+	h.db.Where("user_id = ? AND status = 0", userID).Delete(&model.Project{})
 	c.JSON(http.StatusOK, gin.H{"message": "emptied", "cleaned": cleaned})
 }
 
@@ -79,6 +97,18 @@ func (h *Handler) TrashListHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	// 也列出软删的 project（status=0）
+	var deletedProjects []model.Project
+	h.db.Where("user_id = ? AND status = 0", userID).Find(&deletedProjects)
+	for _, p := range deletedProjects {
+		items = append(items, map[string]interface{}{
+			"type":       "project",
+			"id":         p.ID,
+			"title":      p.Name,
+			"project_id": p.ID,
+			"trashed_at": p.UpdatedAt,
+		})
 	}
 	c.JSON(http.StatusOK, gin.H{"data": items})
 }
