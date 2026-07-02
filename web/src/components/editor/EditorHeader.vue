@@ -14,8 +14,8 @@
         class="mode-tab plan"
         :class="{ active: mode === 'plan' }"
         @click="$emit('switch-mode', 'plan')"
-        title="计划：构思梗概/世界观/人物/大纲"
-      ><span class="dot"></span>计划</button>
+        title="构思：梗概/世界观/人物/大纲"
+      ><span class="dot"></span>构思</button>
       <button
         class="mode-tab write"
         :class="{ active: mode === 'write' }"

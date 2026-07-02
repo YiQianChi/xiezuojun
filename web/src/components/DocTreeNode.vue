@@ -5,7 +5,7 @@
       :class="{ active: node.id === activeId, 'drop-before': dropPos === 'before', 'drop-after': dropPos === 'after', 'drop-inside': dropPos === 'inside' }"
       :style="{ paddingLeft: depth * 16 + 8 + 'px' }"
       @click="handleClick"
-      @contextmenu.prevent="$emit('context-menu', $event, node)"
+      @contextmenu.prevent.stop="$emit('context-menu', $event, node)"
       draggable="true"
       @dragstart="onDragStart"
       @dragover.prevent="onDragOver"
@@ -56,15 +56,16 @@ const emit = defineEmits<{
 const expanded = ref(true)
 const dropPos = ref<'before' | 'after' | 'inside' | null>(null)
 
-const isFolder = computed(() => {
-  const t = props.node.type
-  return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding'
-})
-
 const children = computed(() => {
   return props.allDocs
     .filter(d => d.parent_id === props.node.id)
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+})
+
+// ponytail: volume + 设定三大类都是文件夹容器
+const isFolder = computed(() => {
+  const t = props.node.type
+  return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding'
 })
 
 const nodeIcon = computed(() => {
@@ -79,23 +80,8 @@ const nodeIcon = computed(() => {
   return map[props.node.type] || '📄'
 })
 
-// 章节自动编号：父节点是「正文」(volume) 且自身是 chapter
-const displayTitle = computed(() => {
-  if (props.node.type !== 'chapter') return props.node.title
-
-  // 查找同父级下所有 chapter，按 sort_order 排序，取序号
-  const siblings = props.allDocs
-    .filter(d => d.parent_id === props.node.parent_id && d.type === 'chapter')
-    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-
-  const index = siblings.findIndex(d => d.id === props.node.id)
-  if (index < 0) return props.node.title
-
-  const chineseNum = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十',
-                       '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十']
-  const num = chineseNum[index] || `${index + 1}`
-  return `第${num}章 ${props.node.title}`
-})
+// ponytail: 作者自己决定章节标题，不做自动编号
+const displayTitle = computed(() => props.node.title)
 
 function toggleExpand() {
   expanded.value = !expanded.value

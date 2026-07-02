@@ -35,8 +35,8 @@
             <button v-if="step.status === 'done'" @click="startStep(step.id)">重新生成</button>
             <button v-if="step.status === 'done' && !step.editing" @click="step.editing = true">编辑</button>
             <button v-if="step.status === 'done' && step.editing" @click="step.editing = false">完成编辑</button>
-            <button v-if="step.status === 'done'" class="primary" :disabled="step.writing" @click="writeToSetting(step)">
-              {{ step.writing ? '写入中...' : '写入设定 Tab' }}
+            <button v-if="step.status === 'done'" class="primary" :disabled="step.writing" @click="openFolderPicker(step)">
+              {{ step.writing ? '写入中...' : '写入设定' }}
             </button>
             <button v-if="step.status === 'doing'" disabled>AI 生成中...</button>
             <button v-if="step.status === 'pending'" class="primary" @click="startStep(step.id)">开始</button>
@@ -45,7 +45,46 @@
       </div>
 
       <div class="plan-hint">
-        💡 <strong>提示：</strong>计划模式的所有产出都会写入左侧 <strong>「设定」Tab</strong>。写作时 AI 会自动读取这些设定作为背景。想改设定内容，切到写作模式后在设定 Tab 里直接编辑就行。
+        💡 <strong>提示：</strong>构思模式的所有产出都会写入左侧 <strong>「设定」Tab</strong>。写作时 AI 会自动读取这些设定作为背景。想改设定内容，切到写作模式后在设定 Tab 里直接编辑就行。
+      </div>
+    </div>
+
+    <!-- 文件夹选择弹窗 -->
+    <div v-if="showFolderPicker" class="folder-picker-overlay" @click.self="closeFolderPicker">
+      <div class="folder-picker">
+        <div class="fp-header">
+          <span class="fp-title">选择保存位置</span>
+          <button class="fp-close" @click="closeFolderPicker">✕</button>
+        </div>
+        <div class="fp-body">
+          <div class="fp-field">
+            <label>文件名</label>
+            <input v-model="pickerFileName" type="text" placeholder="输入文件名" />
+          </div>
+          <div class="fp-field">
+            <label>目标文件夹</label>
+            <div v-if="pickerFolders.length === 0" class="fp-empty">暂无设定文件夹，请先初始化项目结构</div>
+            <div v-else class="fp-folder-list">
+              <label
+                v-for="f in pickerFolders"
+                :key="f.id"
+                class="fp-folder-item"
+                :class="{ active: pickerFolderId === f.id }"
+              >
+                <input type="radio" v-model="pickerFolderId" :value="f.id" />
+                <span class="fp-icon">📁</span>
+                <span class="fp-name">{{ f.title }}</span>
+              </label>
+            </div>
+          </div>
+          <div v-if="pickerError" class="fp-error">{{ pickerError }}</div>
+        </div>
+        <div class="fp-footer">
+          <button class="fp-cancel" @click="closeFolderPicker">取消</button>
+          <button class="fp-confirm" :disabled="!pickerFolderId || pickerWriting" @click="confirmWrite">
+            {{ pickerWriting ? '保存中...' : '保存' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -160,42 +199,85 @@ async function startStep(id: number) {
   }
 }
 
-// 查找项目里对应 type 的设定文档，把结果写入
-async function writeToSetting(step: PlanStep) {
-  step.writing = true
+// ---- 文件夹选择弹窗 ----
+const showFolderPicker = ref(false)
+const pickerFolders = ref<any[]>([])
+const pickerFolderId = ref<number | null>(null)
+const pickerFileName = ref('')
+const pickerWriting = ref(false)
+const pickerError = ref('')
+const pickerStep = ref<PlanStep | null>(null)
+
+const SETTING_TYPES = ['outline', 'characters', 'worldbuilding']
+
+async function openFolderPicker(step: PlanStep) {
+  pickerStep.value = step
+  pickerFileName.value = step.title
+  pickerFolderId.value = null
+  pickerError.value = ''
+  pickerFolders.value = []
+  showFolderPicker.value = true
   try {
     const res = await documentApi.list(String(props.projectId))
     const docs = res.data?.data || res.data || []
-    const folder = docs.find((d: any) => d.type === step.settingType && !d.parent_id)
+    pickerFolders.value = docs.filter((d: any) => SETTING_TYPES.includes(d.type) && !d.parent_id)
+    // 默认选当前 step 推荐 type 对应的文件夹
+    const preferred = pickerFolders.value.find((d: any) => d.type === step.settingType)
+    if (preferred) pickerFolderId.value = preferred.id
+  } catch (e: any) {
+    pickerError.value = '加载文件夹失败'
+  }
+}
 
-    if (!folder) {
-      step.writing = false
-      alert('未找到对应设定文件夹')
-      return
-    }
+function closeFolderPicker() {
+  if (pickerWriting.value) return
+  showFolderPicker.value = false
+  pickerStep.value = null
+}
 
-    const content = `# ${step.title}\n\n${step.preview}`
+async function confirmWrite() {
+  const step = pickerStep.value
+  const folderId = pickerFolderId.value
+  if (!step || !folderId) return
+
+  const folder = pickerFolders.value.find(f => f.id === folderId)
+  if (!folder) return
+
+  pickerWriting.value = true
+  pickerError.value = ''
+  step.writing = true
+  try {
+    const content = `# ${pickerFileName.value}\n\n${step.preview}`
+    const res = await documentApi.list(String(props.projectId))
+    const docs = res.data?.data || res.data || []
     // ponytail: 同名子文档存在则更新，否则新建
-    const existing = docs.find((d: any) => d.parent_id === folder.id && d.title === step.title)
+    const existing = docs.find((d: any) => d.parent_id === folderId && d.title === pickerFileName.value)
     if (existing) {
       await documentApi.update(existing.id, { content })
+      pickerWriting.value = false
       step.writing = false
+      showFolderPicker.value = false
+      pickerStep.value = null
       emit('jump-to-doc', existing.id)
     } else {
       const createRes = await documentApi.create({
         project_id: Number(props.projectId),
-        parent_id: folder.id,
-        type: step.settingType,
-        title: step.title,
+        parent_id: folderId,
+        type: 'note',
+        title: pickerFileName.value,
         content,
       })
+      pickerWriting.value = false
       step.writing = false
+      showFolderPicker.value = false
+      pickerStep.value = null
       const newId = createRes.data?.data?.id || createRes.data?.id
       if (newId) emit('jump-to-doc', newId)
     }
   } catch (e: any) {
+    pickerWriting.value = false
     step.writing = false
-    alert(e.response?.data?.error || '写入失败，请重试')
+    pickerError.value = e.response?.data?.error || '写入失败，请重试'
   }
 }
 </script>
@@ -355,4 +437,78 @@ async function writeToSetting(step: PlanStep) {
   color: var(--text-secondary);
 }
 .plan-hint strong { color: var(--text-primary); }
+
+/* 文件夹选择弹窗 */
+.folder-picker-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.folder-picker {
+  width: 380px;
+  background: var(--bg-secondary, #fff);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+.fp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #e5e5ea);
+}
+.fp-title { font-weight: 600; font-size: 16px; color: var(--text-primary); }
+.fp-close {
+  border: none; background: transparent; font-size: 18px;
+  cursor: pointer; color: var(--text-secondary); line-height: 1;
+}
+.fp-body { padding: 16px 20px; }
+.fp-field { margin-bottom: 14px; }
+.fp-field label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); margin-bottom: 6px;
+}
+.fp-field input[type="text"] {
+  width: 100%; padding: 8px 12px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 8px; font-size: 14px;
+  outline: none; box-sizing: border-box;
+}
+.fp-field input[type="text"]:focus {
+  border-color: #af52de;
+}
+.fp-folder-list { display: flex; flex-direction: column; gap: 4px; }
+.fp-folder-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+}
+.fp-folder-item:hover { background: rgba(0,0,0,0.03); }
+.fp-folder-item.active {
+  background: rgba(175,82,222,0.08);
+  border-color: rgba(175,82,222,0.2);
+}
+.fp-folder-item input { accent-color: #af52de; }
+.fp-icon { font-size: 16px; }
+.fp-name { font-size: 14px; color: var(--text-primary); }
+.fp-empty { font-size: 13px; color: var(--text-tertiary); padding: 8px 0; }
+.fp-error { color: #ff3b30; font-size: 12px; margin-top: 4px; }
+.fp-footer {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 12px 20px; border-top: 1px solid var(--border, #e5e5ea);
+}
+.fp-cancel, .fp-confirm {
+  padding: 8px 20px; border-radius: 8px; font-size: 14px; cursor: pointer;
+}
+.fp-cancel {
+  border: 1px solid var(--border, #e5e5ea);
+  background: var(--bg-secondary, #fff);
+  color: var(--text-primary);
+}
+.fp-confirm {
+  border: none; background: #af52de; color: white; font-weight: 500;
+}
+.fp-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+.fp-confirm:hover:not(:disabled) { background: #9740c2; }
 </style>

@@ -26,7 +26,7 @@
       </select>
     </div>
 
-    <div class="tree-list">
+    <div class="tree-list" @contextmenu.prevent="$emit('context-menu', $event, null)">
       <div v-if="loadingDocs" class="tree-loading">加载中...</div>
       <div v-else-if="filteredRootNodes.length === 0" class="tree-empty">
         <template v-if="sideTab === 'chapter'">

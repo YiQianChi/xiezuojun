@@ -152,11 +152,14 @@
         class="context-menu"
         :style="{ left: docContextMenu.x + 'px', top: docContextMenu.y + 'px' }"
       >
-        <div @click="newDocUnder('chapter')">新建章节</div>
-        <div @click="newDocUnder('volume')">新建文件夹</div>
-        <div class="divider"></div>
-        <div @click="renameDoc">重命名</div>
-        <div @click="deleteDoc" class="danger">删除</div>
+        <template v-if="docContextMenu.doc">
+          <div @click="renameDoc">重命名</div>
+          <div @click="deleteDoc" class="danger">删除</div>
+        </template>
+        <template v-else>
+          <div @click="newDocUnder('chapter')">新建文件</div>
+          <div v-if="sideTab === 'chapter'" @click="newDocUnder('volume')">新建文件夹</div>
+        </template>
       </div>
     </div>
 
@@ -298,7 +301,7 @@ const rootNodes = computed(() => {
 // 左侧栏 Tab：章节 / 设定
 const sideTab = ref<'chapter' | 'setting'>('chapter')
 const CHAPTER_TYPES = ['volume', 'chapter']
-const SETTING_TYPES = ['outline', 'characters', 'worldbuilding']
+const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'note']
 
 // 顶部工作模式：计划 / 写作 / 审核
 type EditorMode = 'plan' | 'write' | 'review'
@@ -694,11 +697,17 @@ function closeDocContextMenu() {
 
 function newDocUnder(type: 'volume' | 'chapter') {
   const doc = docContextMenu.value.doc
-  if (!doc) return
-  // 如果右键的节点是文件夹，就在它下面创建；否则在它的同级创建
-  const isFolder = ['volume', 'outline', 'characters', 'worldbuilding'].includes(doc.type)
-  const parentId = isFolder ? doc.id : (doc.parent_id || null)
-  openCreateDocModal(parentId, type)
+  // ponytail: 设定 tab 新建文件用 note 类型，章节 tab 用 chapter
+  const isSetting = sideTab.value === 'setting'
+  const actualType = isSetting && type === 'chapter' ? 'note' : type
+  // 空白区域右键 → 根级创建；右键文件夹 → 在其下创建；右键文件 → 同级创建
+  if (!doc) {
+    openCreateDocModal(null, actualType as any)
+  } else {
+    const isFolder = ['volume', 'outline', 'characters', 'worldbuilding'].includes(doc.type)
+    const parentId = isFolder ? doc.id : (doc.parent_id || null)
+    openCreateDocModal(parentId, actualType as any)
+  }
   closeDocContextMenu()
 }
 
