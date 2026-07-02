@@ -44,8 +44,9 @@ func (p *PathConfig) UserDir(userID string) string {
 }
 
 // ProjectDir 返回项目目录
+// ponytail: 用 projectID 而非书名做目录名，避免中文/重命名导致路径断裂
 func (p *PathConfig) ProjectDir(userID string, projectID uint, projectName string) string {
-	return filepath.Join(p.UserDir(userID), SanitizeName(projectName, projectID))
+	return filepath.Join(p.UserDir(userID), fmt.Sprintf("p-%010d", projectID))
 }
 
 // FolderPath 返回文件夹目录路径（项目根下的子目录）
