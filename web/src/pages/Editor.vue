@@ -23,6 +23,7 @@
         :filtered-root-nodes="filteredRootNodes"
         :active-doc-id="activeDocId"
         :loading-docs="loadingDocs"
+        :project-id="String(projectId)"
         @update:side-tab="sideTab = $event"
         @switch-branch="switchBranch"
         @init-default="initDefaultStructure"
@@ -300,7 +301,7 @@ const rootNodes = computed(() => {
 })
 
 // 左侧栏 Tab：章节 / 设定
-const sideTab = ref<'chapter' | 'setting'>('chapter')
+const sideTab = ref<'chapter' | 'setting' | 'memory'>('chapter')
 const CHAPTER_TYPES = ['volume', 'chapter']
 const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'note']
 
@@ -418,6 +419,7 @@ function switchMode(next: EditorMode) {
 }
 
 const filteredRootNodes = computed(() => {
+  if (sideTab.value === 'memory') return []
   const types = sideTab.value === 'chapter' ? CHAPTER_TYPES : SETTING_TYPES
   return rootNodes.value.filter(n => types.includes(n.type))
 })

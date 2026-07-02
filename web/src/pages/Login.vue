@@ -42,7 +42,34 @@
         </button>
       </form>
 
-      <p class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
+      <p v-if="!showReset" class="switch-text"><a href="#" @click.prevent="showReset = true; errorMsg = ''; successMsg = ''">忘记密码？</a></p>
+
+      <!-- 密码重置 -->
+      <form v-if="showReset" @submit.prevent="handleReset" class="auth-form" novalidate style="margin-top:16px">
+        <div class="form-group">
+          <label>邮箱</label>
+          <input v-model.trim="resetEmail" type="email" placeholder="your@email.com" class="input" />
+        </div>
+        <div class="form-group">
+          <label>验证码</label>
+          <div class="code-row">
+            <input v-model.trim="resetCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" class="input" />
+            <button type="button" class="btn code-btn" :disabled="resetSending || resetCountdown > 0" @click="sendResetCode">
+              {{ resetCountdown > 0 ? `${resetCountdown}s` : (resetSending ? '发送中' : '获取验证码') }}
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>新密码</label>
+          <input v-model="resetPassword" type="password" placeholder="至少 6 位" class="input" autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn primary auth-submit" :disabled="resetLoading">
+          {{ resetLoading ? '重置中...' : '重置密码' }}
+        </button>
+        <p class="switch-text"><a href="#" @click.prevent="showReset = false; errorMsg = ''; successMsg = ''">返回登录</a></p>
+      </form>
+
+      <p v-if="!showReset" class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
     </div>
   </div>
 </template>
@@ -66,6 +93,15 @@ const successMsg = ref('')
 const fieldErrors = reactive({ email: '', password: '', code: '' })
 const touched = reactive({ email: false, password: false, code: false })
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// 密码重置
+const showReset = ref(false)
+const resetEmail = ref('')
+const resetCode = ref('')
+const resetPassword = ref('')
+const resetSending = ref(false)
+const resetCountdown = ref(0)
+const resetLoading = ref(false)
 
 const canSubmit = computed(() => {
   if (!email.value.trim() || fieldErrors.email) return false
@@ -144,6 +180,56 @@ async function handleLogin() {
     errorMsg.value = normalizeError(err)
   } finally {
     loading.value = false
+  }
+}
+
+// 密码重置
+async function sendResetCode() {
+  errorMsg.value = ''
+  successMsg.value = ''
+  if (!resetEmail.value.trim() || !emailPattern.test(resetEmail.value.trim())) {
+    errorMsg.value = '请输入正确的邮箱'
+    return
+  }
+  resetSending.value = true
+  try {
+    await userApi.sendEmailCode({ email: resetEmail.value.trim(), scene: 'reset_password' })
+    successMsg.value = '验证码已发送，请查看邮箱'
+    resetCountdown.value = 60
+    const timer = window.setInterval(() => {
+      resetCountdown.value -= 1
+      if (resetCountdown.value <= 0) window.clearInterval(timer)
+    }, 1000)
+  } catch (err: any) {
+    errorMsg.value = normalizeError(err)
+  } finally {
+    resetSending.value = false
+  }
+}
+
+async function handleReset() {
+  errorMsg.value = ''
+  successMsg.value = ''
+  if (!resetEmail.value.trim() || !/^\d{6}$/.test(resetCode.value) || resetPassword.value.length < 6) {
+    errorMsg.value = '请填写邮箱、6位验证码和至少6位新密码'
+    return
+  }
+  resetLoading.value = true
+  try {
+    await userApi.resetPassword({
+      email: resetEmail.value.trim(),
+      code: resetCode.value,
+      password: resetPassword.value
+    })
+    successMsg.value = '密码已重置，请用新密码登录'
+    showReset.value = false
+    resetEmail.value = ''
+    resetCode.value = ''
+    resetPassword.value = ''
+  } catch (err: any) {
+    errorMsg.value = normalizeError(err)
+  } finally {
+    resetLoading.value = false
   }
 }
 </script>

@@ -57,6 +57,12 @@
 - 位置: 设置面板加「世界观/时间线/伏笔」可编辑区域
 - 已有: AIContextPanel.vue 有 context chip 展示逻辑，扩展它
 
+### Bug 4: 记忆提取 AI 模型名硬编码导致 404
+- 文件: `internal/memory/extractor.go:33,57`
+- 问题: 硬编码 `glm-5-turbo`，但生产 .env 配的是火山引擎 ark（只认 `MiniMax-M3`），AI 调用返回 404
+- 修复: 模型名从环境变量读（如 `MEMORY_MODEL`，默认用 `AI_MODEL`），不硬编码
+- 注: `handler_extract.go:186` 也硬编码了 `glm-4-flash`，一并改
+
 ### 前端需新增的 API 调用 (src/core/api.ts)
 ```
 memoryApi = {

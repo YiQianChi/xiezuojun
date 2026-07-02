@@ -124,6 +124,9 @@ export const userApi = {
   usage() {
     return api.get('/user/usage')
   },
+  resetPassword(data: { email: string; code: string; password: string }) {
+    return api.post('/auth/reset-password', data)
+  },
 }
 
 // 项目相关
@@ -142,6 +145,9 @@ export const projectApi = {
   },
   delete(id: string) {
     return api.delete(`/projects/${id}`)
+  },
+  exportProject(id: string | number) {
+    return api.get(`/projects/${id}/export`)
   },
 }
 

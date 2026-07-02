@@ -11,7 +11,18 @@
         :class="{ active: sideTab === 'setting' }"
         @click="$emit('update:sideTab', 'setting')"
       >设定</button>
+      <button
+        class="side-tab"
+        :class="{ active: sideTab === 'memory' }"
+        @click="$emit('update:sideTab', 'memory')"
+      >记忆</button>
     </div>
+
+    <div v-if="sideTab === 'memory'" class="memory-slot">
+      <MemoryPanel :project-id="projectId" />
+    </div>
+
+    <template v-else>
 
     <div class="branch-switcher">
       <label>故事线</label>
@@ -51,24 +62,27 @@
         @drop-node="(src, dst, pos) => $emit('drop-node', src, dst, pos)"
       />
     </div>
+    </template>
   </aside>
 </template>
 
 <script setup lang="ts">
 import DocTreeNode from '../DocTreeNode.vue'
+import MemoryPanel from './MemoryPanel.vue'
 
 defineProps<{
-  sideTab: 'chapter' | 'setting'
+  sideTab: 'chapter' | 'setting' | 'memory'
   branches: any[]
   activeBranchId: number | null
   documents: any[]
   filteredRootNodes: any[]
   activeDocId: number | null
   loadingDocs: boolean
+  projectId: string
 }>()
 
 defineEmits<{
-  'update:sideTab': [tab: 'chapter' | 'setting']
+  'update:sideTab': [tab: 'chapter' | 'setting' | 'memory']
   'switch-branch': [id: number]
   'init-default': []
   'select-doc': [node: any]
@@ -143,6 +157,13 @@ defineEmits<{
   flex: 1;
   overflow-y: auto;
   padding: 8px 6px 20px;
+}
+
+.memory-slot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .tree-loading, .tree-empty {
   color: var(--text-tertiary);
