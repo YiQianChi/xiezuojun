@@ -74,6 +74,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { projectApi } from '../core/api'
+import { toast } from '../composables/useToast'
 
 const router = useRouter()
 const projects = ref<any[]>([])
@@ -115,7 +116,7 @@ async function createBook() {
     newBookDesc.value = ''
     router.push(`/editor/${project.id || project.project_id}`)
   } catch (e: any) {
-    alert(e.response?.data?.error || '创建失败')
+    toast.error(e.response?.data?.error || '创建失败')
   } finally {
     creating.value = false
   }
@@ -132,7 +133,7 @@ async function deleteBook(project: any) {
     await projectApi.delete(project.id || project.project_id)
     await loadProjects()
   } catch (e: any) {
-    alert(e.response?.data?.error || '删除失败')
+    toast.error(e.response?.data?.error || '删除失败')
   }
 }
 </script>

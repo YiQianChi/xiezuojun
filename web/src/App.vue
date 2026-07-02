@@ -12,11 +12,20 @@
   <main class="app-main" :class="{ 'with-nav': showNav, 'editor-mode': route.name === 'Editor' }">
     <router-view />
   </main>
+  <!-- Toast 容器 -->
+  <div class="toast-container">
+    <Transition-group name="toast">
+      <div v-for="t in toasts" :key="t.id" class="toast-item" :class="t.type">
+        {{ t.message }}
+      </div>
+    </Transition-group>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { toasts } from './composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,5 +98,49 @@ function logout() {
 
 .logout {
   font-family: inherit;
+}
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-item {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  pointer-events: auto;
+}
+
+.toast-item.error {
+  background: rgba(255,59,48,.92);
+}
+
+.toast-item.success {
+  background: rgba(52,199,89,.92);
+}
+
+.toast-item.info {
+  background: rgba(0,122,255,.92);
+}
+
+.toast-enter-active, .toast-leave-active {
+  transition: all .3s ease;
+}
+.toast-enter-from, .toast-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
 }
 </style>

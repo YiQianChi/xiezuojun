@@ -15,6 +15,7 @@
 import { ref, nextTick, type Ref } from 'vue'
 import { Mark } from '@tiptap/core'
 import { aiApi } from '../core/api'
+import { toast } from './useToast'
 
 export type AIAction = 'continue' | 'rewrite' | 'polish' | 'expand'
 
@@ -280,7 +281,7 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     } catch (e: any) {
       console.error('AI 生成失败', e)
       saveStatus.value = oldStatus || 'AI 生成失败'
-      alert(e.response?.data?.error || e.message || 'AI 生成失败')
+      toast.error(e.response?.data?.error || e.message || 'AI 生成失败')
       aiInsert.value.active = false
     } finally {
       aiLoading.value = false

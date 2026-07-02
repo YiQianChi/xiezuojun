@@ -14,15 +14,91 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// 响应拦截器：401 自动跳转登录
+// Token 刷新状态
+let isRefreshing = false
+let pendingQueue: Array<{ resolve: (v: string) => void; reject: (e: unknown) => void }> = []
+
+function onRefreshed(token: string) {
+  pendingQueue.forEach(p => p.resolve(token))
+  pendingQueue = []
+}
+
+function onRefreshFailed(err: unknown) {
+  pendingQueue.forEach(p => p.reject(err))
+  pendingQueue = []
+}
+
+// 响应拦截器：401 自动刷新 token，失败才跳登录
 api.interceptors.response.use(
   res => res,
-  err => {
-    if (err.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
+  async err => {
+    const originalRequest = err.config
+
+    // 非 401 或已重试过，直接 reject
+    if (!err.response || err.response.status !== 401 || originalRequest._retried) {
+      return Promise.reject(err)
     }
-    return Promise.reject(err)
+
+    // /auth/refresh 自身 401 = refresh token 也过期了，跳登录
+    if (originalRequest.url === '/auth/refresh') {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+      return Promise.reject(err)
+    }
+
+    // 正在刷新：排队等待
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        pendingQueue.push({
+          resolve: (token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            originalRequest._retried = true
+            resolve(api(originalRequest))
+          },
+          reject,
+        })
+      })
+    }
+
+    // 开始刷新
+    isRefreshing = true
+    originalRequest._retried = true
+    const refreshToken = localStorage.getItem('refresh_token')
+
+    if (!refreshToken) {
+      isRefreshing = false
+      localStorage.removeItem('access_token')
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+      return Promise.reject(err)
+    }
+
+    try {
+      const res = await axios.post('/api/auth/refresh', { refresh_token: refreshToken })
+      const newToken = res.data.data?.access_token || res.data.access_token
+      const newRefresh = res.data.data?.refresh_token || res.data.refresh_token
+      localStorage.setItem('access_token', newToken)
+      if (newRefresh) localStorage.setItem('refresh_token', newRefresh)
+
+      onRefreshed(newToken)
+      isRefreshing = false
+
+      originalRequest.headers.Authorization = `Bearer ${newToken}`
+      return api(originalRequest)
+    } catch (refreshErr) {
+      onRefreshFailed(refreshErr)
+      isRefreshing = false
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+      return Promise.reject(refreshErr)
+    }
   }
 )
 
@@ -30,7 +106,7 @@ export default api
 
 // 用户相关
 export const userApi = {
-  sendEmailCode(data: { email: string; scene: 'register' | 'login' }) {
+  sendEmailCode(data: { email: string; scene: 'register' | 'login' | 'reset_password' }) {
     return api.post('/auth/email-code', data)
   },
   register(data: { email: string; password: string; code: string }) {
@@ -38,6 +114,15 @@ export const userApi = {
   },
   login(data: { email: string; password?: string; code?: string }) {
     return api.post('/auth/login', data)
+  },
+  me() {
+    return api.get('/user/me')
+  },
+  updateProfile(data: { nickname?: string; avatar?: string }) {
+    return api.patch('/user/me', data)
+  },
+  usage() {
+    return api.get('/user/usage')
   },
 }
 
@@ -51,6 +136,9 @@ export const projectApi = {
   },
   create(data: { name: string; description?: string }) {
     return api.post('/projects', data)
+  },
+  update(id: string | number, data: { name?: string; description?: string }) {
+    return api.patch(`/projects/${id}`, data)
   },
   delete(id: string) {
     return api.delete(`/projects/${id}`)
@@ -112,5 +200,49 @@ export const documentApi = {
 export const aiApi = {
   generate(data: { project_id: string; document_id?: string; mode: string; content: string; stream?: boolean; include_settings?: boolean }) {
     return api.post('/ai/generate', data, { timeout: 120000 })
+  },
+}
+
+// 记忆系统
+export const memoryApi = {
+  listCharacters(projectId: string) {
+    return api.get('/memory/characters', { params: { project_id: projectId } })
+  },
+  getCharacter(projectId: string, name: string) {
+    return api.get(`/memory/characters/${encodeURIComponent(name)}`, { params: { project_id: projectId } })
+  },
+  writeCharacter(projectId: string, name: string, content: string) {
+    return api.put(`/memory/characters/${encodeURIComponent(name)}`, { content }, { params: { project_id: projectId } })
+  },
+  deleteCharacter(projectId: string, name: string) {
+    return api.delete(`/memory/characters/${encodeURIComponent(name)}`, { params: { project_id: projectId } })
+  },
+  listSummaries(projectId: string) {
+    return api.get('/memory/summaries', { params: { project_id: projectId } })
+  },
+  getSummary(projectId: string, chapterId: string) {
+    return api.get(`/memory/summaries/${chapterId}`, { params: { project_id: projectId } })
+  },
+  getFile(projectId: string, path: string) {
+    return api.get('/memory/file', { params: { project_id: projectId, path } })
+  },
+  writeFile(projectId: string, path: string, content: string) {
+    return api.put('/memory/file', { content }, { params: { project_id: projectId, path } })
+  },
+  getProjectMemory(projectId: string) {
+    return api.get(`/memory/${projectId}`)
+  },
+}
+
+// 回收站
+export const trashApi = {
+  list() {
+    return api.get('/trash')
+  },
+  restore(docId: number) {
+    return api.post('/trash/restore', { doc_id: docId })
+  },
+  empty() {
+    return api.delete('/trash')
   },
 }

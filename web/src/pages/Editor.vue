@@ -216,6 +216,7 @@ import VersionHistoryModal from '../components/editor/VersionHistoryModal.vue'
 import { useEditorSearch, createSearchHighlightPlugin } from '../composables/useEditorSearch'
 import { useAIToolbar, AIMark, AIStrikethrough } from '../composables/useAIToolbar'
 import { useVersionManager } from '../composables/useVersionManager'
+import { toast } from '../composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
@@ -677,7 +678,7 @@ async function createDoc() {
       openDoc(newDoc)
     }
   } catch (e: any) {
-    alert(e.response?.data?.error || '创建失败')
+    toast.error(e.response?.data?.error || '创建失败')
   }
 }
 
@@ -721,7 +722,7 @@ async function renameDoc() {
     await documentApi.update(doc.id, { title: newName })
     await loadDocs()
   } catch (e: any) {
-    alert(e.response?.data?.error || '重命名失败')
+    toast.error(e.response?.data?.error || '重命名失败')
   }
 }
 
@@ -739,7 +740,7 @@ async function deleteDoc() {
     }
     await loadDocs()
   } catch (e: any) {
-    alert(e.response?.data?.error || '删除失败')
+    toast.error(e.response?.data?.error || '删除失败')
   }
 }
 
@@ -770,7 +771,7 @@ async function handleDropNode(srcId: number, dstId: number, position: 'before' |
     })
     await loadDocs()
   } catch (e: any) {
-    alert(e.response?.data?.error || '移动失败')
+    toast.error(e.response?.data?.error || '移动失败')
   }
 }
 

@@ -1,5 +1,6 @@
 import { ref, computed, type Ref, type ShallowRef } from 'vue'
 import { documentApi } from '../core/api'
+import { toast } from './useToast'
 
 interface UseVersionManagerOptions {
   editor: ShallowRef<any>
@@ -80,7 +81,7 @@ export function useVersionManager(opts: UseVersionManagerOptions) {
     } catch (e: any) {
       console.error('保存版本失败', e)
       saveStatus.value = '保存版本失败'
-      alert(e.response?.data?.error || '保存版本失败')
+      toast.error(e.response?.data?.error || '保存版本失败')
     } finally {
       savingVersion.value = false
     }
@@ -106,7 +107,7 @@ export function useVersionManager(opts: UseVersionManagerOptions) {
     } catch (e: any) {
       console.error('加载版本历史失败', e)
       versions.value = []
-      alert(e.response?.data?.error || '加载版本历史失败')
+      toast.error(e.response?.data?.error || '加载版本历史失败')
     } finally {
       loadingVersions.value = false
     }
@@ -117,7 +118,7 @@ export function useVersionManager(opts: UseVersionManagerOptions) {
       const res = await documentApi.getVersion(v.id)
       selectedVersion.value = res.data?.data || res.data
     } catch (e: any) {
-      alert(e.response?.data?.error || '加载版本失败')
+      toast.error(e.response?.data?.error || '加载版本失败')
     }
   }
 
@@ -139,7 +140,7 @@ export function useVersionManager(opts: UseVersionManagerOptions) {
       await loadDocs()
       await loadVersions(true)
     } catch (e: any) {
-      alert(e.response?.data?.error || '恢复版本失败')
+      toast.error(e.response?.data?.error || '恢复版本失败')
     } finally {
       restoringVersion.value = false
     }
