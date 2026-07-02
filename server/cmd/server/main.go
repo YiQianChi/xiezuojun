@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -211,7 +212,7 @@ func main() {
 					}
 				}()
 				memory.ExtractAndSaveSummary(
-					c.Request.Context(),
+					context.Background(),
 					aiClient,
 					memStorage,
 					userIDStr,

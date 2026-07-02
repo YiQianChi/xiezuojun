@@ -127,7 +127,7 @@ func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*Ge
 	cost := float64(totalTokens) / 1000 * routeResult.Model.CostPer1K
 
 	usage := UsageRecord{
-		UserID:           req.ProjectID, // TODO: 使用真实 userID
+		UserID:           req.UserID,
 		ProjectID:        req.ProjectID,
 		ModelID:          routeResult.Model.ModelID,
 		PromptTokens:     promptTokens,
@@ -244,7 +244,7 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 		cost := float64(totalTokens) / 1000 * routeResult.Model.CostPer1K
 
 		usage := UsageRecord{
-			UserID:           req.ProjectID,
+			UserID:           req.UserID,
 			ProjectID:        req.ProjectID,
 			ModelID:          routeResult.Model.ModelID,
 			PromptTokens:     promptTokens,

@@ -18,10 +18,24 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("mkdir: %w", err)
 	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, perm); err != nil {
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
+	if err != nil {
+		return fmt.Errorf("open tmp: %w", err)
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(tmp)
 		return fmt.Errorf("write tmp: %w", err)
 	}
-	// TODO: f.Sync()
+	if err := f.Sync(); err != nil { // fsync before rename for crash safety
+		f.Close()
+		os.Remove(tmp)
+		return fmt.Errorf("sync tmp: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("close tmp: %w", err)
+	}
 	if err := os.Rename(tmp, path); err != nil {
 		os.Remove(tmp) // 清理临时文件
 		return fmt.Errorf("rename: %w", err)
