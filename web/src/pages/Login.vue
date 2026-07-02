@@ -6,12 +6,12 @@
         <p class="subtitle">登录账号继续创作</p>
       </div>
 
-      <div class="login-tabs">
+      <div v-if="!showReset" class="login-tabs">
         <button :class="{ active: mode === 'password' }" @click="mode = 'password'; errorMsg = ''">密码登录</button>
         <button :class="{ active: mode === 'code' }" @click="mode = 'code'; errorMsg = ''">验证码登录</button>
       </div>
 
-      <form @submit.prevent="handleLogin" class="auth-form" novalidate>
+      <form v-if="!showReset" @submit.prevent="handleLogin" class="auth-form" novalidate>
         <div class="form-group">
           <label>邮箱</label>
           <input v-model.trim="email" type="email" placeholder="your@email.com" class="input" :class="{ invalid: touched.email && fieldErrors.email }" autocomplete="email" @blur="touched.email = true; validateLogin()" @input="validateLogin(false)" />
