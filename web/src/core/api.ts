@@ -245,8 +245,8 @@ export const trashApi = {
   list() {
     return api.get('/trash')
   },
-  restore(docId: number) {
-    return api.post('/trash/restore', { doc_id: docId })
+  restore(data: { project_id: number; doc_id: number }) {
+    return api.post('/trash/restore', data)
   },
   empty() {
     return api.delete('/trash')

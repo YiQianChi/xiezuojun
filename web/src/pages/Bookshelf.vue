@@ -107,9 +107,9 @@
           <div v-for="item in trashItems" :key="item.id" class="trash-item">
             <div class="trash-info">
               <strong>{{ item.title }}</strong>
-              <span class="trash-meta">{{ item.type }} · 删除于 {{ formatDate(item.deleted_at) }}</span>
+              <span class="trash-meta">{{ item.type === 'project' ? '书籍' : item.type }} · 删除于 {{ formatDate(item.trashed_at || item.deleted_at) }}</span>
             </div>
-            <button class="btn small" @click="restoreDoc(item.id)">恢复</button>
+            <button class="btn small" @click="restoreDoc(item)">恢复</button>
           </div>
         </div>
         <div v-if="trashItems.length > 0" class="modal-actions">
@@ -312,10 +312,15 @@ async function loadTrash() {
   }
 }
 
-async function restoreDoc(docId: number) {
+async function restoreDoc(item: any) {
   try {
-    await trashApi.restore(docId)
+    // ponytail: project 类型走 project_id 恢复，doc 类型走 doc_id
+    const payload = item.type === 'project'
+      ? { project_id: item.id || item.project_id, doc_id: 0 }
+      : { project_id: item.project_id, doc_id: item.id }
+    await trashApi.restore(payload)
     await loadTrash()
+    await loadProjects()
     toast.success('已恢复')
   } catch (e: any) {
     toast.error(e.response?.data?.error || '恢复失败')
