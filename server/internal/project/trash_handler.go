@@ -85,7 +85,12 @@ func (h *Handler) EmptyTrash(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	// ponytail: 也硬删软删的 project
+	// ponytail: 也硬删软删 project 的 DB 行 + 磁盘文件
+	var deadProjects []model.Project
+	h.db.Where("user_id = ? AND status = 0", userID).Find(&deadProjects)
+	for _, p := range deadProjects {
+		_ = os.RemoveAll(h.paths.ProjectDir(userID, p.ID, p.Name))
+	}
 	h.db.Where("user_id = ? AND status = 0", userID).Delete(&model.Project{})
 	c.JSON(http.StatusOK, gin.H{"message": "emptied", "cleaned": cleaned})
 }
