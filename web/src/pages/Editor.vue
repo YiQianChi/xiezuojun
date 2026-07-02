@@ -105,10 +105,10 @@
       </div>
 
       <!-- 计划模式 -->
-      <PlanView v-if="mode === 'plan'" :project-name="projectName" />
+      <PlanView v-if="mode === 'plan'" :project-name="projectName" :project-id="projectId" @jump-to-doc="jumpToSetting" />
 
       <!-- 审核模式 -->
-      <ReviewView v-if="mode === 'review'" :project-id="projectId" />
+      <ReviewView v-if="mode === 'review'" :project-id="projectId" @jump-to-source="handleReviewJump" @ai-fix="handleReviewAiFix" />
 
       <!-- AI 选区工具栏（选择时） -->
       <div
@@ -195,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EditorContent } from '@tiptap/vue-3'
 import { Editor } from '@tiptap/core'
@@ -336,11 +336,68 @@ const {
 })
 
 async function jumpToSetting(docId: number) {
-  const doc = documents.value.find(d => d.id === docId)
+  let doc = documents.value.find(d => d.id === docId)
+  if (!doc) {
+    await loadDocs()
+    doc = documents.value.find(d => d.id === docId)
+  }
   if (doc) {
     sideTab.value = 'setting'
+    mode.value = 'write'
     await openDoc(doc, { keepSearch: true })
   }
+}
+
+// ponytail: locus text search is fuzzy — matches by doc title substring, good enough for chapter names
+function findDocByLocus(locus: string) {
+  return documents.value.find(d =>
+    d.title === locus || locus.includes(d.title) || d.title.includes(locus)
+  )
+}
+
+async function handleReviewJump({ locus, desc }: { locus: string; desc: string }) {
+  const doc = findDocByLocus(locus)
+  if (!doc) return
+  switchMode('write')
+  await openDoc(doc)
+  // highlight and scroll to the problematic text
+  await nextTick()
+  if (!editor.value) return
+  const snippet = desc.length > 30 ? desc.slice(0, 30) : desc
+  const fullText = editor.value.state.doc.textBetween(0, editor.value.state.doc.content.size, '\n')
+  const pos = fullText.indexOf(snippet)
+  if (pos < 0) return
+  editor.value.chain()
+    .setTextSelection({ from: pos, to: pos + snippet.length })
+    .run()
+  // scroll selection into view
+  const coords = editor.value.view.coordsAtPos(pos)
+  const selEl = document.elementFromPoint(coords.left, coords.top)?.parentElement
+  if (selEl) selEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+async function handleReviewAiFix(issue: any) {
+  const doc = findDocByLocus(issue.locus)
+  if (!doc) return
+  switchMode('write')
+  await openDoc(doc)
+  await nextTick()
+  if (!editor.value) return
+  // select the problematic text snippet in editor
+  const snippet = issue.desc?.length > 30 ? issue.desc.slice(0, 30) : issue.desc || ''
+  const fullText = editor.value.state.doc.textBetween(0, editor.value.state.doc.content.size, '\n')
+  const pos = fullText.indexOf(snippet)
+  if (pos >= 0) {
+    editor.value.chain()
+      .focus()
+      .setTextSelection({ from: pos, to: pos + snippet.length })
+      .run()
+  }
+  // ponytail: directly set aiToolbar state so runAIAction picks it up
+  aiToolbar.value.text = snippet
+  aiToolbar.value.start = pos >= 0 ? pos : 0
+  aiToolbar.value.end = pos >= 0 ? pos + snippet.length : 0
+  await runAIAction('rewrite')
 }
 
 function switchMode(next: EditorMode) {

@@ -269,7 +269,31 @@
   line-height: 2;
 }
 
-/* 编辑器 */
+/* 编辑器 / 计划 / 审核 — 共享同一 flex 槽位 */
+.editor-main,
+.editor-main + div:has(.review-view),
+.editor-main + div:has(.plan-view),
+.plan-view,
+.review-view {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* ponytail: :has selector not supported in older browsers, also set directly */
+.plan-view {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.review-view {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+}
+
 .editor-main {
   flex: 1;
   overflow: hidden;

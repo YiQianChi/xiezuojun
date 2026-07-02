@@ -13,13 +13,25 @@
         </button>
       </div>
 
-      <div v-if="issues.length === 0 && !running" class="empty-state">
+      <div v-if="issues.length === 0 && !running && !error" class="empty-state">
         <div class="empty-icon">🔍</div>
         <div class="empty-title">还没有体检报告</div>
         <div class="empty-desc">点上面「开始体检」，AI 会当读者/责编，替你查一致性、伏笔、节奏。</div>
       </div>
 
-      <template v-else>
+      <div v-if="error" class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-title">检查失败</div>
+        <div class="empty-desc">{{ error }}</div>
+      </div>
+
+      <div v-if="running" class="empty-state">
+        <div class="empty-icon">⏳</div>
+        <div class="empty-title">AI 正在审阅你的小说...</div>
+        <div class="empty-desc">逐章检查中，请稍候</div>
+      </div>
+
+      <template v-if="!running">
         <template v-for="cat in categories" :key="cat">
           <div v-if="issuesByCategory(cat).length > 0" class="review-cat">{{ cat }}</div>
           <div
@@ -53,20 +65,15 @@
         </div>
         <div class="summary">{{ activeIssue.desc }}</div>
 
-        <template v-for="(q, i) in activeIssue.quotes" :key="i">
-          <div class="quote-label">{{ q.label }}</div>
-          <div class="quote">{{ q.text }}</div>
-        </template>
-
         <div v-if="activeIssue.suggestion" class="ai-note">
           <strong>AI 建议：</strong>
           <div v-html="activeIssue.suggestion"></div>
         </div>
 
         <div class="action-row">
-          <button class="btn">跳到原文</button>
-          <button class="btn primary">让 AI 帮我改</button>
-          <button class="btn">忽略</button>
+          <button class="btn" @click="activeIssue && emit('jump-to-source', { locus: activeIssue.locus, desc: activeIssue.desc })">跳到原文</button>
+          <button class="btn primary" @click="activeIssue && emit('ai-fix', activeIssue)">让 AI 帮我改</button>
+          <button class="btn" @click="ignoreAndNext">忽略</button>
         </div>
       </template>
     </div>
@@ -75,8 +82,14 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { aiApi, documentApi } from '../core/api'
 
-defineProps<{
+const emit = defineEmits<{
+  (e: 'jump-to-source', payload: { locus: string; desc: string }): void
+  (e: 'ai-fix', issue: ReviewIssue): void
+}>()
+
+const props = defineProps<{
   projectId: number
 }>()
 
@@ -87,36 +100,119 @@ interface ReviewIssue {
   desc: string
   severity: 'high' | 'med' | 'low'
   locus: string
-  quotes?: { label: string; text: string }[]
   suggestion?: string
 }
 
 const scope = ref<'book' | 'volume' | 'chapter'>('book')
 const running = ref(false)
+const error = ref('')
+const ignoredIds = ref(new Set<string>())
 const activeId = ref<string | null>(null)
-
-// 一期先做静态骨架，AI 后接
 const issues = ref<ReviewIssue[]>([])
 
 const categories = ['人设一致性', '情节漏洞', '伏笔追踪', '节奏']
 
 function issuesByCategory(cat: string) {
-  return issues.value.filter(i => i.category === cat)
+  return issues.value.filter(i => i.category === cat && !ignoredIds.value.has(i.id))
 }
 
-const activeIssue = computed(() => issues.value.find(i => i.id === activeId.value) || null)
+const visibleIssues = computed(() => issues.value.filter(i => !ignoredIds.value.has(i.id)))
+const activeIssue = computed(() => visibleIssues.value.find(i => i.id === activeId.value) || null)
+
+function ignoreAndNext() {
+  if (!activeIssue.value) return
+  ignoredIds.value.add(activeIssue.value.id)
+  const next = visibleIssues.value.find(i => i.id !== activeIssue.value!.id)
+  activeId.value = next?.id ?? null
+}
 
 function severityLabel(s: string) {
   return s === 'high' ? '高' : s === 'med' ? '中' : '低'
 }
 
+// 收集项目正文章节文本，传给 AI 审阅
+async function collectChapterText(): Promise<string> {
+  const res = await documentApi.list(String(props.projectId))
+  const docs = res.data?.data || res.data || []
+  const chapters = docs.filter((d: any) => d.type === 'chapter' && d.search_text)
+
+  if (scope.value === 'chapter') {
+    const ch = chapters[0]
+    return ch ? `【${ch.title}】\n${ch.search_text?.slice(0, 12000) || ''}` : ''
+  }
+
+  // book / volume: 拼接所有章节正文
+  const parts: string[] = []
+  let total = 0
+  for (const ch of chapters) {
+    if (total > 24000) {
+      parts.push('（剩余章节因篇幅限制省略...）')
+      break
+    }
+    const text = ch.search_text || ''
+    parts.push(`【${ch.title}】\n${text}`)
+    total += text.length
+  }
+  return parts.join('\n\n')
+}
+
 async function runReview() {
   running.value = true
-  // TODO: 后端 AI 接入
-  setTimeout(() => {
+  error.value = ''
+  issues.value = []
+
+  try {
+    const chapterText = await collectChapterText()
+    if (!chapterText.trim()) {
+      error.value = '项目还没有正文内容，无法审阅'
+      running.value = false
+      return
+    }
+
+    const res = await aiApi.generate({
+      project_id: String(props.projectId),
+      mode: 'review',
+      content: `请审阅以下小说正文，检查人设一致性、情节漏洞、伏笔追踪和节奏问题：\n\n${chapterText}`,
+      stream: false,
+      include_settings: true,
+    })
+
+    const data = res.data?.data || res.data
+    const raw = data?.content || ''
+
+    // 解析 JSON —— GLM 可能带 ```json 包裹
+    let jsonStr = raw.trim()
+    const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (fenceMatch) jsonStr = fenceMatch[1].trim()
+
+    // 找第一个 { 到最后一个 }
+    const firstBrace = jsonStr.indexOf('{')
+    const lastBrace = jsonStr.lastIndexOf('}')
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.slice(firstBrace, lastBrace + 1)
+    }
+
+    const parsed = JSON.parse(jsonStr)
+    const rawIssues = parsed.issues || []
+
+    issues.value = rawIssues.map((item: any, idx: number) => ({
+      id: `issue-${idx}`,
+      category: item.category || '其他',
+      title: item.title || '未命名问题',
+      desc: item.desc || item.description || '',
+      severity: ['high', 'med', 'low'].includes(item.severity) ? item.severity : 'med',
+      locus: item.locus || item.location || '未知位置',
+      suggestion: item.suggestion || undefined,
+    }))
+
+    if (issues.value.length > 0) {
+      activeId.value = issues.value[0].id
+    }
+  } catch (e: any) {
+    error.value = e.response?.data?.error || e.message || 'AI 审阅失败，请重试'
+  } finally {
     running.value = false
-    alert('AI 审核模式正在接线中，敬请期待～')
-  }, 500)
+  }
 }
 </script>
 
@@ -280,23 +376,6 @@ async function runReview() {
 .meta .badge.low  { background: rgba(0, 122, 255, 0.1); color: #007aff; }
 
 .summary { color: var(--text-secondary); font-size: 13px; line-height: 1.7; }
-
-.quote-label {
-  margin-top: 16px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-.quote {
-  background: var(--bg-primary, #f5f5f7);
-  border-left: 3px solid #ff9500;
-  padding: 12px 16px;
-  font-family: var(--font-serif);
-  font-size: 14px;
-  line-height: 1.8;
-  color: var(--text-primary);
-  margin: 6px 0 0 0;
-  border-radius: 0 8px 8px 0;
-}
 
 .ai-note {
   background: rgba(0, 122, 255, 0.04);
