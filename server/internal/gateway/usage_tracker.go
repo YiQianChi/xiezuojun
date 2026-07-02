@@ -164,9 +164,9 @@ func (t *UsageTracker) GetUsageStats(userID string) map[string]interface{} {
 // getQuotaByTier 根据等级获取配额
 func getQuotaByTier(tier string) Quota {
 	switch tier {
-	case "pro":
+	case "pro", "vip":
 		return DefaultQuota.ProTier
-	case "enterprise":
+	case "enterprise", "svip":
 		return DefaultQuota.EnterpriseTier
 	default:
 		return DefaultQuota.FreeTier

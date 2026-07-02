@@ -39,7 +39,7 @@ func (h *Handler) SendEmailCode(c *gin.Context) {
 		return
 	}
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
-	if req.Scene != "register" && req.Scene != "login" {
+	if req.Scene != "register" && req.Scene != "login" && req.Scene != "reset_password" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid scene"})
 		return
 	}
@@ -54,6 +54,10 @@ func (h *Handler) SendEmailCode(c *gin.Context) {
 		return
 	}
 	if req.Scene == "login" && err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "email not registered"})
+		return
+	}
+	if req.Scene == "reset_password" && err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "email not registered"})
 		return
 	}
@@ -418,4 +422,39 @@ func (h *Handler) UsageStats(c *gin.Context) {
 			"today_words": todayWords,
 		},
 	})
+}
+
+// ResetPassword 重置密码（验证码 + 新密码）
+func (h *Handler) ResetPassword(c *gin.Context) {
+	var req struct {
+		Email    string `json:"email" binding:"required,email"`
+		Code     string `json:"code" binding:"required,len=6"`
+		Password string `json:"password" binding:"required,min=6"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.Code = strings.TrimSpace(req.Code)
+
+	if !h.consumeVerificationCode("email", req.Email, "reset_password", req.Code) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired code"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+		return
+	}
+
+	// 更新 users.password_hash + identity.credential_hash
+	h.db.Model(&model.User{}).Where("email = ?", req.Email).Update("password_hash", string(hash))
+	var identity model.AuthIdentity
+	if err := h.db.Where("provider = ? AND identifier = ?", "email", req.Email).First(&identity).Error; err == nil {
+		h.db.Model(&identity).Update("credential_hash", string(hash))
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "password reset"})
 }

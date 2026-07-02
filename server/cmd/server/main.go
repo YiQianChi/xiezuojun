@@ -134,6 +134,7 @@ func main() {
 	api.POST("/auth/register", userHandler.Register)
 	api.POST("/auth/login", userHandler.Login)
 	api.POST("/auth/refresh", userHandler.Refresh)
+	api.POST("/auth/reset-password", userHandler.ResetPassword)
 
 	// 需要认证
 	authd := api.Group("")

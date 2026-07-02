@@ -84,6 +84,8 @@ func sendEmailCode(to, scene, code string) error {
 	purpose := "登录"
 	if scene == "register" {
 		purpose = "注册"
+	} else if scene == "reset_password" {
+		purpose = "重置密码"
 	}
 	body := fmt.Sprintf("您的写作菌%s验证码是：%s\n\n验证码 10 分钟内有效。若非本人操作，请忽略这封邮件。", purpose, code)
 	fromHeader := cfg.From

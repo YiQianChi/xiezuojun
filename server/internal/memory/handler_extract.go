@@ -183,7 +183,7 @@ func (h *Handler) extractWithAI(ctx context.Context, content string) *ExtractRes
 		content = content[:3000]
 	}
 
-	result, err := h.aiClient.Complete(ctx, "glm-4-flash", []ai.Message{
+	result, err := h.aiClient.Complete(ctx, memoryModel(), []ai.Message{
 		{Role: "system", Content: prompt},
 		{Role: "user", Content: content},
 	})

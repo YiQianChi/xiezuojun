@@ -58,6 +58,7 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 		ProjectID:       req.ProjectID,
 		DocumentID:      req.DocumentID,
 		UserID:          userIDStr,
+		UserTier:        c.GetString("plan"),
 		AIMode:          req.Mode,
 		UserPrompt:      req.Content,
 		IncludeSettings: includeSettings,

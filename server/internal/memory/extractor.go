@@ -8,12 +8,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
 	"xiezuojun-server/internal/ai"
 )
+
+// memoryModel returns the model name for memory extraction AI calls.
+// ponytail: env var fallback chain, no new deps
+func memoryModel() string {
+	if m := os.Getenv("MEMORY_MODEL"); m != "" {
+		return m
+	}
+	if m := os.Getenv("AI_MODEL"); m != "" {
+		return m
+	}
+	return "MiniMax-M3"
+}
 
 // ExtractAndSaveSummary 从章节内容提取摘要、角色、事件等并保存
 // 此函数会被 goroutine 异步调用，内部 recover panic
@@ -30,7 +43,7 @@ func ExtractAndSaveSummary(ctx context.Context, aiClient *ai.Client, storage *Me
 	}
 
 	// 1. 生成章节摘要
-	summary, err := aiClient.Complete(ctx, "glm-5-turbo", []ai.Message{
+	summary, err := aiClient.Complete(ctx, memoryModel(), []ai.Message{
 		{Role: "system", Content: "你是一个专业的小说章节摘要生成器。请用简洁的Markdown格式总结以下章节的核心情节，不超过500字。包含：主要事件、人物互动、关键转折。"},
 		{Role: "user", Content: content},
 	})
@@ -54,7 +67,7 @@ func ExtractAndSaveSummary(ctx context.Context, aiClient *ai.Client, storage *Me
 }
 只返回JSON，不要其他内容。如果没有某类信息，返回空数组。`
 
-	extractResult, err := aiClient.Complete(ctx, "glm-5-turbo", []ai.Message{
+	extractResult, err := aiClient.Complete(ctx, memoryModel(), []ai.Message{
 		{Role: "system", Content: extractPrompt},
 		{Role: "user", Content: content},
 	})

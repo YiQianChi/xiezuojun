@@ -57,14 +57,16 @@ func (g *DefaultGateway) BuildContext(ctx context.Context, req BuildContextReque
 
 // Generate 非流式生成
 func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*GenerateResult, error) {
-	// TODO: 接用户充值 token 系统后恢复配额检查
-	// quota, err := g.CheckQuota(req.ProjectID, "free")
-	// if err != nil {
-	// 	return nil, fmt.Errorf("quota check failed: %w", err)
-	// }
-	// if !quota.Allowed {
-	// 	return nil, fmt.Errorf("quota exceeded: %s", quota.Reason)
-	// }
+	if req.UserTier == "" {
+		req.UserTier = "free"
+	}
+	quota, err := g.CheckQuota(req.UserID, req.UserTier)
+	if err != nil {
+		return nil, fmt.Errorf("quota check failed: %w", err)
+	}
+	if !quota.Allowed {
+		return nil, fmt.Errorf("quota exceeded: %s", quota.Reason)
+	}
 
 	// 1. 构建上下文
 	ctxReq := BuildContextRequest{
@@ -154,14 +156,16 @@ func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*Ge
 
 // GenerateStream 流式生成
 func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest) (<-chan StreamChunk, error) {
-	// TODO: 接用户充值 token 系统后恢复配额检查
-	// quota, err := g.CheckQuota(req.ProjectID, "free")
-	// if err != nil {
-	// 	return nil, fmt.Errorf("quota check failed: %w", err)
-	// }
-	// if !quota.Allowed {
-	// 	return nil, fmt.Errorf("quota exceeded: %s", quota.Reason)
-	// }
+	if req.UserTier == "" {
+		req.UserTier = "free"
+	}
+	quota, err := g.CheckQuota(req.UserID, req.UserTier)
+	if err != nil {
+		return nil, fmt.Errorf("quota check failed: %w", err)
+	}
+	if !quota.Allowed {
+		return nil, fmt.Errorf("quota exceeded: %s", quota.Reason)
+	}
 
 	// 1. 构建上下文
 	ctxReq := BuildContextRequest{

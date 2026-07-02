@@ -275,6 +275,7 @@ type GenerateRequest struct {
 	ProjectID  string
 	DocumentID string
 	UserID     string // 用户 ID（用于读取记忆）
+	UserTier   string // free / vip / svip（配额检查用）
 	AIMode     string
 	UserPrompt string
 	SceneText  string         // 文档内容/前文（由 API handler 填入）
