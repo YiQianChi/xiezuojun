@@ -4,7 +4,6 @@ package gateway
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,27 +44,25 @@ func (g *DefaultGateway) RateLimitMiddleware() gin.HandlerFunc {
 			userID = "anonymous"
 		}
 
-		// 检查配额
-		status, err := g.usageTracker.CheckQuota(userID, c.GetString("user_tier"))
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "quota check failed"})
-			c.Abort()
-			return
-		}
+		// TODO: 接用户充值 token 系统后恢复配额检查
+		// status, err := g.usageTracker.CheckQuota(userID, c.GetString("user_tier"))
+		// if err != nil {
+		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "quota check failed"})
+		// 	c.Abort()
+		// 	return
+		// }
+		// if !status.Allowed {
+		// 	c.JSON(http.StatusTooManyRequests, gin.H{
+		// 		"error":     "quota exceeded",
+		// 		"reason":    status.Reason,
+		// 		"remaining": status.Remaining,
+		// 	})
+		// 	c.Abort()
+		// 	return
+		// }
+		// c.Header("X-Quota-Remaining", strconv.Itoa(status.Remaining))
+		// c.Header("X-Quota-Limit", strconv.Itoa(status.LimitToday))
 
-		if !status.Allowed {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":     "quota exceeded",
-				"reason":    status.Reason,
-				"remaining": status.Remaining,
-			})
-			c.Abort()
-			return
-		}
-
-		// 在响应头中附加配额信息
-		c.Header("X-Quota-Remaining", strconv.Itoa(status.Remaining))
-		c.Header("X-Quota-Limit", strconv.Itoa(status.LimitToday))
 		c.Next()
 	}
 }

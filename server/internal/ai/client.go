@@ -37,6 +37,42 @@ type StreamMessage struct {
 	Error    string
 }
 
+// doRequestWithRetry 公共请求方法，429 自动重试
+func (c *Client) doRequestWithRetry(ctx context.Context, body []byte, useStream bool) (*http.Response, error) {
+	const maxRetries = 3
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		if i > 0 {
+			wait := time.Duration(i*i) * time.Second
+			fmt.Printf("[AI] 429 retry %d/%d, waiting %v...\n", i+1, maxRetries, wait)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(wait):
+			}
+		}
+		req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("API error: %s", resp.Status)
+			continue
+		}
+		return resp, nil
+	}
+	return nil, lastErr
+}
+
 // Stream 发起流式请求
 func (c *Client) Stream(ctx context.Context, model string, messages []Message) (<-chan StreamMessage, error) {
 	payload := map[string]interface{}{
@@ -46,14 +82,7 @@ func (c *Client) Stream(ctx context.Context, model string, messages []Message) (
 	}
 
 	body, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequestWithRetry(ctx, body, true)
 	if err != nil {
 		return nil, err
 	}
@@ -81,14 +110,7 @@ func (c *Client) Complete(ctx context.Context, model string, messages []Message)
 	}
 
 	body, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doRequestWithRetry(ctx, body, false)
 	if err != nil {
 		return "", err
 	}

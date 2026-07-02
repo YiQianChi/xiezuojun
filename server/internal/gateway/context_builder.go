@@ -32,10 +32,10 @@ type ContextBuilder struct {
 func NewContextBuilder(reader MemoryReader) *ContextBuilder {
 	return &ContextBuilder{
 		MaxTokensPerLevel: map[ContextLevel]int{
-			LevelMemory:   2000,  // 作者记忆层最多 2000 tokens
-			LevelProject:  1500,  // 项目设定最多 1500 tokens
-			LevelScene:    6000,  // 前文最多 6000 tokens
-			LevelTask:     1000,  // 任务指令最多 1000 tokens
+			LevelMemory:  2000, // 作者记忆层最多 2000 tokens
+			LevelProject: 4000, // 项目设定最多 4000 tokens（含大纲/人物/世界观）
+			LevelScene:   6000, // 前文最多 6000 tokens
+			LevelTask:    1000, // 任务指令最多 1000 tokens
 		},
 		SystemTemplate: `你是「写作菌」，一位专业的小说创作助手。
 
@@ -101,12 +101,57 @@ func (b *ContextBuilder) Build(ctx context.Context, req BuildContextRequest) (*B
 		totalTokens += estimateTokens(m.Content)
 	}
 
+	// 6. 生成 UsedSettings 列表（供前端展示）
+	usedSettings := b.buildUsedSettings(req.SettingDocs, truncated)
+
 	return &BuildContextResult{
 		SystemPrompt: systemPrompt,
 		Messages:     messages,
 		ContextMap:   truncated,
 		TotalTokens:  totalTokens,
+		UsedSettings: usedSettings,
 	}, nil
+}
+
+// buildUsedSettings 根据 truncatedBlocks 判断每张设定卡是否真的用了
+func (b *ContextBuilder) buildUsedSettings(docs []SettingDoc, truncated []ContextBlock) []UsedSetting {
+	if len(docs) == 0 {
+		return nil
+	}
+	// 建立 source → tokens 索引
+	usedMap := make(map[string]int)
+	for _, blk := range truncated {
+		if blk.Level != LevelProject {
+			continue
+		}
+		usedMap[blk.Source] = estimateTokens(blk.Content)
+	}
+	result := make([]UsedSetting, 0, len(docs))
+	for _, d := range docs {
+		source := settingSourceKey(d)
+		tokens, ok := usedMap[source]
+		result = append(result, UsedSetting{
+			ID:     d.ID,
+			Title:  d.Title,
+			Type:   d.Type,
+			Used:   ok,
+			Tokens: tokens,
+		})
+	}
+	return result
+}
+
+// settingSourceKey 统一设定文档的 Source 标识
+func settingSourceKey(d SettingDoc) string {
+	typeLabel := map[string]string{
+		"outline":       "大纲",
+		"characters":    "人物",
+		"worldbuilding": "世界观",
+	}[d.Type]
+	if typeLabel == "" {
+		typeLabel = d.Type
+	}
+	return fmt.Sprintf("设定·%s·%s", typeLabel, d.Title)
 }
 
 // buildSystemPrompt 构建系统提示
@@ -193,6 +238,32 @@ func (b *ContextBuilder) collectBlocks(req BuildContextRequest) []ContextBlock {
 			Priority: 0.8,
 			Source:   "project-meta",
 		})
+	}
+
+	// 项目层：设定文档（大纲/人物/世界观）
+	// 优先级：大纲 > 人物 > 世界观（大纲直接决定情节，人物次之，世界观兜底）
+	if len(req.SettingDocs) > 0 {
+		typePriority := map[string]float64{
+			"outline":       0.95,
+			"characters":    0.90,
+			"worldbuilding": 0.80,
+		}
+		for _, doc := range req.SettingDocs {
+			content := strings.TrimSpace(doc.Content)
+			if content == "" {
+				continue
+			}
+			p, ok := typePriority[doc.Type]
+			if !ok {
+				p = 0.75
+			}
+			blocks = append(blocks, ContextBlock{
+				Level:    LevelProject,
+				Content:  content,
+				Priority: p,
+				Source:   settingSourceKey(doc),
+			})
+		}
 	}
 
 	// 场景层（前文）

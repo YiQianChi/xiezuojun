@@ -6,6 +6,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -20,7 +21,8 @@ type DefaultGateway struct {
 	contextBuilder  *ContextBuilder
 	modelRouter     *ModelRouter
 	usageTracker    *UsageTracker
-	docContentLoader func(docID uint64) (string, error) // 加载文档内容
+	docContentLoader func(docID uint64) (string, error)                // 加载文档正文
+	settingLoader    func(projectID uint) ([]SettingDoc, error)        // 加载项目的设定文档
 
 	// 并发控制
 	semaphores map[string]chan struct{} // userID -> semaphore
@@ -30,6 +32,11 @@ type DefaultGateway struct {
 // SetDocContentLoader 设置文档内容加载器（从 main.go 调用）
 func (g *DefaultGateway) SetDocContentLoader(fn func(docID uint64) (string, error)) {
 	g.docContentLoader = fn
+}
+
+// SetSettingLoader 设置项目设定文档加载器
+func (g *DefaultGateway) SetSettingLoader(fn func(projectID uint) ([]SettingDoc, error)) {
+	g.settingLoader = fn
 }
 
 // NewGateway 创建网关
@@ -50,16 +57,16 @@ func (g *DefaultGateway) BuildContext(ctx context.Context, req BuildContextReque
 
 // Generate 非流式生成
 func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*GenerateResult, error) {
-	// 1. 检查配额
-	quota, err := g.CheckQuota(req.ProjectID, "free") // TODO: 从用户系统获取 tier
-	if err != nil {
-		return nil, fmt.Errorf("quota check failed: %w", err)
-	}
-	if !quota.Allowed {
-		return nil, fmt.Errorf("quota exceeded: %s", quota.Reason)
-	}
+	// TODO: 接用户充值 token 系统后恢复配额检查
+	// quota, err := g.CheckQuota(req.ProjectID, "free")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("quota check failed: %w", err)
+	// }
+	// if !quota.Allowed {
+	// 	return nil, fmt.Errorf("quota exceeded: %s", quota.Reason)
+	// }
 
-	// 2. 构建上下文
+	// 1. 构建上下文
 	ctxReq := BuildContextRequest{
 		ProjectID:  req.ProjectID,
 		DocumentID: req.DocumentID,
@@ -71,6 +78,14 @@ func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*Ge
 	if len(req.Context) > 0 {
 		ctxReq.MemoryBlocks = req.Context
 	}
+	// 加载项目设定文档（大纲/人物/世界观）—— 默认开启
+	if req.IncludeSettings && g.settingLoader != nil && req.ProjectID != "" {
+		if pid, err := parseProjectID(req.ProjectID); err == nil && pid > 0 {
+			if docs, err := g.settingLoader(pid); err == nil {
+				ctxReq.SettingDocs = docs
+			}
+		}
+	}
 
 	ctxResult, err := g.contextBuilder.Build(ctx, ctxReq)
 	if err != nil {
@@ -81,7 +96,7 @@ func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*Ge
 	routeReq := RouteRequest{
 		AIMode:        req.AIMode,
 		ContextTokens: ctxResult.TotalTokens,
-		RequireJSON:   req.AIMode == "outline",
+		RequireJSON:   req.AIMode == "outline" || req.AIMode == "review",
 		UserTier:      "free",
 	}
 	routeResult := g.modelRouter.Route(routeReq)
@@ -133,21 +148,22 @@ func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*Ge
 		Usage:         usage,
 		ModelUsed:     routeResult.Model.ModelID,
 		ContextTokens: promptTokens,
+		UsedSettings:  ctxResult.UsedSettings,
 	}, nil
 }
 
 // GenerateStream 流式生成
 func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest) (<-chan StreamChunk, error) {
-	// 1. 检查配额
-	quota, err := g.CheckQuota(req.ProjectID, "free")
-	if err != nil {
-		return nil, fmt.Errorf("quota check failed: %w", err)
-	}
-	if !quota.Allowed {
-		return nil, fmt.Errorf("quota exceeded: %s", quota.Reason)
-	}
+	// TODO: 接用户充值 token 系统后恢复配额检查
+	// quota, err := g.CheckQuota(req.ProjectID, "free")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("quota check failed: %w", err)
+	// }
+	// if !quota.Allowed {
+	// 	return nil, fmt.Errorf("quota exceeded: %s", quota.Reason)
+	// }
 
-	// 2. 构建上下文
+	// 1. 构建上下文
 	ctxReq := BuildContextRequest{
 		ProjectID:  req.ProjectID,
 		DocumentID: req.DocumentID,
@@ -159,6 +175,13 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 	if len(req.Context) > 0 {
 		ctxReq.MemoryBlocks = req.Context
 	}
+	if req.IncludeSettings && g.settingLoader != nil && req.ProjectID != "" {
+		if pid, err := parseProjectID(req.ProjectID); err == nil && pid > 0 {
+			if docs, err := g.settingLoader(pid); err == nil {
+				ctxReq.SettingDocs = docs
+			}
+		}
+	}
 
 	ctxResult, err := g.contextBuilder.Build(ctx, ctxReq)
 	if err != nil {
@@ -169,7 +192,7 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 	routeReq := RouteRequest{
 		AIMode:        req.AIMode,
 		ContextTokens: ctxResult.TotalTokens,
-		RequireJSON:   req.AIMode == "outline",
+		RequireJSON:   req.AIMode == "outline" || req.AIMode == "review",
 		UserTier:      "free",
 	}
 	routeResult := g.modelRouter.Route(routeReq)
@@ -198,6 +221,11 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 	go func() {
 		defer close(outCh)
 		defer g.releaseSlot(req.ProjectID)
+
+		// 首帧发送 UsedSettings 元数据（不带 Content）
+		if len(ctxResult.UsedSettings) > 0 {
+			outCh <- StreamChunk{UsedSettings: ctxResult.UsedSettings}
+		}
 
 		for msg := range aiCh {
 			if msg.Error != "" {
@@ -284,3 +312,17 @@ func (g *DefaultGateway) releaseSlot(userID string) {
 		}
 	}
 }
+
+
+// parseProjectID 尝试把字符串 project_id 解析成 uint
+func parseProjectID(s string) (uint, error) {
+	if s == "" || s == "default" {
+		return 0, nil
+	}
+	n, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return uint(n), nil
+}
+

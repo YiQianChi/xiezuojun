@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -71,6 +72,50 @@ func NewHandler(db *gorm.DB, dataRoot string, paths *store.PathConfig, locks *st
 // LoadDocContent 读取文档正文（供 gateway 调用）
 func (h *Handler) LoadDocContent(docID uint) (string, error) {
 	return h.ds.LoadDocContent(docID)
+}
+
+// SettingDocDTO 精简版设定文档，用于跨包传输
+type SettingDocDTO struct {
+	ID      uint
+	Title   string
+	Type    string
+	Content string
+}
+
+// LoadSettingDocs 加载指定项目的所有设定文档（大纲/人物/世界观）
+// 优先读 documents.search_text；空则回退读文件系统。
+func (h *Handler) LoadSettingDocs(projectID uint) ([]SettingDocDTO, error) {
+	var docs []model.Document
+	settingTypes := []string{"outline", "characters", "worldbuilding"}
+	err := h.db.
+		Select("id", "title", "type", "search_text", "sort_order").
+		Where("project_id = ? AND status = 1 AND type IN (?)", projectID, settingTypes).
+		Order("type, sort_order, id").
+		Find(&docs).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make([]SettingDocDTO, 0, len(docs))
+	for _, d := range docs {
+		content := d.SearchText
+		if content == "" {
+			// 回退：读文件
+			if c, err := h.ds.LoadDocContent(d.ID); err == nil {
+				content = c
+			}
+		}
+		content = strings.TrimSpace(content)
+		if content == "" {
+			continue // 空的设定文档不注入
+		}
+		result = append(result, SettingDocDTO{
+			ID:      d.ID,
+			Title:   d.Title,
+			Type:    d.Type,
+			Content: content,
+		})
+	}
+	return result, nil
 }
 
 func (h *Handler) ListProjects(c *gin.Context) {

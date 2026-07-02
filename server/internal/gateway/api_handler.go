@@ -13,11 +13,12 @@ import (
 
 // GenerateHTTPRequest HTTP API 请求体
 type GenerateHTTPRequest struct {
-	ProjectID  string `json:"project_id"`
-	DocumentID string `json:"document_id"`
-	Mode       string `json:"mode" binding:"required"`
-	Content    string `json:"content" binding:"required"`
-	Stream     bool   `json:"stream"`
+	ProjectID       string `json:"project_id"`
+	DocumentID      string `json:"document_id"`
+	Mode            string `json:"mode" binding:"required"`
+	Content         string `json:"content" binding:"required"`
+	Stream          bool   `json:"stream"`
+	IncludeSettings *bool  `json:"include_settings"` // 默认 true，写作模式可关
 }
 
 // HandleGenerate AI 生成接口
@@ -46,13 +47,20 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 		req.ProjectID = "default"
 	}
 
+	// 默认注入设定文档（作者可传 include_settings=false 关闭）
+	includeSettings := true
+	if req.IncludeSettings != nil {
+		includeSettings = *req.IncludeSettings
+	}
+
 	// 构建 AI 生成请求
 	genReq := GenerateRequest{
-		ProjectID:  req.ProjectID,
-		DocumentID: req.DocumentID,
-		UserID:     userIDStr,
-		AIMode:     req.Mode,
-		UserPrompt: req.Content,
+		ProjectID:       req.ProjectID,
+		DocumentID:      req.DocumentID,
+		UserID:          userIDStr,
+		AIMode:          req.Mode,
+		UserPrompt:      req.Content,
+		IncludeSettings: includeSettings,
 	}
 
 	// 从 DB 读取文档内容作为 SceneText（通过 docContentLoader）
@@ -69,6 +77,7 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 		// 非流式：直接返回完整结果
 		result, err := g.Generate(c.Request.Context(), genReq)
 		if err != nil {
+			fmt.Printf("[gateway] Generate error: %v (mode=%s)\n", err, genReq.AIMode)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -80,6 +89,7 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 				"total_tokens": result.Usage.TotalTokens,
 				"cost":         result.Usage.Cost,
 			},
+			"used_settings": result.UsedSettings,
 		})
 		return
 	}
@@ -111,6 +121,11 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 			if chunk.Done {
 				c.SSEvent("done", "")
 				return false
+			}
+			// 首帧元数据：UsedSettings（不带 content）
+			if len(chunk.UsedSettings) > 0 && chunk.Content == "" {
+				c.SSEvent("settings", gin.H{"used_settings": chunk.UsedSettings})
+				return true
 			}
 			// 只发送有实际内容的 chunk（跳过思维链）
 			if chunk.Content == "" {

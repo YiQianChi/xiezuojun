@@ -39,6 +39,28 @@ type BuildContextRequest struct {
 	ProjectMeta  string         // 项目设定（PROMPT.md）
 	SceneText    string         // 前文（自动截断）
 	AIMode       string         // 模式：continue | rewrite | polish | expand | outline
+	SettingDocs  []SettingDoc   // 项目设定文档（大纲/人物/世界观）
+}
+
+// SettingDoc 项目设定文档（大纲/人物/世界观）
+type SettingDoc struct {
+	ID      uint   `json:"id"`
+	Title   string `json:"title"`
+	Type    string `json:"type"`    // outline | characters | worldbuilding
+	Content string `json:"content"` // 正文
+	// 是否实际参与本次 AI 上下文（true=用了，false=被截断/跳过）
+	Used bool `json:"used"`
+	// 截断后实际用了多少 tokens
+	Tokens int `json:"tokens"`
+}
+
+// UsedSetting 前端展示用的精简版
+type UsedSetting struct {
+	ID     uint   `json:"id"`
+	Title  string `json:"title"`
+	Type   string `json:"type"`
+	Used   bool   `json:"used"`
+	Tokens int    `json:"tokens"`
 }
 
 // BuildContextResult 构建结果
@@ -47,6 +69,7 @@ type BuildContextResult struct {
 	Messages     []Message      // 完整消息列表
 	ContextMap   []ContextBlock // 用了哪些上下文块（用于调试/分析）
 	TotalTokens  int            // 总 token 估算
+	UsedSettings []UsedSetting  // 本次实际参与的设定文档（用于前端 UI 展示）
 }
 
 // ========== AI 模式 ==========
@@ -96,6 +119,20 @@ var ModeTemplates = map[string]ModeTemplate{
 		MaxTokens:    4000,
 		StyleHints:   []string{"结构清晰", "逻辑自洽"},
 	},
+	"plan": {
+		Name:         "构思",
+		SystemPrompt: "你是一位资深小说策划和创意顾问。请根据作者给出的项目名和要求，产出结构化的创作构思。用 Markdown 输出，层次清晰，内容具体可操作。",
+		Temperature:  0.85,
+		MaxTokens:    4000,
+		StyleHints:   []string{"创意新颖", "结构完整", "可直接采用"},
+	},
+	"review": {
+		Name:         "审阅",
+		SystemPrompt: "你是一位资深小说责编和读者。请仔细审阅小说文本，站在读者视角找出问题。你必须严格以 JSON 格式输出，不要输出任何其他内容。JSON 格式：{\"issues\":[{\"category\":\"人设一致性|情节漏洞|伏笔追踪|节奏\",\"title\":\"问题标题\",\"desc\":\"详细描述\",\"severity\":\"high|med|low\",\"locus\":\"相关位置描述\"}]}。如果没有发现问题，返回 {\"issues\":[]}。",
+		Temperature:  0.3,
+		MaxTokens:    4000,
+		StyleHints:   []string{"JSON 格式", "精准定位", "建设性建议"},
+	},
 }
 
 // ========== 模型路由 ==========
@@ -121,9 +158,9 @@ type ModelCapability struct {
 
 var DefaultModels = []ModelConfig{
 	{
-		Name:      "GLM-4.5",
-		Provider:  "zhipu",
-		ModelID:   "glm-4.5",
+		Name:      "MiniMax-M3",
+		Provider:  "volcengine",
+		ModelID:   "MiniMax-M3",
 		MaxTokens: 8192,
 		CostPer1K: 0.001,
 		Priority:  -1,
@@ -243,6 +280,10 @@ type GenerateRequest struct {
 	SceneText  string         // 文档内容/前文（由 API handler 填入）
 	Context    []ContextBlock // 可选：预构建的上下文
 	Style      string         // 风格偏好
+
+	// 是否注入项目设定文档作为 AI 背景（大纲/人物/世界观）
+	// 默认 true；作者可在写作模式关掉
+	IncludeSettings bool
 }
 
 type GenerateResult struct {
@@ -250,12 +291,15 @@ type GenerateResult struct {
 	Usage         UsageRecord
 	ModelUsed     string
 	ContextTokens int
+	UsedSettings  []UsedSetting // 本次 AI 参考了哪些设定文档
 }
 
 type StreamChunk struct {
 	Content string
 	Error   string
 	Done    bool
+	// 元数据：仅首帧发送，用于前端展示"AI 参考了哪些设定"
+	UsedSettings []UsedSetting `json:",omitempty"`
 }
 
 type QuotaStatus struct {

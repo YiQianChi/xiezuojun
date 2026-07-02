@@ -32,9 +32,9 @@ func defaultDocContent(docType, title string) string {
 
 func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uint) error {
 	defs := []defaultProjectDoc{
-		{Title: "大纲", Type: "outline", Content: defaultDocContent("outline", "大纲")},
-		{Title: "人物设定", Type: "characters", Content: defaultDocContent("characters", "人物设定")},
-		{Title: "世界观", Type: "worldbuilding", Content: defaultDocContent("worldbuilding", "世界观")},
+		{Title: "大纲", Type: "outline", Content: ""},
+		{Title: "人物设定", Type: "characters", Content: ""},
+		{Title: "世界观", Type: "worldbuilding", Content: ""},
 		{Title: articleRootTitle, Type: "volume", Content: ""},
 	}
 

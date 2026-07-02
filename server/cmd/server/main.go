@@ -102,6 +102,24 @@ func main() {
 		return projectHandler.LoadDocContent(uint(docID))
 	})
 
+	// 设置项目设定文档加载器（AI 上下文注入大纲/人物/世界观）
+	gw.SetSettingLoader(func(projectID uint) ([]gateway.SettingDoc, error) {
+		docs, err := projectHandler.LoadSettingDocs(projectID)
+		if err != nil {
+			return nil, err
+		}
+		result := make([]gateway.SettingDoc, 0, len(docs))
+		for _, d := range docs {
+			result = append(result, gateway.SettingDoc{
+				ID:      d.ID,
+				Title:   d.Title,
+				Type:    d.Type,
+				Content: d.Content,
+			})
+		}
+		return result, nil
+	})
+
 	r := gin.Default()
 	r.Use(middleware.CORS())
 
