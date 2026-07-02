@@ -124,33 +124,46 @@
       </div>
 
       <!-- AI 底部固定栏（方向输入 / 生成中 / 结果预览） -->
-      <div v-if="aiPhase !== 'idle'" class="ai-bottom-bar">
+      <div v-if="aiPhase !== 'idle'" class="ai-bottom-bar" :class="'phase-' + aiPhase">
         <!-- 方向输入 -->
         <template v-if="aiPhase === 'inputting'">
-          <span class="ai-bottom-hint">输入改写方向（可选）</span>
-          <input
-            ref="aiDirectionInputRef"
-            v-model="aiDirection"
-            class="ai-direction-input"
-            type="text"
-            placeholder="如：更悬疑 / 更简洁 / 增加心理描写..."
-            @keydown.enter.prevent="executeAIAction"
-            @keydown.escape.prevent="cancelInputting"
-          />
-          <button @click="executeAIAction">生成</button>
-          <button @click="cancelInputting">取消</button>
+          <div class="ai-input-wrap">
+            <input
+              ref="aiDirectionInputRef"
+              v-model="aiDirection"
+              class="ai-direction-input"
+              type="text"
+              :placeholder="pendingAction === 'continue' ? '续写方向（可选）' : pendingAction === 'rewrite' ? '改写方向（可选）' : pendingAction === 'polish' ? '润色方向（可选）' : '扩写方向（可选）'"
+              @keydown.enter.prevent="executeAIAction"
+              @keydown.escape.prevent="cancelInputting"
+            />
+            <button class="ai-icon-btn primary" @click="executeAIAction" aria-label="生成">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <button class="ai-icon-btn" @click="cancelInputting" aria-label="取消">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
         </template>
         <!-- 生成中 -->
         <template v-if="aiPhase === 'generating'">
-          <span class="ai-bottom-hint">{{ aiLoading ? 'AI 生成中...' : '生成中' }}</span>
-          <button @click="stopAIGeneration">停止</button>
+          <span class="ai-bottom-hint">AI 生成中</span>
+          <button class="ai-icon-btn danger" @click="stopAIGeneration" aria-label="停止">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+          </button>
         </template>
         <!-- 结果预览 -->
         <template v-if="aiPhase === 'preview'">
           <span class="ai-bottom-hint">AI 已生成</span>
-          <button @click="regenerateAIResult" :disabled="aiLoading">↻ 重新生成</button>
-          <button @click="discardAIResult">丢弃</button>
-          <button class="primary" @click="acceptAIResult">采用</button>
+          <button class="ai-icon-btn" @click="regenerateAIResult" :disabled="aiLoading" aria-label="重新生成">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-3-6.7L21 8M21 3v5h-5"/></svg>
+          </button>
+          <button class="ai-icon-btn danger" @click="discardAIResult" aria-label="丢弃">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          </button>
+          <button class="ai-icon-btn success" @click="acceptAIResult" aria-label="采用">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
         </template>
       </div>
 
@@ -348,6 +361,7 @@ const {
   aiToolbar,
   aiInsert,
   showAIToolbar,
+  pendingAction,
   prepareAIAction,
   executeAIAction,
   stopAIGeneration,

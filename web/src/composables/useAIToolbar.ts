@@ -84,8 +84,8 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
   const aiDirection = ref('')
   /** 流式生成可中断控制器 */
   let abortController: AbortController | null = null
-  /** prepareAIAction 记录、executeAIAction 消费的 action */
-  let pendingAction: AIAction | null = null
+  /** prepareAIAction 记录、executeAIAction 消用的 action */
+  const pendingAction = ref<AIAction | null>(null)
 
   const aiToolbar = ref({
     visible: false,
@@ -133,7 +133,7 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     aiInsert.value.active = false
     aiPhase.value = 'idle'
     aiDirection.value = ''
-    pendingAction = null
+    pendingAction.value = null
   }
 
   function buildAIPrompt(action: AIAction, selectedText: string, direction?: string) {
@@ -198,15 +198,15 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     aiDirection.value = ''
 
     // 记录当前 action 供 execute 使用
-    pendingAction = action
+    pendingAction.value = action
   }
 
   // ---- 第二阶段：用户输入方向后点"生成"或回车 → 流式生成 ----
   async function executeAIAction() {
-    if (aiPhase.value !== 'inputting' || !pendingAction) return
+    if (aiPhase.value !== 'inputting' || !pendingAction.value) return
     if (!editor.value || !aiToolbar.value.text) return
 
-    const action = pendingAction
+    const action = pendingAction.value
     aiPhase.value = 'generating'
     aiLoading.value = true
     const oldStatus = saveStatus.value
@@ -374,7 +374,7 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
 
     aiInsert.value.active = false
     aiPhase.value = 'idle'
-    pendingAction = null
+    pendingAction.value = null
     saveStatus.value = '编辑中...'
   }
 
@@ -396,7 +396,7 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
 
     aiInsert.value.active = false
     aiPhase.value = 'idle'
-    pendingAction = null
+    pendingAction.value = null
     saveStatus.value = '编辑中...'
   }
 
@@ -409,19 +409,19 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     // 回到方向输入态
     aiPhase.value = 'inputting'
     aiDirection.value = ''
-    pendingAction = action
+    pendingAction.value = action
   }
 
   // ---- 取消方向输入（从 inputting 退回 idle，清理删除线）----
   function cancelInputting() {
     if (aiPhase.value !== 'inputting') return
     // 非续写模式：去掉原文删除线
-    if (pendingAction && pendingAction !== 'continue') {
+    if (pendingAction.value && pendingAction.value !== 'continue') {
       const { start, end } = aiToolbar.value
       removeTextMark('aiStrikethrough', start, end)
     }
     aiPhase.value = 'idle'
-    pendingAction = null
+    pendingAction.value = null
     aiDirection.value = ''
   }
 
@@ -436,7 +436,7 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
       action: 'rewrite',
       result: '',
     }
-    pendingAction = 'rewrite'
+    pendingAction.value = 'rewrite'
     aiDirection.value = ''
     aiPhase.value = 'inputting'
     await executeAIAction()
@@ -450,6 +450,7 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     aiToolbar,
     aiInsert,
     // methods
+    pendingAction,
     showAIToolbar,
     hideAIToolbar,
     resetAIState,
