@@ -238,6 +238,12 @@ export const memoryApi = {
   getProjectMemory(projectId: string) {
     return api.get(`/memory/${projectId}`)
   },
+  getRelationships(projectId: string) {
+    return api.get('/memory/relationships', { params: { project_id: projectId } })
+  },
+  saveRelationships(projectId: string, data: any) {
+    return api.put('/memory/relationships', data, { params: { project_id: projectId } })
+  },
 }
 
 // 回收站
