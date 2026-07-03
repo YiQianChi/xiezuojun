@@ -18,6 +18,15 @@
           </div>
           <div class="step-body">{{ step.desc }}</div>
 
+          <textarea
+            v-if="step.status !== 'doing'"
+            v-model="step.userNote"
+            class="step-note-input"
+            rows="3"
+            :placeholder="step.promptHint"
+          ></textarea>
+          <div v-if="step.status === 'pending' && !step.userNote?.trim()" class="step-write-hint">✍️ 先写点内容，再让 AI 帮你完善</div>
+
           <!-- AI 生成结果，可展开编辑 -->
           <div v-if="step.preview" class="step-preview-wrap">
             <textarea
@@ -39,7 +48,7 @@
               {{ step.writing ? '写入中...' : '写入设定' }}
             </button>
             <button v-if="step.status === 'doing'" disabled>AI 生成中...</button>
-            <button v-if="step.status === 'pending'" class="primary" @click="startStep(step.id)">开始</button>
+            <button v-if="step.status === 'pending'" class="primary" :disabled="!step.userNote?.trim()" @click="startStep(step.id)">让 AI 完善</button>
           </div>
         </div>
       </div>
@@ -110,6 +119,8 @@ interface PlanStep {
   desc: string
   status: 'pending' | 'doing' | 'done'
   preview?: string
+  userNote?: string
+  promptHint: string
   editing?: boolean
   error?: string
   writing?: boolean
@@ -125,6 +136,7 @@ const steps = ref<PlanStep[]>([
     status: 'pending',
     settingType: 'outline',
     prompt: '请为这部小说写一段 300-500 字的故事梗概。包含：主角是谁、所处的背景、遇到什么事件、如何转变。要有钩子，让人想继续读。',
+    promptHint: '写下你的故事梗概：什么人、在什么背景、遇到什么事、怎么改变……',
   },
   {
     id: 2,
@@ -133,6 +145,7 @@ const steps = ref<PlanStep[]>([
     status: 'pending',
     settingType: 'worldbuilding',
     prompt: '请构建这部小说的世界观设定，包括：时代背景、地理环境、势力划分、能力体系（如有）、规则与禁忌、冲突的根源。用 Markdown 分段输出。',
+    promptHint: '写下你的世界观：什么时代、什么地点、有什么规则、冲突从哪来……',
   },
   {
     id: 3,
@@ -141,6 +154,7 @@ const steps = ref<PlanStep[]>([
     status: 'pending',
     settingType: 'characters',
     prompt: '请设计这部小说的主要人物（3-5人）。每个人物包括：姓名、身份、性格特点、核心动机、不为人知的秘密。最后附上人物之间的关系。用 Markdown 格式输出。',
+    promptHint: '写下你的人物：名字、身份、性格、想要什么、藏着什么秘密……',
   },
   {
     id: 4,
@@ -149,6 +163,7 @@ const steps = ref<PlanStep[]>([
     status: 'pending',
     settingType: 'outline',
     prompt: '请用三幕结构设计故事主线：第一幕（开端/日常→打破日常的契机）、第二幕（冲突升级/障碍与成长）、第三幕（高潮与结局）。每幕列出关键情节点。用 Markdown 格式输出。',
+    promptHint: '写下你的故事主线：怎么开始、冲突怎么升级、高潮和结局是什么……',
   },
   {
     id: 5,
@@ -157,6 +172,7 @@ const steps = ref<PlanStep[]>([
     status: 'pending',
     settingType: 'outline',
     prompt: '请根据前面的梗概、世界观、人物和主线，切分章节大纲。按「卷→章」结构，每章给一句话标题和一句概要。用 Markdown 格式输出。',
+    promptHint: '列出你想写的章节：每章标题和一句话概要……',
   },
 ])
 
@@ -175,6 +191,9 @@ async function startStep(id: number) {
   try {
     // 收集已完成步骤的结果作为上下文
     const contextParts: string[] = [`项目名：${props.projectName || '未命名'}`]
+    if (step.userNote?.trim()) {
+      contextParts.push(`用户补充：${step.userNote.trim()}`)
+    }
     steps.value.filter(s => s.status === 'done' && s.preview).forEach(s => {
       contextParts.push(`【${s.title}】\n${s.preview}`)
     })
@@ -184,7 +203,7 @@ async function startStep(id: number) {
       {
         project_id: String(props.projectId),
         mode: 'plan',
-        content: `${step.prompt}\n\n已有构思参考：\n${contextParts.join('\n\n')}`,
+        content: `${step.prompt}\n\n作者已写的内容：\n${step.userNote || ''}\n\n已完成的设定（作为参考）：\n${contextParts.join('\n\n')}`,
         include_settings: true,
       },
       {
@@ -309,8 +328,31 @@ async function confirmWrite() {
 }
 .plan-view .subtitle {
   color: var(--text-secondary);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   font-size: 13px;
+}
+
+.step-note-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  background: var(--bg-secondary, #fff);
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+.step-note-input:focus {
+  border-color: #af52de;
+  box-shadow: 0 0 0 3px rgba(175, 82, 222, 0.1);
+}
+.step-note-input::placeholder {
+  color: var(--text-tertiary, #aaa);
 }
 
 .step-list {
