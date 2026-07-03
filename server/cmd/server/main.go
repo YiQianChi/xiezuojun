@@ -277,6 +277,9 @@ func main() {
 	authd.PUT("/memory/summaries/:chapter_id", memHandler.WriteSummary)
 
 	// 三层记忆
+	authd.GET("/memory/relationships", memHandler.GetRelationships)
+	authd.PUT("/memory/relationships", memHandler.PutRelationships)
+
 	authd.GET("/memory/:project_id", memHandler.GetProjectMemory)
 	authd.PUT("/memory/:project_id/:file", memHandler.UpdateMemoryFile)
 	authd.POST("/memory/:project_id/extract", memHandler.ExtractMemory)
