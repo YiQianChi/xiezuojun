@@ -28,14 +28,19 @@
           <div v-if="step.status === 'pending' && !step.userNote?.trim()" class="step-write-hint">✍️ 先写点内容，再让 AI 帮你完善</div>
 
           <!-- AI 生成结果，可展开编辑 -->
-          <div v-if="step.preview" class="step-preview-wrap">
+          <div v-if="step.preview != null" class="step-preview-wrap">
             <textarea
               v-if="step.editing"
               v-model="step.preview"
               class="step-editor"
               rows="10"
             ></textarea>
-            <div v-else class="step-preview" @click="step.editing = true">{{ step.preview }}</div>
+            <div v-else class="step-preview" @click="step.editing = true">
+              <template v-if="step.status === 'doing' && !step.preview">
+                <span class="step-loading-spinner"></span> AI 思考中…
+              </template>
+              <template v-else>{{ step.preview }}</template>
+            </div>
           </div>
 
           <div v-if="step.error" class="step-error">{{ step.error }}</div>
@@ -186,7 +191,7 @@ async function startStep(id: number) {
 
   step.status = 'doing'
   step.error = undefined
-  step.preview = undefined
+  step.preview = ''  // 立刻显示渲染框
 
   try {
     // 收集已完成步骤的结果作为上下文
@@ -199,17 +204,26 @@ async function startStep(id: number) {
     })
 
     let accumulated = ''
+    let rafId = 0
     await streamGenerate(
       {
         project_id: String(props.projectId),
         mode: 'plan',
-        content: `${step.prompt}\n\n作者已写的内容：\n${step.userNote || ''}\n\n已完成的设定（作为参考）：\n${contextParts.join('\n\n')}`,
+        content: `${step.prompt}\n\n作者原始构思：\n${step.userNote || ''}\n\n请基于作者的构思进行完善和扩展，保留核心创意，补充细节、逻辑和结构。输出完整的设定内容。\n\n已完成的设定（作为参考）：\n${contextParts.join('\n\n')}`,
         include_settings: true,
       },
       {
         onContent: (chunk) => {
           accumulated += chunk
-          step.preview = accumulated  // 实时渲染
+          // ponytail: 首个chunk直接赋值（立刻消失spinner），后续rAF节流
+          if (!step.preview) {
+            step.preview = accumulated
+          } else if (!rafId) {
+            rafId = requestAnimationFrame(() => {
+              step.preview = accumulated
+              rafId = 0
+            })
+          }
         },
       },
     )
@@ -217,7 +231,8 @@ async function startStep(id: number) {
     const result = accumulated.trim()
     if (!result) throw new Error('AI 返回为空')
 
-    step.preview = result
+    if (rafId) cancelAnimationFrame(rafId)
+    step.preview = accumulated.trim() || result
     step.status = 'done'
     step.editing = false
   } catch (e: any) {
@@ -430,6 +445,17 @@ async function confirmWrite() {
 .step-preview:hover {
   border-color: rgba(175, 82, 222, 0.2);
 }
+.step-loading-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(0, 122, 255, 0.2);
+  border-top-color: var(--accent, #007aff);
+  border-radius: 50%;
+  animation: step-spin .8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes step-spin { to { transform: rotate(360deg); } }
 .step-editor {
   width: 100%;
   background: rgba(175, 82, 222, 0.03);
@@ -561,4 +587,5 @@ async function confirmWrite() {
 }
 .fp-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
 .fp-confirm:hover:not(:disabled) { background: #9740c2; }
+.step-write-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
 </style>
