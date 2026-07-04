@@ -11,18 +11,7 @@
         :class="{ active: sideTab === 'setting' }"
         @click="$emit('update:sideTab', 'setting')"
       >设定</button>
-      <button
-        class="side-tab"
-        :class="{ active: sideTab === 'memory' }"
-        @click="$emit('update:sideTab', 'memory')"
-      >记忆</button>
     </div>
-
-    <div v-if="sideTab === 'memory'" class="memory-slot">
-      <MemoryPanel :project-id="projectId" />
-    </div>
-
-    <template v-else>
 
     <div class="branch-switcher">
       <label>故事线</label>
@@ -51,38 +40,36 @@
       </div>
       <DocTreeNode
         v-else
-        v-for="node in filteredRootNodes"
+        v-for="(node, i) in filteredRootNodes"
         :key="node.id"
         :node="node"
         :all-docs="documents"
         :active-id="activeDocId"
         :depth="0"
+        :index="i + 1"
         @select="$emit('select-doc', $event)"
         @context-menu="(e, node) => $emit('context-menu', e, node)"
         @drop-node="(src, dst, pos) => $emit('drop-node', src, dst, pos)"
       />
     </div>
-    </template>
   </aside>
 </template>
 
 <script setup lang="ts">
 import DocTreeNode from '../DocTreeNode.vue'
-import MemoryPanel from './MemoryPanel.vue'
 
 defineProps<{
-  sideTab: 'chapter' | 'setting' | 'memory'
+  sideTab: 'chapter' | 'setting'
   branches: any[]
   activeBranchId: number | null
   documents: any[]
   filteredRootNodes: any[]
   activeDocId: number | null
   loadingDocs: boolean
-  projectId: string
 }>()
 
 defineEmits<{
-  'update:sideTab': [tab: 'chapter' | 'setting' | 'memory']
+  'update:sideTab': [tab: 'chapter' | 'setting']
   'switch-branch': [id: number]
   'init-default': []
   'select-doc': [node: any]
@@ -93,7 +80,7 @@ defineEmits<{
 
 <style scoped>
 .doc-tree {
-  width: 260px;
+  width: 240px;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -159,12 +146,6 @@ defineEmits<{
   padding: 8px 6px 20px;
 }
 
-.memory-slot {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
 .tree-loading, .tree-empty {
   color: var(--text-tertiary);
   font-size: 12px;

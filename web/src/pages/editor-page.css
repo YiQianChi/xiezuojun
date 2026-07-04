@@ -303,6 +303,48 @@
   min-height: 0;
   min-width: 0;
 }
+/* AI 面板展开时给编辑区右侧留出空间，避免文字被覆盖 */
+.editor-main.ai-panel-open .tiptap-container {
+  padding-right: 304px; /* 280px panel + 24px gap */
+}
+
+/* 专注模式：隐藏顶栏+侧栏，编辑器全屏 */
+.editor-page.focus-mode :deep(.editor-header),
+.editor-page.focus-mode :deep(.doc-tree) {
+  display: none;
+}
+.editor-page.focus-mode :deep(.context-panel) {
+  display: none;
+}
+.editor-page.focus-mode .memory-fab {
+  display: none;
+}
+/* 专注模式下右上角显示一个退出提示 */
+.focus-exit-hint {
+  display: none;
+}
+.editor-page.focus-mode .focus-exit-hint {
+  display: flex;
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 999;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: opacity 0.3s;
+  opacity: 0.5;
+}
+.editor-page.focus-mode .focus-exit-hint:hover {
+  opacity: 1;
+}
 
 .editor-empty {
   display: flex;
@@ -495,7 +537,6 @@
 }
 
 .tiptap-container > :deep(div) {
-  max-width: 880px;
   margin: 0;
 }
 
@@ -752,6 +793,30 @@
   background: var(--border-subtle);
 }
 
+/* 右键高亮颜色选择 */
+.context-menu .ctx-highlight-row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+}
+.context-menu .hl-color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  transition: transform 0.12s ease;
+}
+.context-menu .hl-color-dot:hover {
+  transform: scale(1.2);
+}
+.context-menu .ctx-sep {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+  padding: 0;
+}
+
 /* 状态栏 */
 .status-bar {
   flex-shrink: 0;
@@ -764,6 +829,50 @@
   border-top: 1px solid var(--border-subtle);
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* 记忆浮动面板（右下角） */
+.memory-fab {
+  position: absolute;
+  bottom: 16px;
+  right: 304px; /* ponytail: left of AIContextPanel(280+12+12), collapses to 48px when panel closed */
+  z-index: 350;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: 0;
+}
+.memory-fab-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-secondary, #fff);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+  z-index: 2;
+}
+.memory-fab-btn:hover { transform: scale(1.08); }
+.memory-fab-panel {
+  width: 340px;
+  height: 420px;
+  margin-right: -6px;
+  background: var(--bg-secondary, #fff);
+  border-radius: 14px 0 0 14px;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+/* ponytail: when AIContextPanel collapsed(24px), shift fab right */
+.memory-fab {
+  right: 304px;
 }
 
 /* Modal */
@@ -960,6 +1069,16 @@
   background: rgba(255, 149, 0, 0.55);
   box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.9);
 }
+
+/* 高亮 mark — 多色 */
+:deep(.ProseMirror) mark {
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+:deep(.ProseMirror) mark[data-color="#ffeb3b"] { background: rgba(255, 235, 59, 0.5); }
+:deep(.ProseMirror) mark[data-color="#4caf50"] { background: rgba(76, 175, 80, 0.3); }
+:deep(.ProseMirror) mark[data-color="#2196f3"] { background: rgba(33, 150, 243, 0.25); }
+:deep(.ProseMirror) mark[data-color="#ff5252"] { background: rgba(255, 82, 82, 0.25); }
 
 /* AI 参考面板（写作模式右侧浮层） */
 .context-panel {

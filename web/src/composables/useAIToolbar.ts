@@ -210,7 +210,7 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     aiPhase.value = 'generating'
     aiLoading.value = true
     const oldStatus = saveStatus.value
-    saveStatus.value = 'AI 生成中...'
+    saveStatus.value = '生成中...'
 
     const { start, end, text: selectedText } = aiToolbar.value
 
@@ -315,13 +315,13 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
         aiInsert.value.y = coords.bottom + 8
       })
 
-      saveStatus.value = 'AI 已生成，等待采用'
+      saveStatus.value = '已生成，等待采用'
     } catch (e: any) {
       console.error('AI 生成失败', e)
-      saveStatus.value = oldStatus || 'AI 生成失败'
+      saveStatus.value = oldStatus || '生成失败'
       // abort 引发的错误不弹 toast
       if (!(e?.name === 'AbortError')) {
-        toast.error(e.message || 'AI 生成失败')
+        toast.error(e.message || '生成失败')
       }
       // 如果已经有部分内容，进入 preview；否则清理状态回到 idle
       if (accumulated && aiInsert.value.active && aiInsert.value.to > aiInsert.value.from) {

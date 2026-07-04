@@ -1,5 +1,5 @@
 <template>
-  <div class="editor-page">
+      <div class="editor-page" :class="{ 'focus-mode': focusMode }">
     <!-- 顶部栏 -->
     <EditorHeader
       :project-name="projectName"
@@ -7,10 +7,12 @@
       :mode="mode"
       :active-doc-id="activeDocId"
       :saving-version="savingVersion"
+      :focus-mode="focusMode"
       @back="goBack"
       @switch-mode="switchMode"
       @save-version="openSaveVersionModal"
       @open-history="openVersionModal"
+      @toggle-focus="focusMode = !focusMode"
     />
 
     <div class="editor-body">
@@ -23,7 +25,6 @@
         :filtered-root-nodes="filteredRootNodes"
         :active-doc-id="activeDocId"
         :loading-docs="loadingDocs"
-        :project-id="String(projectId)"
         @update:side-tab="sideTab = $event"
         @switch-branch="switchBranch"
         @init-default="initDefaultStructure"
@@ -33,7 +34,7 @@
       />
 
       <!-- 编辑器 -->
-      <div class="editor-main" v-show="mode === 'write'">
+      <div class="editor-main" :class="{ 'ai-panel-open': contextPanelOpen }" v-show="mode === 'write'">
         <div v-if="compareActive" class="compare-view">
           <div class="compare-topbar">
             <div>
@@ -103,6 +104,17 @@
           @update:include-settings="includeSettings = $event"
           @jump="jumpToSetting"
         />
+
+        <!-- 记忆面板（右下角浮动） -->
+        <div class="memory-fab" :class="{ open: memoryOpen }">
+          <button class="memory-fab-btn" @click="memoryOpen = !memoryOpen" :title="memoryOpen ? '收起记忆' : '记忆'">
+            <span v-if="!memoryOpen">🧠</span>
+            <span v-else>✕</span>
+          </button>
+          <div class="memory-fab-panel" v-show="memoryOpen">
+            <MemoryPanel :project-id="String(projectId)" />
+          </div>
+        </div>
       </div>
 
       <!-- 计划模式 -->
@@ -147,14 +159,14 @@
         </template>
         <!-- 生成中 -->
         <template v-if="aiPhase === 'generating'">
-          <span class="ai-bottom-hint">AI 生成中</span>
+          <span class="ai-bottom-hint">生成中…</span>
           <button class="ai-icon-btn danger" @click="stopAIGeneration" aria-label="停止">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
           </button>
         </template>
         <!-- 结果预览 -->
         <template v-if="aiPhase === 'preview'">
-          <span class="ai-bottom-hint">AI 已生成</span>
+          <span class="ai-bottom-hint">已生成</span>
           <button class="ai-icon-btn" @click="regenerateAIResult" :disabled="aiLoading" aria-label="重新生成">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-3-6.7L21 8M21 3v5h-5"/></svg>
           </button>
@@ -173,7 +185,16 @@
         class="context-menu"
         :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
       >
-        <div @click="contextAction('highlight')">高亮</div>
+        <div class="ctx-highlight-row">
+          <span
+            v-for="c in highlightColors"
+            :key="c"
+            class="hl-color-dot"
+          :style="{ background: c }"
+          @click="contextAction('highlight', c)"
+          ></span>
+        </div>
+        <div class="ctx-sep"></div>
         <div @click="contextAction('copy')">复制</div>
         <div @click="contextAction('cut')">剪切</div>
         <div @click="contextAction('paste')">粘贴</div>
@@ -227,6 +248,12 @@
       @compare="startCompareWithCurrent"
       @restore="restoreSelectedVersion"
     />
+
+    <!-- 专注模式退出提示 -->
+    <div class="focus-exit-hint" @click="focusMode = false">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+      <span>退出专注 (Esc)</span>
+    </div>
   </div>
 </template>
 
@@ -236,6 +263,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { EditorContent } from '@tiptap/vue-3'
 import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
+import Highlight from '@tiptap/extension-highlight'
+// ponytail: 4 fixed highlight colors, no config needed
+const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
 import { documentApi, branchApi, projectApi } from '../core/api'
 import SearchPanel from '../components/SearchPanel.vue'
 import PlanView from '../components/PlanView.vue'
@@ -243,6 +273,7 @@ import ReviewView from '../components/ReviewView.vue'
 import EditorHeader from '../components/editor/EditorHeader.vue'
 import EditorSidebar from '../components/editor/EditorSidebar.vue'
 import AIContextPanel from '../components/editor/AIContextPanel.vue'
+import MemoryPanel from '../components/editor/MemoryPanel.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
 import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
 import VersionHistoryModal from '../components/editor/VersionHistoryModal.vue'
@@ -268,6 +299,8 @@ const wordCount = ref(0)
 const saveStatus = ref('')
 
 const contextMenu = ref({ visible: false, x: 0, y: 0 })
+// ponytail: 右键时编辑器会失焦丢选区，打开菜单前缓存
+let cachedSelection: { text: string; start: number; end: number } | null = null
 const docContextMenu = ref({ visible: false, x: 0, y: 0, doc: null as any })
 const showCreateDocModal = ref(false)
 const newDocName = ref('')
@@ -333,9 +366,10 @@ const rootNodes = computed(() => {
 })
 
 // 左侧栏 Tab：章节 / 设定
-const sideTab = ref<'chapter' | 'setting' | 'memory'>('chapter')
+const sideTab = ref<'chapter' | 'setting'>('chapter')
 const CHAPTER_TYPES = ['volume', 'chapter']
 const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'note']
+const memoryOpen = ref(false)
 
 // 顶部工作模式：计划 / 写作 / 审核
 type EditorMode = 'plan' | 'write' | 'review'
@@ -351,7 +385,8 @@ interface UsedSetting {
 }
 const usedSettings = ref<UsedSetting[]>([])
 const includeSettings = ref(true)  // 是否让 AI 参考项目设定
-const contextPanelOpen = ref(true) // 右侧参考面板展开/收起
+const contextPanelOpen = ref(false) // 右侧参考面板默认收起，AI 操作时自动弹出
+const focusMode = ref(false) // 专注模式：隐藏侧栏+顶栏，编辑器全屏
 
 // AI 工具栏 & 交互 —— composable
 const {
@@ -383,6 +418,7 @@ const aiDirectionInputRef = ref<HTMLInputElement | null>(null)
 // ponytail: focus direction input when entering inputting phase
 watch(aiPhase, (v) => {
   if (v === 'inputting') {
+    contextPanelOpen.value = true // 使用 AI 时自动弹出右侧面板
     nextTick(() => aiDirectionInputRef.value?.focus())
   }
 })
@@ -463,7 +499,6 @@ function switchMode(next: EditorMode) {
 }
 
 const filteredRootNodes = computed(() => {
-  if (sideTab.value === 'memory') return []
   const types = sideTab.value === 'chapter' ? CHAPTER_TYPES : SETTING_TYPES
   return rootNodes.value.filter(n => types.includes(n.type))
 })
@@ -521,6 +556,7 @@ function initEditor() {
     content: '',
     extensions: [
       StarterKit,
+      Highlight.configure({ multicolor: true }),
       AIMark,
       AIStrikethrough,
     ],
@@ -583,6 +619,11 @@ function getEditorText(ed = editor.value) {
     blocks.push(node.textContent || '')
   })
   return blocks.join('\n')
+}
+
+// ponytail: save/load as HTML to preserve marks (highlight etc.)
+function getEditorHTML(ed = editor.value) {
+  return ed ? ed.getHTML() : ''
 }
 
 async function loadBranches() {
@@ -669,9 +710,14 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
 
     if (editor.value) {
       isSettingContent.value = true
-      const tiptapDoc = editorContentFromText(content)
-      editor.value.commands.setContent(tiptapDoc, { emitUpdate: false })
-      wordCount.value = content.length
+      // ponytail: load HTML directly to preserve marks; fallback to plain text for old docs
+      const html = content.trim().startsWith('<') ? content : null
+      if (html) {
+        editor.value.commands.setContent(html, { emitUpdate: false })
+      } else {
+        editor.value.commands.setContent(editorContentFromText(content), { emitUpdate: false })
+      }
+      wordCount.value = getEditorText().length
       saveStatus.value = '已保存'
       setTimeout(() => { isSettingContent.value = false }, 100)
     }
@@ -686,7 +732,7 @@ async function autoSave() {
   try {
     saveStatus.value = '保存中...'
     await documentApi.update(activeDocId.value, {
-      content: getEditorText()
+      content: getEditorHTML()
     })
     saveStatus.value = '已保存'
   } catch (e) {
@@ -830,6 +876,8 @@ async function handleDropNode(srcId: number, dstId: number, position: 'before' |
 }
 
 function openContextMenu(e: MouseEvent) {
+  // ponytail: 右键前缓存当前选区，右键动作后编辑器已失焦
+  cachedSelection = getSelection()
   contextMenu.value = { visible: true, x: e.clientX, y: e.clientY }
   document.addEventListener('click', closeContextMenu, { once: true })
 }
@@ -838,16 +886,14 @@ function closeContextMenu() {
   contextMenu.value.visible = false
 }
 
-function contextAction(action: string) {
+function contextAction(action: string, color?: string) {
   if (!editor.value) return
-  const sel = getSelection()
+  const sel = cachedSelection || getSelection()
+  cachedSelection = null
   if (!sel.text && action !== 'paste') return
   switch (action) {
     case 'highlight':
-      editor.value.commands.insertContentAt(
-        { from: sel.start, to: sel.end },
-        `==${sel.text}==`
-      )
+      editor.value.chain().setTextSelection({ from: sel.start, to: sel.end }).toggleHighlight({ color }).run()
       break
     case 'copy':
       navigator.clipboard.writeText(sel.text)
@@ -879,6 +925,18 @@ function handleGlobalKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && searchVisible.value) {
     e.preventDefault()
     closeSearch()
+    return
+  }
+  // ponytail: Esc 退出专注模式（搜索关闭后优先级最低）
+  if (e.key === 'Escape' && focusMode.value) {
+    e.preventDefault()
+    focusMode.value = false
+    return
+  }
+  // Ctrl/Cmd+Shift+Z 切换专注模式
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
+    e.preventDefault()
+    focusMode.value = !focusMode.value
     return
   }
 }

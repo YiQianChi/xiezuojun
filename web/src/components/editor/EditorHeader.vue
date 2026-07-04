@@ -33,6 +33,16 @@
     <div class="header-actions">
       <button
         v-if="mode === 'write'"
+        @click="$emit('toggle-focus')"
+        class="btn icon-btn"
+        :class="{ active: focusMode }"
+        :title="focusMode ? '退出专注模式 (Esc)' : '专注模式 (Ctrl+Shift+Z)'"
+      >
+        <svg v-if="!focusMode" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+      </button>
+      <button
+        v-if="mode === 'write'"
         @click="$emit('save-version')"
         class="btn"
         :disabled="!activeDocId || savingVersion"
@@ -58,6 +68,7 @@ defineProps<{
   mode: EditorMode
   activeDocId: number | null
   savingVersion: boolean
+  focusMode: boolean
 }>()
 
 defineEmits<{
@@ -65,6 +76,7 @@ defineEmits<{
   'switch-mode': [mode: EditorMode]
   'save-version': []
   'open-history': []
+  'toggle-focus': []
 }>()
 </script>
 
@@ -177,4 +189,17 @@ defineEmits<{
   cursor: pointer;
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.btn.icon-btn.active {
+  background: var(--accent, #007aff);
+  color: #fff;
+  border-color: var(--accent, #007aff);
+}
 </style>

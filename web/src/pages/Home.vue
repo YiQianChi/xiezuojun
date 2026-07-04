@@ -2,7 +2,7 @@
   <div class="home">
     <div class="home-hero">
       <h1 class="hero-title">写作菌</h1>
-      <p class="hero-tagline">专注小说创作的 AI 写作工具</p>
+      <p class="hero-tagline">专注小说创作的写作工具</p>
       <p class="hero-desc">让灵感不被打扰，让创作更加纯粹</p>
       <div class="home-actions">
         <router-link to="/bookshelf" class="btn primary big">进入书架</router-link>
@@ -26,7 +26,7 @@
       </div>
       <div class="feature">
         <div class="feature-icon">
-          <!-- 闪光星 · AI -->
+          <!-- 闪光星 · 辅助 -->
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 3v3"/>
             <path d="M12 18v3"/>
@@ -37,8 +37,8 @@
             <path d="m5 16 .4 1.2L6.6 17.6l-1.2.4L5 19.2l-.4-1.2L3.4 17.6l1.2-.4L5 16Z"/>
           </svg>
         </div>
-        <h3>AI 助手</h3>
-        <p>续写、改写、润色、扩写，AI 与你一起创作</p>
+        <h3>写作辅助</h3>
+        <p>续写、改写、润色、扩写，智能辅助你的创作</p>
       </div>
       <div class="feature">
         <div class="feature-icon">

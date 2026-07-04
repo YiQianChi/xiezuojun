@@ -3,7 +3,7 @@
     <div
       class="tree-row"
       :class="{ active: node.id === activeId, 'drop-before': dropPos === 'before', 'drop-after': dropPos === 'after', 'drop-inside': dropPos === 'inside' }"
-      :style="{ paddingLeft: depth * 16 + 8 + 'px' }"
+      :style="{ paddingLeft: depth * 12 + 6 + 'px' }"
       @click="handleClick"
       @contextmenu.prevent.stop="$emit('context-menu', $event, node)"
       draggable="true"
@@ -17,18 +17,20 @@
       </span>
       <span v-else class="toggle-icon spacer"></span>
 
+      <span class="node-index">{{ index }}</span>
       <span class="node-icon">{{ nodeIcon }}</span>
       <span class="node-title">{{ displayTitle }}</span>
     </div>
 
     <div v-if="isFolder && expanded" class="tree-children">
       <DocTreeNode
-        v-for="child in children"
+        v-for="(child, i) in children"
         :key="child.id"
         :node="child"
         :all-docs="allDocs"
         :active-id="activeId"
         :depth="depth + 1"
+        :index="i + 1"
         @select="$emit('select', $event)"
         @context-menu="(e, n) => $emit('context-menu', e, n)"
         @drop-node="(srcId, dstId, pos) => $emit('drop-node', srcId, dstId, pos)"
@@ -45,6 +47,7 @@ const props = defineProps<{
   allDocs: any[]
   activeId: number | string | null
   depth: number
+  index: number
 }>()
 
 const emit = defineEmits<{
@@ -140,14 +143,14 @@ function onDrop(e: DragEvent) {
 .tree-row {
   display: flex;
   align-items: center;
-  padding: 8px 10px;
+  padding: 6px 8px;
   cursor: pointer;
   font-size: 13px;
   color: var(--text-primary);
   transition: all var(--transition-fast);
-  gap: 6px;
+  gap: 3px;
   border-radius: var(--radius-sm);
-  margin: 3px 6px;
+  margin: 2px 4px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
@@ -191,8 +194,8 @@ function onDrop(e: DragEvent) {
 
 .toggle-icon {
   display: inline-block;
-  width: 14px;
-  font-size: 9px;
+  width: 10px;
+  font-size: 8px;
   color: var(--text-tertiary);
   text-align: center;
   flex-shrink: 0;
@@ -208,6 +211,14 @@ function onDrop(e: DragEvent) {
   flex-shrink: 0;
 }
 
+.node-index {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  margin-right: -2px;
+}
+
 .node-title {
   flex: 1;
   overflow: hidden;
@@ -216,8 +227,8 @@ function onDrop(e: DragEvent) {
 }
 
 .tree-children {
-  margin-left: 4px;
-  padding-left: 8px;
+  margin-left: 2px;
+  padding-left: 4px;
   border-left: 2px solid var(--border-subtle);
 }
 </style>
