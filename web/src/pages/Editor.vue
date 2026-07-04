@@ -31,6 +31,8 @@
         @select-doc="openDoc"
         @context-menu="openDocContextMenu"
         @drop-node="handleDropNode"
+        @add-doc-root="createDocAtRoot"
+        @add-doc-in="createDocInFolder"
       />
 
       <!-- 编辑器 -->
@@ -794,6 +796,16 @@ function openDocContextMenu(e: MouseEvent, doc: any) {
 
 function closeDocContextMenu() {
   docContextMenu.value.visible = false
+}
+
+// ponytail: 底部按钮固定根目录新建
+function createDocAtRoot() {
+  openCreateDocModal(null, 'volume')
+}
+
+// ponytail: 文件夹内+按钮
+function createDocInFolder(folder: any) {
+  openCreateDocModal(folder.id, 'chapter')
 }
 
 function newDocUnder(type: 'volume' | 'chapter') {

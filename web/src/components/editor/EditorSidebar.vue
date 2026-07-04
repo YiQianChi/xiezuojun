@@ -50,7 +50,14 @@
         @select="$emit('select-doc', $event)"
         @context-menu="(e, node) => $emit('context-menu', e, node)"
         @drop-node="(src, dst, pos) => $emit('drop-node', src, dst, pos)"
+        @add-child="(folder) => $emit('add-doc-in', folder)"
       />
+      <!-- ponytail: 底部按钮固定根目录新建，文件夹内用右键 -->
+      <button
+        v-if="sideTab === 'chapter' && !loadingDocs"
+        class="add-item-btn"
+        @click="$emit('add-doc-root')"
+      >+ 新建文件夹</button>
     </div>
   </aside>
 </template>
@@ -58,7 +65,7 @@
 <script setup lang="ts">
 import DocTreeNode from '../DocTreeNode.vue'
 
-defineProps<{
+const props = defineProps<{
   sideTab: 'chapter' | 'setting'
   branches: any[]
   activeBranchId: number | null
@@ -75,8 +82,9 @@ defineEmits<{
   'select-doc': [node: any]
   'context-menu': [e: MouseEvent, node: any]
   'drop-node': [srcId: number, dstId: number, position: 'before' | 'after' | 'inside']
-}>()
-</script>
+  'add-doc-root': []
+  'add-doc-in': [folder: any]
+}>()</script>
 
 <style scoped>
 .doc-tree {
@@ -169,5 +177,25 @@ defineEmits<{
   color: var(--text-primary);
   cursor: pointer;
   margin-top: 6px;
+}
+.add-item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px;
+  margin-top: 4px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.add-item-btn:hover {
+  color: var(--accent, #007aff);
+  border-color: var(--accent, #007aff);
+  background: rgba(0, 122, 255, 0.04);
 }
 </style>

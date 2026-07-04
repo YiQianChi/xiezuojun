@@ -34,7 +34,9 @@
         @select="$emit('select', $event)"
         @context-menu="(e, n) => $emit('context-menu', e, n)"
         @drop-node="(srcId, dstId, pos) => $emit('drop-node', srcId, dstId, pos)"
+        @add-child="(folder) => $emit('add-child', folder)"
       />
+      <div class="add-child-btn" @click.stop="$emit('add-child', node)">+ 在「{{ displayTitle }}」下新建章节</div>
     </div>
   </div>
 </template>
@@ -54,6 +56,7 @@ const emit = defineEmits<{
   select: [node: any]
   'context-menu': [e: MouseEvent, node: any]
   'drop-node': [srcId: number, dstId: number, position: 'before' | 'after' | 'inside']
+  'add-child': [node: any]
 }>()
 
 const expanded = ref(true)
@@ -230,5 +233,20 @@ function onDrop(e: DragEvent) {
   margin-left: 2px;
   padding-left: 4px;
   border-left: 2px solid var(--border-subtle);
+}
+.add-child-btn {
+  padding: 4px 8px;
+  margin: 2px 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.add-child-btn:hover {
+  color: var(--accent, #007aff);
+  border-color: var(--accent, #007aff);
+  background: rgba(0, 122, 255, 0.04);
 }
 </style>
