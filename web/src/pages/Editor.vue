@@ -106,16 +106,17 @@
           @update:include-settings="includeSettings = $event"
           @jump="jumpToSetting"
         />
+      </div>
 
-        <!-- 记忆面板（右下角浮动） -->
-        <div class="memory-fab" :class="{ open: memoryOpen }">
-          <button class="memory-fab-btn" @click="memoryOpen = !memoryOpen" :title="memoryOpen ? '收起记忆' : '记忆'">
-            <span v-if="!memoryOpen">🧠</span>
-            <span v-else>✕</span>
-          </button>
-          <div class="memory-fab-panel" v-show="memoryOpen">
-            <MemoryPanel :project-id="String(projectId)" />
-          </div>
+      <!-- 图谱浮层（编辑器内右下角） -->
+      <div class="graph-fab">
+        <button class="graph-fab-btn" @click="graphOpen = !graphOpen" :title="graphOpen ? '收起图谱' : '关系图谱'">
+          <span v-if="!graphOpen">🔗</span>
+          <span v-else>✕</span>
+        </button>
+        <div class="graph-fab-panel" :class="{ maximized: graphMaximized }" v-show="graphOpen" @click.stop>
+          <button class="graph-resize-btn" @click="graphMaximized = !graphMaximized">{{ graphMaximized ? '⊟' : '⊞' }}</button>
+          <RelationshipGraph :project-id="String(projectId)" />
         </div>
       </div>
 
@@ -223,6 +224,15 @@
     <div class="status-bar">
       <span class="status-item">{{ wordCount }} 字</span>
       <span class="status-item">{{ saveStatus }}</span>
+      <div class="memory-trigger" :class="{ open: memoryOpen }">
+        <button class="memory-btn" @click="memoryOpen = !memoryOpen" :title="memoryOpen ? '收起记忆' : '记忆'">
+          <span v-if="!memoryOpen">🧠</span>
+          <span v-else>✕</span>
+        </button>
+        <div class="memory-popup" v-show="memoryOpen" @click.stop>
+          <MemoryPanel :project-id="String(projectId)" />
+        </div>
+      </div>
     </div>
 
     <!-- 新建文档弹窗 -->
@@ -276,6 +286,7 @@ import EditorHeader from '../components/editor/EditorHeader.vue'
 import EditorSidebar from '../components/editor/EditorSidebar.vue'
 import AIContextPanel from '../components/editor/AIContextPanel.vue'
 import MemoryPanel from '../components/editor/MemoryPanel.vue'
+import RelationshipGraph from '../components/editor/RelationshipGraph.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
 import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
 import VersionHistoryModal from '../components/editor/VersionHistoryModal.vue'
@@ -372,6 +383,8 @@ const sideTab = ref<'chapter' | 'setting'>('chapter')
 const CHAPTER_TYPES = ['volume', 'chapter']
 const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'note']
 const memoryOpen = ref(false)
+const graphOpen = ref(false)
+const graphMaximized = ref(false)
 
 // 顶部工作模式：计划 / 写作 / 审核
 type EditorMode = 'plan' | 'write' | 'review'

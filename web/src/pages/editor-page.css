@@ -316,9 +316,7 @@
 .editor-page.focus-mode :deep(.context-panel) {
   display: none;
 }
-.editor-page.focus-mode .memory-fab {
-  display: none;
-}
+
 /* 专注模式下右上角显示一个退出提示 */
 .focus-exit-hint {
   display: none;
@@ -831,48 +829,75 @@
   color: var(--text-secondary);
 }
 
-/* 记忆浮动面板（右下角） */
-.memory-fab {
+/* 记忆触发器（状态栏右侧） */
+.memory-trigger {
+  margin-left: auto;
+  position: relative;
+}
+.memory-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.memory-btn:hover { background: var(--bg-hover, rgba(0,0,0,0.06)); }
+.memory-popup {
   position: absolute;
-  bottom: 16px;
-  right: 304px; /* ponytail: left of AIContextPanel(280+12+12), collapses to 48px when panel closed */
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 340px;
+  height: 420px;
+  background: var(--bg-secondary, #fff);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 400;
+}
+
+/* 图谱浮层（编辑器内右下角） */
+.graph-fab {
+  position: absolute;
+  bottom: 40px; /* above status-bar */
+  right: 48px;
   z-index: 350;
   display: flex;
   flex-direction: row-reverse;
   align-items: flex-end;
-  gap: 0;
 }
-.memory-fab-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
+.graph-fab-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%; border: none;
+  background: var(--bg-secondary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.graph-fab-btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+.graph-fab-panel {
+  margin-right: 8px;
+  width: 700px; height: 500px;
   background: var(--bg-secondary, #fff);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05);
-  cursor: pointer;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: transform 0.15s;
-  z-index: 2;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06);
+  overflow: hidden; display: flex; flex-direction: column;
+  transition: width 0.2s, height 0.2s;
 }
-.memory-fab-btn:hover { transform: scale(1.08); }
-.memory-fab-panel {
-  width: 340px;
-  height: 420px;
-  margin-right: -6px;
-  background: var(--bg-secondary, #fff);
-  border-radius: 14px 0 0 14px;
-  box-shadow: -4px 0 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+.graph-fab-panel.maximized {
+  width: calc(100vw - 320px); /* minus sidebar */
+  height: calc(100vh - 130px);
 }
-/* ponytail: when AIContextPanel collapsed(24px), shift fab right */
-.memory-fab {
-  right: 304px;
+.graph-resize-btn {
+  position: absolute; top: 6px; right: 8px; z-index: 10;
+  width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: var(--bg-tertiary, #f0f0f0); font-size: 14px; cursor: pointer;
 }
 
 /* Modal */

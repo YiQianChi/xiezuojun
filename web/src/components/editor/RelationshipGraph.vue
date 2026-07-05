@@ -4,7 +4,6 @@
       <button class="g-btn" @click="addNode">+ 角色</button>
       <button class="g-btn" @click="addLink">+ 关系</button>
       <button class="g-btn" @click="addType">+ 类型</button>
-      <button class="g-btn" @click="importJson">导入</button>
       <button class="g-btn" @click="exportJson">导出</button>
     </div>
 
@@ -29,10 +28,10 @@
       </div>
     </div>
 
-    <!-- 添加/编辑角色弹窗 -->
+    <!-- 添加角色弹窗 -->
     <div v-if="showAddNode" class="modal-overlay" @click="showAddNode = false">
       <div class="modal" @click.stop>
-        <h3>{{ editMode ? '编辑角色' : '添加角色' }}</h3>
+        <h3>添加角色</h3>
         <label>角色名</label>
         <input v-model="newNodeName" placeholder="如：张三" @keyup.enter="confirmAddNode">
         <label>身份</label>
@@ -49,9 +48,8 @@
           ></button>
         </div>
         <div class="modal-actions">
-          <button v-if="editMode" class="btn-del" @click="deleteNode">删除</button>
           <button class="btn-cancel" @click="showAddNode = false">取消</button>
-          <button class="btn-ok" @click="confirmAddNode">{{ editMode ? '保存' : '确定' }}</button>
+          <button class="btn-ok" @click="confirmAddNode">确定</button>
         </div>
       </div>
     </div>
@@ -90,12 +88,6 @@
       </div>
     </div>
 
-    <!-- 关系右键菜单 -->
-    <div v-if="showLinkMenu" class="ctx-menu" :style="{ left: ctxPos.x + 'px', top: ctxPos.y + 'px' }" @click.stop>
-      <button class="ctx-item" @click="editLinkFromMenu">编辑</button>
-      <button class="ctx-item ctx-danger" @click="deleteLinkFromMenu">删除</button>
-    </div>
-
     <!-- 添加类型弹窗 -->
     <div v-if="showAddType" class="modal-overlay" @click="showAddType = false">
       <div class="modal" @click.stop>
@@ -125,8 +117,6 @@
         </div>
       </div>
     </div>
-
-    <input ref="fileInput" type="file" accept=".json" style="display:none" @change="onFileSelected">
   </div>
 </template>
 
@@ -156,7 +146,6 @@ const relTypes = ref<RType[]>([
 
 const svgContainer = ref<HTMLElement | null>(null)
 const d3 = shallowRef<any>(null)
-const fileInput = ref<HTMLElement | null>(null)
 let sim: any = null
 let svgSel: any = null
 let gEl: any = null
@@ -184,11 +173,6 @@ const linkSearch2 = ref('')
 const typeFilter = ref('')
 const selected = ref<{ type: string; data: any } | null>(null)
 const connectedNames = ref<Set<string>>(new Set())
-const editMode = ref(false)
-const editingNode = ref<RNode | null>(null)
-const showLinkMenu = ref(false)
-const ctxPos = ref({ x: 0, y: 0 })
-let ctxLink: RLink | null = null
 
 const filteredNodes1 = computed(() => {
   const q = linkSearch1.value
@@ -280,7 +264,6 @@ function render() {
   const linkEnter = linkSel.enter().append('g')
   linkEnter.append('line')
   linkEnter.append('text').attr('class', 'link-label')
-  linkEnter.on('contextmenu', (e: any, d: any) => openLinkMenu(e, d))
 
   linkSel.exit().remove()
 
@@ -326,14 +309,6 @@ function render() {
       .on('drag', (e: any, d: any) => { d.fx = e.x; d.fy = e.y })
       .on('end', (e: any, d: any) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null }))
     .on('click', (e: any, d: any) => { e.stopPropagation(); selectNode(d) })
-    .on('dblclick', (e: any, d: any) => { e.stopPropagation(); editNode(d) })
-    .on('contextmenu', (e: any, d: any) => {
-      e.preventDefault(); e.stopPropagation()
-      ctxPos.value = { x: e.clientX, y: e.clientY }
-      editingNode.value = d; editMode.value = true
-      showAddNode.value = true
-      newNodeName.value = d.name; newNodeRole.value = d.role; newNodeColor.value = d.color
-    })
 
   nodeEnter.append('circle').attr('r', 10)
   nodeEnter.append('text').attr('class', 'node-name')
@@ -374,7 +349,7 @@ function render() {
   sim.alpha(1).restart()
 
   // click blank to deselect
-  svgSel.on('click', () => { selected.value = null; connectedNames.value = new Set(); showLinkMenu.value = false; render() })
+  svgSel.on('click', () => { selected.value = null; connectedNames.value = new Set(); render() })
 }
 
 function ticked() {
@@ -404,45 +379,14 @@ function toggleTypeFilter(key: string) {
   render()
 }
 
-// --- Add/edit node ---
-function addNode() { showAddNode.value = true; editMode.value = false; newNodeName.value = ''; newNodeRole.value = ''; newNodeColor.value = COLORS[nodes.value.length % COLORS.length] }
-function editNode(d: any) {
-  showAddNode.value = true; editMode.value = true; editingNode.value = d
-  newNodeName.value = d.name; newNodeRole.value = d.role; newNodeColor.value = d.color
-}
+// --- Add node ---
+function addNode() { showAddNode.value = true; newNodeName.value = ''; newNodeRole.value = ''; newNodeColor.value = COLORS[nodes.value.length % COLORS.length] }
 function confirmAddNode() {
   const name = newNodeName.value.trim()
   if (!name) { toast.error('请输入角色名'); return }
-  if (editMode.value && editingNode.value) {
-    const oldName = editingNode.value.name
-    const n = nodes.value.find(n => n.name === oldName)
-    if (n) { n.name = name; n.role = newNodeRole.value || '角色'; n.color = newNodeColor.value }
-    if (oldName !== name) {
-      // update links referencing old name
-      links.value.forEach(l => {
-        if (l.source === oldName) l.source = name
-        if (l.target === oldName) l.target = name
-        const src = linkName(l.source); if (src === oldName) l.source = name
-        const tgt = linkName(l.target); if (tgt === oldName) l.target = name
-      })
-    }
-    editingNode.value = null
-  } else {
-    if (nodes.value.some(n => n.name === name)) { toast.error('角色已存在'); return }
-    nodes.value.push({ name, role: newNodeRole.value || '角色', color: newNodeColor.value })
-  }
+  if (nodes.value.some(n => n.name === name)) { toast.error('角色已存在'); return }
+  nodes.value.push({ name, role: newNodeRole.value || '角色', color: newNodeColor.value })
   showAddNode.value = false
-  render()
-  scheduleSave()
-}
-function deleteNode() {
-  if (!editingNode.value) return
-  const name = editingNode.value.name
-  nodes.value = nodes.value.filter(n => n.name !== name)
-  links.value = links.value.filter(l => linkName(l.source) !== name && linkName(l.target) !== name)
-  editingNode.value = null
-  showAddNode.value = false
-  selected.value = null
   render()
   scheduleSave()
 }
@@ -488,7 +432,7 @@ function deleteType(key: string) {
 }
 
 function exportJson() {
-  const data = { nodes: nodes.value, links: links.value.map(l => ({ source: linkName(l.source), target: linkName(l.target), type: l.type, label: l.label })), types: relTypes.value }
+  const data = { nodes: nodes.value, links: links.value, types: relTypes.value }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -496,59 +440,6 @@ function exportJson() {
   a.download = 'relationships.json'
   a.click()
   URL.revokeObjectURL(url)
-}
-
-function importJson() { fileInput.value?.click() }
-function onFileSelected(e: Event) {
-  const f = (e.target as HTMLInputElement).files?.[0]
-  if (!f) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    try {
-      const d = JSON.parse(reader.result as string)
-      if (Array.isArray(d.nodes)) nodes.value = d.nodes
-      if (Array.isArray(d.links)) links.value = d.links
-      if (Array.isArray(d.types) && d.types.length) relTypes.value = d.types
-      render()
-      scheduleSave()
-      toast.success('导入成功')
-    } catch { toast.error('JSON 格式错误') }
-  }
-  reader.readAsText(f)
-  ;(e.target as HTMLInputElement).value = '' // ponytail: reset so same file can re-trigger
-}
-
-// --- Link context menu ---
-function openLinkMenu(e: MouseEvent, linkData: any) {
-  e.preventDefault()
-  e.stopPropagation()
-  ctxLink = linkData
-  ctxPos.value = { x: e.clientX, y: e.clientY }
-  showLinkMenu.value = true
-}
-function deleteLinkFromMenu() {
-  if (!ctxLink) return
-  const s = linkName(ctxLink.source), t = linkName(ctxLink.target)
-  links.value = links.value.filter(l => !(linkName(l.source) === s && linkName(l.target) === t))
-  showLinkMenu.value = false
-  ctxLink = null
-  render()
-  scheduleSave()
-}
-function editLinkFromMenu() {
-  if (!ctxLink) return
-  // fill add-link form with existing values for editing
-  showAddLink.value = true
-  newLinkSource.value = linkName(ctxLink.source)
-  newLinkTarget.value = linkName(ctxLink.target)
-  newLinkType.value = ctxLink.type
-  newLinkLabel.value = ctxLink.label
-  // remove old link; confirmAddLink will add the new one
-  const s = linkName(ctxLink.source), t = linkName(ctxLink.target)
-  links.value = links.value.filter(l => !(linkName(l.source) === s && linkName(l.target) === t))
-  showLinkMenu.value = false
-  ctxLink = null
-  render()
 }
 
 // --- Sync characters from API ---
@@ -786,28 +677,4 @@ onBeforeUnmount(() => {
 }
 .btn-cancel { background: rgba(255,255,255,0.1); color: #ccc; }
 .btn-ok { background: #4cc9f0; color: #111; font-weight: 600; }
-.btn-del { background: #ff3b30; color: #fff; font-weight: 600; }
-.ctx-menu {
-  position: fixed;
-  z-index: 600;
-  background: #252545;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  padding: 4px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-}
-.ctx-item {
-  display: block;
-  width: 80px;
-  padding: 6px 12px;
-  font-size: 12px;
-  border: none;
-  background: transparent;
-  color: #eee;
-  cursor: pointer;
-  border-radius: 4px;
-  text-align: left;
-}
-.ctx-item:hover { background: rgba(255,255,255,0.1); }
-.ctx-danger { color: #ff3b30; }
 </style>

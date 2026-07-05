@@ -4,7 +4,6 @@
       <button class="mem-tab" :class="{ active: memTab === 'characters' }" @click="memTab = 'characters'">角色</button>
       <button class="mem-tab" :class="{ active: memTab === 'summaries' }" @click="memTab = 'summaries'">摘要</button>
       <button class="mem-tab" :class="{ active: memTab === 'files' }" @click="memTab = 'files'">背景</button>
-      <button class="mem-tab" :class="{ active: memTab === 'graph' }" @click="memTab = 'graph'">图谱</button>
     </div>
 
     <div class="mem-body">
@@ -91,10 +90,6 @@
         </div>
       </template>
 
-      <!-- 关系图谱 -->
-      <template v-if="memTab === 'graph'">
-        <RelationshipGraph :project-id="projectId" />
-      </template>
     </div>
   </div>
 </template>
@@ -103,11 +98,10 @@
 import { ref, watch } from 'vue'
 import { memoryApi } from '../../core/api'
 import { toast } from '../../composables/useToast'
-import RelationshipGraph from './RelationshipGraph.vue'
 
 const props = defineProps<{ projectId: string }>()
 
-const memTab = ref<'characters' | 'summaries' | 'files' | 'graph'>('characters')
+const memTab = ref<'characters' | 'summaries' | 'files'>('characters')
 
 // 角色卡
 const loadingChars = ref(false)
