@@ -44,6 +44,9 @@ func (h *Handler) SearchDocuments(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return
 	}
+	if !h.requireProjectOwner(c, uint(projectID)) {
+		return
+	}
 
 	query := strings.TrimSpace(c.Query("q"))
 	if !validSearchQuery(query) {

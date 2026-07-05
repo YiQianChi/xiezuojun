@@ -90,6 +90,9 @@ func (h *Handler) ListDocumentVersions(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
+	if !h.requireProjectOwner(c, doc.ProjectID) {
+		return
+	}
 	h.listDocumentVersionsForDoc(c, *doc)
 }
 
@@ -102,6 +105,15 @@ func (h *Handler) GetDocumentVersion(c *gin.Context) {
 	var version model.DocumentVersion
 	if err := h.db.First(&version, uint(versionID)).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	// 校验文档所属项目归属
+	doc, err := h.findDoc(strconv.Itoa(int(version.DocumentID)))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "document not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, doc.ProjectID) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": version})
@@ -124,6 +136,9 @@ func (h *Handler) RestoreDocumentVersion(c *gin.Context) {
 	var doc model.Document
 	if err := h.db.First(&doc, version.DocumentID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "document not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, doc.ProjectID) {
 		return
 	}
 	if doc.Status != 1 {

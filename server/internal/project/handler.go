@@ -184,6 +184,9 @@ func (h *Handler) CreateProject(c *gin.Context) {
 
 func (h *Handler) GetProject(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+	if !h.requireProjectOwner(c, uint(id)) {
+		return
+	}
 	var proj model.Project
 	if err := h.db.First(&proj, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
@@ -194,6 +197,9 @@ func (h *Handler) GetProject(c *gin.Context) {
 
 func (h *Handler) UpdateProject(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+	if !h.requireProjectOwner(c, uint(id)) {
+		return
+	}
 	var req struct {
 		Name     string `json:"name"`
 		CoverURL string `json:"cover_url"`
@@ -215,6 +221,9 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 
 func (h *Handler) DeleteProject(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+	if !h.requireProjectOwner(c, uint(id)) {
+		return
+	}
 	if err := h.db.Model(&model.Project{}).Where("id = ?", id).Update("status", 0).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -224,6 +233,9 @@ func (h *Handler) DeleteProject(c *gin.Context) {
 
 func (h *Handler) ExportProject(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+	if !h.requireProjectOwner(c, uint(id)) {
+		return
+	}
 	var proj model.Project
 	if err := h.db.First(&proj, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})

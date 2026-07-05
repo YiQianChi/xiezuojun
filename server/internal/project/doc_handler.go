@@ -16,6 +16,9 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "project_id required"})
 		return
 	}
+	if !h.requireProjectOwner(c, uint(projectID)) {
+		return
+	}
 
 	branchID, _ := strconv.Atoi(c.Query("branch_id"))
 	if branchID == 0 {
@@ -39,6 +42,9 @@ func (h *Handler) GetDocument(c *gin.Context) {
 	doc, err := h.findDoc(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, doc.ProjectID) {
 		return
 	}
 
@@ -65,6 +71,9 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 	doc, err := h.findDoc(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, doc.ProjectID) {
 		return
 	}
 

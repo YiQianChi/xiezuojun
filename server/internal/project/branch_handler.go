@@ -28,6 +28,9 @@ func (h *Handler) ListStoryBranches(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "project id required"})
 		return
 	}
+	if !h.requireProjectOwner(c, uint(projectID)) {
+		return
+	}
 	h.ensureMainBranch(uint(projectID))
 	var branches []model.StoryBranch
 	if err := h.db.Where("project_id = ? AND status = 1", projectID).Order("id ASC").Find(&branches).Error; err != nil {
@@ -42,6 +45,9 @@ func (h *Handler) CreateStoryBranch(c *gin.Context) {
 	projectID := uint(projectID64)
 	if projectID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "project id required"})
+		return
+	}
+	if !h.requireProjectOwner(c, projectID) {
 		return
 	}
 	var req struct {
@@ -103,6 +109,15 @@ func (h *Handler) UpdateStoryBranch(c *gin.Context) {
 	branchID, _ := strconv.Atoi(c.Param("branch_id"))
 	if branchID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "branch id required"})
+		return
+	}
+	// 校验分支所属项目归属
+	var branch model.StoryBranch
+	if err := h.db.First(&branch, branchID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "branch not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, branch.ProjectID) {
 		return
 	}
 	var req struct {

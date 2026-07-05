@@ -26,6 +26,10 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		return
 	}
 
+	if !h.requireProjectOwner(c, req.ProjectID) {
+		return
+	}
+
 	doc := model.Document{
 		ProjectID: req.ProjectID, BranchID: req.BranchID, ParentID: req.ParentID,
 		Type: req.Type, Title: req.Title, SortOrder: req.SortOrder,
@@ -76,6 +80,9 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	doc, err := h.findDoc(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, doc.ProjectID) {
 		return
 	}
 

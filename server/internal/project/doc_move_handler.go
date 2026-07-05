@@ -26,6 +26,9 @@ func (h *Handler) MoveDocument(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
+	if !h.requireProjectOwner(c, doc.ProjectID) {
+		return
+	}
 
 	// 保存旧 parentID
 	oldParentID := doc.ParentID

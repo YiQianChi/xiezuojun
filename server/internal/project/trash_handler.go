@@ -27,6 +27,9 @@ func (h *Handler) RestoreDocument(c *gin.Context) {
 
 	// ponytail: project_id 有值但 doc_id=0 → 恢复整个 project（软删恢复）
 	if req.ProjectID > 0 && req.DocID == 0 {
+		if !h.requireProjectOwner(c, req.ProjectID) {
+			return
+		}
 		if err := h.db.Model(&model.Project{}).Where("id = ?", req.ProjectID).Update("status", 1).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -37,6 +40,10 @@ func (h *Handler) RestoreDocument(c *gin.Context) {
 
 	if req.DocID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "doc_id required"})
+		return
+	}
+
+	if !h.requireProjectOwner(c, req.ProjectID) {
 		return
 	}
 
@@ -80,6 +87,9 @@ func (h *Handler) EmptyTrash(c *gin.Context) {
 	userID := getUserID(c)
 	projectID, _ := strconv.Atoi(c.Query("project_id"))
 	if projectID > 0 {
+		if !h.requireProjectOwner(c, uint(projectID)) {
+			return
+		}
 		h.emptyProjectTrash(c, userID, uint(projectID))
 		return
 	}

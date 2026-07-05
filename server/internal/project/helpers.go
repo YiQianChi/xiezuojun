@@ -2,6 +2,7 @@ package project
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -18,6 +19,32 @@ func getUserID(c *gin.Context) string {
 		return ""
 	}
 	return val.(string)
+}
+
+// requireProjectOwner 校验当前登录用户是否拥有指定项目，否则返回403。
+func (h *Handler) requireProjectOwner(c *gin.Context, projectID uint) bool {
+	userID := getUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return false
+	}
+	var count int64
+	h.db.Model(&model.Project{}).Where("id = ? AND user_id = ? AND status = 1", projectID, userID).Count(&count)
+	if count == 0 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not found"})
+		return false
+	}
+	return true
+}
+
+// requireDocOwner 校验文档所属项目属于当前用户，否则返回403。
+func (h *Handler) requireDocOwner(c *gin.Context, docID uint) bool {
+	doc, err := h.findDoc(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return false
+	}
+	return h.requireProjectOwner(c, doc.ProjectID)
 }
 
 // getProjectName 通过 MySQL 查项目名
