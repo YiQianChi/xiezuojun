@@ -672,11 +672,12 @@
 /* AI 底部固定栏 — 苹果风毛玻璃 */
 .ai-bottom-bar {
   position: absolute;
-  bottom: 16px;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 8px 12px;
   border-radius: 14px;
@@ -698,8 +699,8 @@
 }
 
 .ai-direction-input {
-  flex: 1;
   min-width: 0;
+  width: 240px;
   border: none;
   border-radius: 10px;
   padding: 7px 12px;
@@ -707,11 +708,11 @@
   background: transparent;
   color: var(--text-primary, #1d1d1f);
   outline: none;
+  text-align: center;
 }
-.ai-direction-input::placeholder { color: rgba(60, 60, 67, 0.3); }
+.ai-direction-input::placeholder { color: rgba(60, 60, 67, 0.3); text-align: center; }
 
 .ai-input-wrap {
-  flex: 1;
   display: flex;
   align-items: center;
   border-radius: 10px;

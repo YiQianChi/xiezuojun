@@ -142,6 +142,9 @@
       <div v-if="aiPhase !== 'idle'" class="ai-bottom-bar" :class="'phase-' + aiPhase">
         <!-- 方向输入 -->
         <template v-if="aiPhase === 'inputting'">
+          <button class="ai-icon-btn" @click="cancelInputting" aria-label="取消">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
           <div class="ai-input-wrap">
             <input
               ref="aiDirectionInputRef"
@@ -152,12 +155,9 @@
               @keydown.enter.prevent="executeAIAction"
               @keydown.escape.prevent="cancelInputting"
             />
-            <button class="ai-icon-btn primary" @click="executeAIAction" aria-label="生成">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor"/></svg>
-            </button>
           </div>
-          <button class="ai-icon-btn" @click="cancelInputting" aria-label="取消">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          <button class="ai-icon-btn primary" @click="executeAIAction" aria-label="生成">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor"/></svg>
           </button>
         </template>
         <!-- 生成中 -->
