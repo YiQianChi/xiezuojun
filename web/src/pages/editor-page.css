@@ -882,7 +882,9 @@
   display: flex; align-items: center; justify-content: center;
 }
 .graph-fab-btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+.graph-fab:has(.graph-fab-panel.maximized) .graph-fab-btn { display: none; }
 .graph-fab-panel {
+  position: relative;
   margin-right: 8px;
   width: 700px; height: 500px;
   background: var(--bg-secondary, #fff);

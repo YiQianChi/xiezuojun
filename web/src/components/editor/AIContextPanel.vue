@@ -12,56 +12,56 @@
     <div class="context-panel-inner" v-show="open">
       <div class="context-header">
         <h4>AI 参考设定</h4>
-        <label class="toggle-inline" title="关掉后 AI 只看前文，不参考人物/大纲/世界观">
-          <input
-            type="checkbox"
-            :checked="includeSettings"
-            @change="$emit('update:includeSettings', ($event.target as HTMLInputElement).checked)"
-          />
-          <span>启用</span>
-        </label>
       </div>
 
-      <div class="context-body" v-if="!includeSettings">
-        <div class="context-empty">
-          <div class="ctx-icon">🚫</div>
-          <div>AI 不参考项目设定<br><span class="hint">开启后，续写/改写会自动读取大纲/人物/世界观</span></div>
+      <div class="context-body">
+        <div v-if="loading" class="context-empty">
+          <div class="ctx-icon">⏳</div>
+          <div>加载中...</div>
         </div>
-      </div>
 
-      <div class="context-body" v-else-if="usedSettings.length === 0">
-        <div class="context-empty">
+        <div v-else-if="settingDocs.length === 0" class="context-empty">
           <div class="ctx-icon">💡</div>
-          <div>还没生成过<br><span class="hint">下一次 AI 续写/改写时，这里会显示实际参考的设定</span></div>
+          <div>暂无设定文档<br><span class="hint">在「设定」tab 中创建大纲/人物/世界观后，这里可以选择哪些参与 AI</span></div>
         </div>
-      </div>
 
-      <div class="context-body" v-else>
-        <div class="context-stats">
-          本次参考 {{ usedCount }} / {{ usedSettings.length }} 张 · {{ totalTokens }} tokens
-        </div>
-        <div
-          v-for="s in usedSettings"
-          :key="s.id"
-          class="context-chip"
-          :class="[s.type, { unused: !s.used }]"
-          @click="$emit('jump', s.id)"
-          :title="s.used ? '点击跳转到该设定' : '因空间不足未参与，点击跳转查看'"
-        >
-          <div class="chip-head">
-            <span class="chip-type">{{ typeLabel(s.type) }}</span>
-            <span class="chip-title">{{ s.title }}</span>
-            <span v-if="s.used" class="chip-tokens">{{ s.tokens }}t</span>
-            <span v-else class="chip-unused">未用</span>
+        <template v-else>
+          <!-- 按类型分组 -->
+          <div v-for="group in groupedDocs" :key="group.type" class="setting-group">
+            <div class="group-header">
+              <span class="group-label">{{ group.label }}</span>
+              <span class="group-count">{{ group.enabled }}/{{ group.docs.length }}</span>
+            </div>
+            <div
+              v-for="doc in group.docs"
+              :key="doc.id"
+              class="setting-row"
+              :class="{ disabled: !doc.ai_include }"
+              @click="toggleDoc(doc)"
+            >
+              <div class="row-toggle" :class="{ on: doc.ai_include }">
+                <span class="toggle-dot"></span>
+              </div>
+              <span class="row-title">{{ doc.title }}</span>
+              <span v-if="doc.used !== undefined" class="row-tokens" :class="{ unused: !doc.used }">
+                {{ doc.used ? doc.tokens + 't' : '未用' }}
+              </span>
+            </div>
           </div>
-        </div>
+
+          <div v-if="usedSettings.length > 0" class="context-stats">
+            本次参考 {{ usedCount }}/{{ usedSettings.length }} 张 · {{ totalTokens }} tokens
+          </div>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { documentApi } from '../../core/api'
+import { toast } from '../../composables/useToast'
 
 export interface UsedSetting {
   id: number
@@ -71,24 +71,104 @@ export interface UsedSetting {
   tokens: number
 }
 
+interface SettingDocItem {
+  id: number
+  title: string
+  type: string
+  ai_include: boolean | null
+  used?: boolean
+  tokens?: number
+}
+
 const props = defineProps<{
   open: boolean
-  includeSettings: boolean
+  projectId: number
   usedSettings: UsedSetting[]
 }>()
 
 defineEmits<{
   'update:open': [v: boolean]
-  'update:includeSettings': [v: boolean]
   jump: [docId: number]
 }>()
+
+const loading = ref(false)
+const settingDocs = ref<SettingDocItem[]>([])
+
+const GROUP_LABELS: Record<string, string> = {
+  outline: '大纲',
+  characters: '人物',
+  worldbuilding: '世界观',
+}
+
+const groupedDocs = computed(() => {
+  const groups: { type: string; label: string; docs: SettingDocItem[]; enabled: number }[] = []
+  for (const type of ['outline', 'characters', 'worldbuilding']) {
+    const docs = settingDocs.value.filter(d => d.type === type)
+    if (docs.length === 0) continue
+    groups.push({
+      type,
+      label: GROUP_LABELS[type] || type,
+      docs,
+      enabled: docs.filter(d => d.ai_include !== false).length,
+    })
+  }
+  // 其他类型
+  const others = settingDocs.value.filter(d => !['outline', 'characters', 'worldbuilding'].includes(d.type))
+  if (others.length > 0) {
+    groups.push({ type: 'other', label: '其他', docs: others, enabled: others.filter(d => d.ai_include !== false).length })
+  }
+  return groups
+})
 
 const usedCount = computed(() => props.usedSettings.filter(s => s.used).length)
 const totalTokens = computed(() => props.usedSettings.reduce((sum, s) => sum + (s.tokens || 0), 0))
 
-function typeLabel(t: string): string {
-  return { outline: '大纲', characters: '人物', worldbuilding: '世界观' }[t] || t
+// 合并 usedSettings 到 settingDocs 显示
+watch(() => props.usedSettings, (used) => {
+  if (used.length === 0) return
+  const map = new Map(used.map(s => [s.id, s]))
+  settingDocs.value = settingDocs.value.map(d => {
+    const u = map.get(d.id)
+    return u ? { ...d, used: u.used, tokens: u.tokens } : d
+  })
+}, { deep: true })
+
+async function loadSettings() {
+  if (!props.projectId) return
+  loading.value = true
+  try {
+    const res = await documentApi.list(String(props.projectId))
+    const data = res.data?.data
+    const allDocs = Array.isArray(data) ? data : []
+    settingDocs.value = allDocs
+      .filter((d: any) => ['outline', 'characters', 'worldbuilding', 'note'].includes(d.type))
+      .map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        type: d.type,
+        ai_include: d.ai_include,
+      }))
+  } catch {
+    toast.error('加载设定列表失败')
+  } finally {
+    loading.value = false
+  }
 }
+
+async function toggleDoc(doc: SettingDocItem) {
+  const newVal = doc.ai_include === false ? true : false
+  doc.ai_include = newVal
+  try {
+    await documentApi.update(doc.id, { ai_include: newVal })
+  } catch {
+    doc.ai_include = !newVal
+    toast.error('更新失败')
+  }
+}
+
+watch(() => props.open, (v) => {
+  if (v && settingDocs.value.length === 0) loadSettings()
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -155,20 +235,6 @@ function typeLabel(t: string): string {
   letter-spacing: 0.5px;
   font-weight: 600;
 }
-.toggle-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--text-secondary, #86868b);
-  cursor: pointer;
-  user-select: none;
-}
-.toggle-inline input[type="checkbox"] {
-  accent-color: var(--accent, #007aff);
-  width: 12px; height: 12px;
-  margin: 0;
-}
 
 .context-body {
   flex: 1;
@@ -185,65 +251,85 @@ function typeLabel(t: string): string {
 .context-empty .ctx-icon { font-size: 24px; margin-bottom: 8px; opacity: 0.6; }
 .context-empty .hint { color: var(--text-tertiary, #aeaeb2); opacity: 0.8; font-size: 11px; }
 
-.context-stats {
-  font-size: 11px;
-  color: var(--text-tertiary, #aeaeb2);
-  padding: 4px 4px 8px;
-  border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
-  margin-bottom: 6px;
-}
-
-.context-chip {
-  background: rgba(0, 122, 255, 0.05);
-  border-radius: 8px;
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-  border-left: 3px solid transparent;
-}
-.context-chip:hover { background: rgba(0, 122, 255, 0.1); }
-.context-chip.outline { border-left-color: #ff9500; }
-.context-chip.characters { border-left-color: #af52de; }
-.context-chip.worldbuilding { border-left-color: #34c759; }
-.context-chip.unused { opacity: 0.5; background: rgba(0, 0, 0, 0.03); }
-
-.chip-head {
+.setting-group { margin-bottom: 12px; }
+.group-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  justify-content: space-between;
+  padding: 4px 4px 6px;
 }
-.chip-type {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.06);
+.group-label {
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-secondary, #86868b);
-  flex-shrink: 0;
 }
-.context-chip.outline .chip-type { background: rgba(255, 149, 0, 0.15); color: #c96f00; }
-.context-chip.characters .chip-type { background: rgba(175, 82, 222, 0.15); color: #8a3fb0; }
-.context-chip.worldbuilding .chip-type { background: rgba(52, 199, 89, 0.15); color: #268a3f; }
+.group-count {
+  font-size: 10px;
+  color: var(--text-tertiary, #aeaeb2);
+  font-variant-numeric: tabular-nums;
+}
 
-.chip-title {
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+  margin-bottom: 2px;
+}
+.setting-row:hover { background: rgba(0, 0, 0, 0.04); }
+.setting-row.disabled { opacity: 0.5; }
+
+.row-toggle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-tertiary, #c7c7cc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.row-toggle.on {
+  border-color: var(--accent, #007aff);
+  background: var(--accent, #007aff);
+}
+.toggle-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.row-toggle.on .toggle-dot { opacity: 1; }
+
+.row-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
   color: var(--text-primary, #1d1d1f);
-  font-weight: 500;
 }
-.chip-tokens {
+
+.row-tokens {
   font-size: 10px;
   color: var(--text-tertiary, #aeaeb2);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
-.chip-unused {
-  font-size: 10px;
+.row-tokens.unused { color: var(--text-tertiary, #c7c7cc); }
+
+.context-stats {
+  font-size: 11px;
   color: var(--text-tertiary, #aeaeb2);
-  flex-shrink: 0;
+  padding: 8px 4px 4px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.05);
+  margin-top: 4px;
 }
 </style>

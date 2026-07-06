@@ -68,13 +68,12 @@ interface UseAIToolbarOptions {
   editor: Ref<any>
   projectId: number
   activeDocId: Ref<number | null>
-  includeSettings: Ref<boolean>
   usedSettings: Ref<UsedSetting[]>
   saveStatus: Ref<string>
 }
 
 export function useAIToolbar(opts: UseAIToolbarOptions) {
-  const { editor, projectId, activeDocId, includeSettings, usedSettings, saveStatus } = opts
+  const { editor, projectId, activeDocId, usedSettings, saveStatus } = opts
 
   const aiLoading = ref(false)
 
@@ -279,7 +278,6 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
           document_id: activeDocId.value ? String(activeDocId.value) : undefined,
           mode: action,
           content: buildAIPrompt(action, selectedText, aiDirection.value),
-          include_settings: includeSettings.value,
         },
         {
           onSettings: (settings) => {

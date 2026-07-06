@@ -182,7 +182,7 @@ export const documentApi = {
   get(id: string | number) {
     return api.get(`/documents/${id}`)
   },
-  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string }) {
+  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string; ai_include?: boolean }) {
     return api.patch(`/documents/${id}`, data)
   },
   listVersions(id: string | number) {
@@ -204,7 +204,7 @@ export const documentApi = {
 
 // AI 相关
 export const aiApi = {
-  generate(data: { project_id: string; document_id?: string; mode: string; content: string; stream?: boolean; include_settings?: boolean }) {
+  generate(data: { project_id: string; document_id?: string; mode: string; content: string; stream?: boolean }) {
     return api.post('/ai/generate', data, { timeout: 120000 })
   },
 }

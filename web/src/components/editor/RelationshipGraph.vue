@@ -29,6 +29,7 @@
     </div>
 
     <!-- 添加角色弹窗 -->
+    <Teleport to="body">
     <div v-if="showAddNode" class="modal-overlay" @click="showAddNode = false">
       <div class="modal" @click.stop>
         <h3>添加角色</h3>
@@ -53,21 +54,40 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
     <!-- 添加关系弹窗 -->
+    <Teleport to="body">
     <div v-if="showAddLink" class="modal-overlay" @click="showAddLink = false">
-      <div class="modal" @click.stop>
+      <div class="modal modal-link" @click.stop>
         <h3>添加关系</h3>
-        <label>源角色</label>
-        <input v-model="linkSearch1" placeholder="搜索..." class="search-input">
-        <select v-model="newLinkSource" size="5" class="role-select">
-          <option v-for="n in filteredNodes1" :key="n.name" :value="n.name">{{ n.name }} ({{ n.role }})</option>
-        </select>
-        <label>目标角色</label>
-        <input v-model="linkSearch2" placeholder="搜索..." class="search-input">
-        <select v-model="newLinkTarget" size="5" class="role-select">
-          <option v-for="n in filteredNodes2" :key="n.name" :value="n.name">{{ n.name }} ({{ n.role }})</option>
-        </select>
+        <div class="link-roles">
+          <div class="role-col">
+            <div class="role-col-head">源角色<span v-if="newLinkSource" class="picked">{{ newLinkSource }}</span></div>
+            <input v-model="linkSearch1" placeholder="搜索角色..." class="search-input">
+            <div class="role-list">
+              <div v-for="n in filteredNodes1" :key="n.name" class="role-item" :class="{ active: newLinkSource === n.name }" @click="newLinkSource = n.name">
+                <span class="role-dot" :style="{ background: n.color }"></span>
+                <span class="role-name">{{ n.name }}</span>
+                <span class="role-tag">{{ n.role }}</span>
+              </div>
+              <div v-if="!filteredNodes1.length" class="role-empty">无匹配</div>
+            </div>
+          </div>
+          <div class="role-arrow">→</div>
+          <div class="role-col">
+            <div class="role-col-head">目标角色<span v-if="newLinkTarget" class="picked">{{ newLinkTarget }}</span></div>
+            <input v-model="linkSearch2" placeholder="搜索角色..." class="search-input">
+            <div class="role-list">
+              <div v-for="n in filteredNodes2" :key="n.name" class="role-item" :class="{ active: newLinkTarget === n.name }" @click="newLinkTarget = n.name">
+                <span class="role-dot" :style="{ background: n.color }"></span>
+                <span class="role-name">{{ n.name }}</span>
+                <span class="role-tag">{{ n.role }}</span>
+              </div>
+              <div v-if="!filteredNodes2.length" class="role-empty">无匹配</div>
+            </div>
+          </div>
+        </div>
         <label>关系类型</label>
         <div class="type-buttons">
           <button
@@ -80,15 +100,17 @@
           >{{ t.label }}</button>
         </div>
         <label>关系描述</label>
-        <input v-model="newLinkLabel" placeholder="如：两情相悦">
+        <input v-model="newLinkLabel" placeholder="如：两情相悦" class="link-desc-input">
         <div class="modal-actions">
           <button class="btn-cancel" @click="showAddLink = false">取消</button>
           <button class="btn-ok" @click="confirmAddLink">确定</button>
         </div>
       </div>
     </div>
+    </Teleport>
 
     <!-- 添加类型弹窗 -->
+    <Teleport to="body">
     <div v-if="showAddType" class="modal-overlay" @click="showAddType = false">
       <div class="modal" @click.stop>
         <h3>添加关系类型</h3>
@@ -117,6 +139,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -591,11 +614,13 @@ onBeforeUnmount(() => {
   padding: 0 2px;
 }
 
-/* Modal */
+/* Modal — unscoped because Teleport moves these to body */
+</style>
+<style>
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.25);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
@@ -603,41 +628,109 @@ onBeforeUnmount(() => {
   z-index: 500;
 }
 .modal {
-  background: #252545;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 14px;
-  padding: 20px;
+  background: var(--bg-secondary, #fff);
+  border: 1px solid var(--border, #00000014);
+  border-radius: var(--radius-lg, 16px);
+  padding: 24px;
   width: 320px;
   max-height: 80vh;
   overflow-y: auto;
-  color: #eee;
+  color: var(--text-primary, #1d1d1f);
+  box-shadow: var(--shadow-xl, 0 20px 60px #0000001f);
 }
-.modal h3 { margin: 0 0 12px; font-size: 15px; }
-.modal label { display: block; margin: 8px 0 4px; font-size: 11px; color: #aaa; }
+.modal h3 { margin: 0 0 16px; font-size: 17px; font-weight: 700; color: var(--text-primary, #1d1d1f); }
+.modal label { display: block; margin: 10px 0 5px; font-size: 12px; color: var(--text-secondary, #86868b); font-weight: 500; }
+.modal label .picked { float: right; color: var(--accent, #007aff); font-size: 12px; font-weight: 600; }
 .modal input, .modal select {
   width: 100%;
-  padding: 6px 10px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 6px;
-  color: #fff;
-  font-size: 13px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary, #e8e8ed);
+  border: 1px solid var(--border, #00000014);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-primary, #1d1d1f);
+  font-size: 14px;
   outline: none;
+  transition: border-color var(--transition-fast, .15s);
 }
-.modal input:focus, .modal select:focus { border-color: #4cc9f0; }
-.modal select option { color: #333; background: #fff; }
-.search-input { margin-bottom: 4px !important; }
-.role-select {
+.modal input:focus, .modal select:focus { border-color: var(--accent, #007aff); }
+.modal input::placeholder { color: var(--text-tertiary, #aeaeb2); }
+.modal select option { color: var(--text-primary, #1d1d1f); background: var(--bg-secondary, #fff); }
+.modal .search-input { margin-bottom: 4px !important; }
+.modal .role-select {
   width: 100%;
   padding: 4px;
   font-size: 12px;
 }
-.color-grid {
+
+/* Link modal */
+.modal-link { width: 520px; }
+.link-roles {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+  margin-bottom: 12px;
+}
+.role-col {
+  flex: 1;
+  min-width: 0;
+}
+.role-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  font-size: 18px;
+  color: var(--text-tertiary, #aeaeb2);
+  flex-shrink: 0;
+}
+.role-col-head {
+  font-size: 12px;
+  color: var(--text-secondary, #86868b);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 500;
+}
+.role-col-head .picked {
+  color: var(--accent, #007aff);
+  font-weight: 600;
+  font-size: 12px;
+}
+.role-list {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--border, #00000014);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-tertiary, #e8e8ed);
+}
+.role-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.role-item:hover { background: rgba(0,0,0,0.04); }
+.role-item.active { background: var(--accent-light, #007aff14); }
+.role-item.active .role-name { color: var(--accent, #007aff); }
+.role-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.role-name { font-size: 13px; color: var(--text-primary, #1d1d1f); }
+.role-tag { font-size: 10px; color: var(--text-tertiary, #aeaeb2); margin-left: auto; }
+.role-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-tertiary, #aeaeb2); }
+.link-desc-input { margin-bottom: 4px; }
+.modal .color-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
-.color-swatch {
+.modal .color-swatch {
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -645,36 +738,37 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: transform 0.1s;
 }
-.color-swatch.selected { border-color: #fff; transform: scale(1.1); }
-.type-buttons, .dash-buttons {
+.modal .color-swatch.selected { border-color: var(--accent, #007aff); transform: scale(1.1); }
+.modal .type-buttons, .modal .dash-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
-.type-btn {
-  padding: 5px 12px;
-  font-size: 12px;
-  border: 1px solid #555;
-  border-radius: 6px;
-  background: transparent;
-  color: #aaa;
+.modal .type-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  border: 1px solid var(--border, #00000014);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-tertiary, #e8e8ed);
+  color: var(--text-secondary, #86868b);
   cursor: pointer;
   transition: all 0.12s;
 }
-.type-btn.selected { color: #fff; }
-.modal-actions {
+.modal .type-btn.selected { color: #fff; border-color: var(--accent, #007aff); }
+.modal .modal-actions {
   display: flex;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
-.modal-actions button {
+.modal .modal-actions button {
   flex: 1;
-  padding: 8px;
-  border-radius: 8px;
+  padding: 10px;
+  border-radius: var(--radius-sm, 8px);
   border: none;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
-.btn-cancel { background: rgba(255,255,255,0.1); color: #ccc; }
-.btn-ok { background: #4cc9f0; color: #111; font-weight: 600; }
+.modal .btn-cancel { background: var(--bg-tertiary, #e8e8ed); color: var(--text-secondary, #86868b); }
+.modal .btn-ok { background: var(--accent, #007aff); color: #fff; font-weight: 600; }
 </style>

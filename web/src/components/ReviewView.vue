@@ -174,7 +174,6 @@ async function runReview() {
       mode: 'review',
       content: `请审阅以下小说正文，检查人设一致性、情节漏洞、伏笔追踪和节奏问题：\n\n${chapterText}`,
       stream: false,
-      include_settings: true,
     })
 
     const data = res.data?.data || res.data

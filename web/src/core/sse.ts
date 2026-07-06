@@ -21,7 +21,6 @@ export async function streamGenerate(
     document_id?: string
     mode: string
     content: string
-    include_settings?: boolean
   },
   cb: SSECallbacks,
   signal?: AbortSignal,
@@ -31,7 +30,7 @@ export async function streamGenerate(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
     },
     body: JSON.stringify({ ...params, stream: true }),
     signal,

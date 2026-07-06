@@ -210,7 +210,6 @@ async function startStep(id: number) {
         project_id: String(props.projectId),
         mode: 'plan',
         content: `${step.prompt}\n\n作者原始构思：\n${step.userNote || ''}\n\n请基于作者的构思进行完善和扩展，保留核心创意，补充细节、逻辑和结构。输出完整的设定内容。\n\n已完成的设定（作为参考）：\n${contextParts.join('\n\n')}`,
-        include_settings: true,
       },
       {
         onContent: (chunk) => {

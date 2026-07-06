@@ -100,10 +100,9 @@
         <!-- AI 参考面板（写作模式） -->
         <AIContextPanel
           :open="contextPanelOpen"
-          :include-settings="includeSettings"
+          :project-id="projectId"
           :used-settings="usedSettings"
           @update:open="contextPanelOpen = $event"
-          @update:include-settings="includeSettings = $event"
           @jump="jumpToSetting"
         />
       </div>
@@ -115,7 +114,10 @@
           <span v-else>✕</span>
         </button>
         <div class="graph-fab-panel" :class="{ maximized: graphMaximized }" v-show="graphOpen" @click.stop>
-          <button class="graph-resize-btn" @click="graphMaximized = !graphMaximized">{{ graphMaximized ? '⊟' : '⊞' }}</button>
+          <button class="graph-resize-btn" @click="graphMaximized = !graphMaximized" :title="graphMaximized ? '缩小' : '放大'">
+            <svg v-if="!graphMaximized" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+          </button>
           <RelationshipGraph :project-id="String(projectId)" />
         </div>
       </div>
@@ -399,7 +401,6 @@ interface UsedSetting {
   tokens: number
 }
 const usedSettings = ref<UsedSetting[]>([])
-const includeSettings = ref(true)  // 是否让 AI 参考项目设定
 const contextPanelOpen = ref(false) // 右侧参考面板默认收起，AI 操作时自动弹出
 const focusMode = ref(false) // 专注模式：隐藏侧栏+顶栏，编辑器全屏
 
@@ -424,7 +425,6 @@ const {
   editor,
   projectId,
   activeDocId,
-  includeSettings,
   usedSettings,
   saveStatus,
 })
