@@ -1,14 +1,26 @@
 <template>
   <div v-if="modelValue" class="modal-overlay" @click="close">
     <div class="modal" @click.stop>
-      <h3>{{ isFolder ? '新建文件夹' : '新建章节' }}</h3>
+      <h3>{{ isFolder ? '新建文件夹' : (props.sideTab === 'setting' ? '新建设定' : '新建章节') }}</h3>
       <input
         v-model="name"
-        :placeholder="isFolder ? '文件夹名' : '章节名'"
+        :placeholder="isFolder ? '文件夹名' : (props.sideTab === 'setting' ? '设定名' : '章节名')"
         class="input"
         @keyup.enter="confirm"
         autofocus
       />
+      <div v-if="isFolder && folderTypeOptions?.length" class="folder-type-row">
+        <label class="folder-type-label">类型</label>
+        <div class="folder-type-options">
+          <button
+            v-for="opt in folderTypeOptions"
+            :key="opt.value"
+            class="folder-type-chip"
+            :class="{ active: selectedFolderType === opt.value }"
+            @click="selectedFolderType = opt.value"
+          >{{ opt.label }}</button>
+        </div>
+      </div>
       <div class="modal-actions">
         <button class="btn" @click="close">取消</button>
         <button class="btn primary" @click="confirm" :disabled="!name.trim()">创建</button>
@@ -22,20 +34,33 @@ import { ref, computed, watch } from 'vue'
 
 const props = defineProps<{
   modelValue: boolean
-  docType: 'volume' | 'chapter'
+  docType: string
+  sideTab?: 'chapter' | 'setting'
+  folderTypeOptions?: { value: string; label: string }[]
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [v: boolean]
-  create: [name: string]
+  create: [name: string, folderType?: string]
 }>()
 
 const name = ref('')
-const isFolder = computed(() => props.docType === 'volume')
+const selectedFolderType = ref('')
+const isFolder = computed(() => {
+  const t = props.docType
+  return t === 'volume' || ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline'].includes(t)
+})
+
+watch(() => props.folderTypeOptions, (opts) => {
+  if (opts && opts.length) selectedFolderType.value = opts[0].value
+}, { immediate: true })
 
 // 打开时清空
 watch(() => props.modelValue, (v) => {
-  if (v) name.value = ''
+  if (v) {
+    name.value = ''
+    if (props.folderTypeOptions?.length) selectedFolderType.value = props.folderTypeOptions[0].value
+  }
 })
 
 function close() {
@@ -45,7 +70,7 @@ function close() {
 function confirm() {
   const trimmed = name.value.trim()
   if (!trimmed) return
-  emit('create', trimmed)
+  emit('create', trimmed, selectedFolderType.value || undefined)
 }
 </script>
 
@@ -91,6 +116,36 @@ h3 {
 .input:focus {
   border-color: var(--accent, #007aff);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.folder-type-row {
+  margin-top: 14px;
+}
+.folder-type-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary, #86868b);
+  margin-bottom: 6px;
+}
+.folder-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.folder-type-chip {
+  padding: 4px 10px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 8px;
+  background: var(--bg-secondary, #fff);
+  font-size: 12px;
+  color: var(--text-primary, #1d1d1f);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.folder-type-chip.active {
+  border-color: var(--accent, #007aff);
+  background: rgba(0, 122, 255, 0.08);
+  color: var(--accent, #007aff);
 }
 
 .modal-actions {

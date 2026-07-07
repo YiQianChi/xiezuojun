@@ -36,7 +36,7 @@
         @drop-node="(srcId, dstId, pos) => $emit('drop-node', srcId, dstId, pos)"
         @add-child="(folder) => $emit('add-child', folder)"
       />
-      <div class="add-child-btn" @click.stop="$emit('add-child', node)">+ 在「{{ displayTitle }}」下新建章节</div>
+      <div class="add-child-btn" @click.stop="$emit('add-child', node)">+ 在「{{ displayTitle }}」下新建{{ childLabel }}</div>
     </div>
   </div>
 </template>
@@ -68,18 +68,22 @@ const children = computed(() => {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 })
 
-// ponytail: volume + 设定三大类都是文件夹容器
+// ponytail: volume + 设定五大类都是文件夹容器
 const isFolder = computed(() => {
   const t = props.node.type
-  return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding'
+  return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
 })
 
 const nodeIcon = computed(() => {
+  // ponytail: 用户自选图标优先，否则按 type 默认
+  if (props.node.icon) return props.node.icon
   const map: Record<string, string> = {
     volume: '📁',
     outline: '📋',
     characters: '👥',
     worldbuilding: '🌍',
+    storyline: '📖',
+    chapter_outline: '📑',
     chapter: '📄',
     note: '📝',
   }
@@ -88,6 +92,13 @@ const nodeIcon = computed(() => {
 
 // ponytail: 作者自己决定章节标题，不做自动编号
 const displayTitle = computed(() => props.node.title)
+
+// ponytail: 按文件夹 tab_scope 显示「章节」或「设定」
+const childLabel = computed(() => {
+  const ts = props.node.tab_scope
+  if (ts && ts.includes('setting') && !ts.includes('chapter')) return '设定'
+  return '章节'
+})
 
 function toggleExpand() {
   expanded.value = !expanded.value

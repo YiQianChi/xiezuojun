@@ -52,9 +52,9 @@
         @drop-node="(src, dst, pos) => $emit('drop-node', src, dst, pos)"
         @add-child="(folder) => $emit('add-doc-in', folder)"
       />
-      <!-- ponytail: 底部按钮固定根目录新建，文件夹内用右键 -->
+      <!-- ponytail: 底部按钮固定根目录新建文件夹，两个 Tab 都显示 -->
       <button
-        v-if="sideTab === 'chapter' && !loadingDocs"
+        v-if="!loadingDocs"
         class="add-item-btn"
         @click="$emit('add-doc-root')"
       >+ 新建文件夹</button>

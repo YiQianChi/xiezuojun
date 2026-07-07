@@ -118,7 +118,11 @@
             <svg v-if="!graphMaximized" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
             <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
           </button>
-          <RelationshipGraph :project-id="String(projectId)" />
+          <RelationshipGraph
+            :project-id="String(projectId)"
+            :chapters="chapterList"
+            :current-chapter="currentChapterIndex"
+          />
         </div>
       </div>
 
@@ -213,11 +217,12 @@
       >
         <template v-if="docContextMenu.doc">
           <div @click="renameDoc">重命名</div>
+          <div v-if="isFolderNode(docContextMenu.doc)" @click="openFolderProps">属性</div>
           <div @click="deleteDoc" class="danger">删除</div>
         </template>
         <template v-else>
           <div @click="newDocUnder('chapter')">新建文件</div>
-          <div v-if="sideTab === 'chapter'" @click="newDocUnder('volume')">新建文件夹</div>
+          <div @click="newDocUnder('volume')">新建文件夹</div>
         </template>
       </div>
     </div>
@@ -241,7 +246,16 @@
     <CreateDocModal
       v-model="showCreateDocModal"
       :doc-type="createDocType"
+      :side-tab="sideTab"
+      :folder-type-options="createDocFolderTypeOptions"
       @create="onCreateDocConfirm"
+    />
+
+    <!-- 文件夹属性弹窗 -->
+    <FolderPropsModal
+      v-model="showFolderPropsModal"
+      :doc="folderPropsDoc"
+      @save="onFolderPropsSave"
     />
 
     <!-- 保存版本名称弹窗 -->
@@ -278,6 +292,10 @@ import { EditorContent } from '@tiptap/vue-3'
 import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableCell } from '@tiptap/extension-table-cell'
+import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
 import { documentApi, branchApi, projectApi } from '../core/api'
@@ -290,6 +308,7 @@ import AIContextPanel from '../components/editor/AIContextPanel.vue'
 import MemoryPanel from '../components/editor/MemoryPanel.vue'
 import RelationshipGraph from '../components/editor/RelationshipGraph.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
+import FolderPropsModal from '../components/editor/FolderPropsModal.vue'
 import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
 import VersionHistoryModal from '../components/editor/VersionHistoryModal.vue'
 import { useEditorSearch, createSearchHighlightPlugin } from '../composables/useEditorSearch'
@@ -319,8 +338,23 @@ let cachedSelection: { text: string; start: number; end: number } | null = null
 const docContextMenu = ref({ visible: false, x: 0, y: 0, doc: null as any })
 const showCreateDocModal = ref(false)
 const newDocName = ref('')
-const createDocType = ref<'volume' | 'chapter'>('chapter')
+const createDocType = ref<string>('chapter')
 const createDocParent = ref<number | null>(null)
+const createDocFolderTypeOptions = computed(() => {
+  if (createDocType.value !== 'volume') return undefined
+  return [
+    { value: 'volume', label: '📁 卷/文件夹' },
+    { value: 'outline', label: '📋 大纲' },
+    { value: 'characters', label: '👥 人物' },
+    { value: 'worldbuilding', label: '🌍 世界观' },
+    { value: 'storyline', label: '📖 故事主线' },
+    { value: 'chapter_outline', label: '📑 章节大纲' },
+  ]
+})
+
+// 文件夹属性弹窗
+const showFolderPropsModal = ref(false)
+const folderPropsDoc = ref<any>(null)
 
 let saveTimer: any = null
 const isSettingContent = ref(false)
@@ -380,10 +414,21 @@ const rootNodes = computed(() => {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 })
 
+// 关系图时间轴：正文目录下的章节文档（type=volume/chapter），按 sort_order 展平为线性列表
+const CHAPTER_TYPES = ['volume', 'chapter']
+const chapterList = computed(() => {
+  return documents.value
+    .filter(d => CHAPTER_TYPES.includes(d.type))
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+})
+const currentChapterIndex = computed(() => {
+  if (!activeDocId.value) return 0
+  const idx = chapterList.value.findIndex(d => d.id === activeDocId.value)
+  return idx >= 0 ? idx + 1 : 0
+})
+
 // 左侧栏 Tab：章节 / 设定
 const sideTab = ref<'chapter' | 'setting'>('chapter')
-const CHAPTER_TYPES = ['volume', 'chapter']
-const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'note']
 const memoryOpen = ref(false)
 const graphOpen = ref(false)
 const graphMaximized = ref(false)
@@ -513,13 +558,23 @@ function switchMode(next: EditorMode) {
   if (searchVisible.value) closeSearch()
 }
 
+// ponytail: 旧数据无 tab_scope 时按 type 推导
+function docTabScope(doc: any): string[] {
+  if (doc.tab_scope) return doc.tab_scope.split(',').map((s: string) => s.trim()).filter(Boolean)
+  // 兼容旧数据：按 type 推导
+  const t = doc.type
+  if (t === 'volume' || t === 'chapter') return ['chapter']
+  if (['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline', 'note'].includes(t)) return ['setting']
+  return ['chapter']
+}
+
 const filteredRootNodes = computed(() => {
-  const types = sideTab.value === 'chapter' ? CHAPTER_TYPES : SETTING_TYPES
-  return rootNodes.value.filter(n => types.includes(n.type))
+  const tab = sideTab.value
+  return rootNodes.value.filter(n => docTabScope(n).includes(tab))
 })
 
-// 沿 parent_id 向上找到根节点的 type
-function findRootType(doc: any): string | null {
+// 沿 parent_id 向上找到根节点
+function findRootDoc(doc: any): any | null {
   if (!doc) return null
   let cur = doc
   const seen = new Set<number>()
@@ -530,7 +585,7 @@ function findRootType(doc: any): string | null {
     if (!parent) break
     cur = parent
   }
-  return cur?.type || null
+  return cur
 }
 
 onMounted(async () => {
@@ -572,6 +627,10 @@ function initEditor() {
     extensions: [
       StarterKit,
       Highlight.configure({ multicolor: true }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
       AIMark,
       AIStrikethrough,
     ],
@@ -618,13 +677,78 @@ function getSelection() {
   return { text: correctedText, start: from, end: to }
 }
 
+// ponytail: parse Markdown table blocks (| col | col |) into ProseMirror table nodes
+function parseMarkdownTable(lines: string[], startIdx: number): { tableNode: object; consumed: number } | null {
+  const headerLine = lines[startIdx]
+  // need at least header + separator + 1 row
+  if (startIdx + 2 >= lines.length) return null
+  const separatorLine = lines[startIdx + 1]
+  // separator must be like |---|---| or | --- | :---: |
+  if (!/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(separatorLine)) return null
+
+  // ponytail: simpler split — strip leading/trailing | then split
+  const splitCells = (line: string) => {
+    let s = line.trim()
+    if (s.startsWith('|')) s = s.slice(1)
+    if (s.endsWith('|')) s = s.slice(0, -1)
+    return s.split('|').map(c => c.trim())
+  }
+
+  const headers = splitCells(headerLine)
+  if (headers.length < 1) return null
+
+  const makeTextContent = (text: string) => text ? [{ type: 'text', text }] : []
+
+  const rows: object[] = []
+  // header row
+  rows.push({
+    type: 'tableRow',
+    content: headers.map(h => ({ type: 'tableHeader', content: [{ type: 'paragraph', content: makeTextContent(h) }] }))
+  })
+
+  // body rows
+  let consumed = 2 // header + separator
+  for (let i = startIdx + 2; i < lines.length; i++) {
+    const line = lines[i]
+    if (!line.includes('|')) break
+    const cells = splitCells(line)
+    // pad/truncate to header length
+    while (cells.length < headers.length) cells.push('')
+    rows.push({
+      type: 'tableRow',
+      content: cells.slice(0, headers.length).map((c: string) => ({ type: 'tableCell', content: [{ type: 'paragraph', content: makeTextContent(c) }] }))
+    })
+    consumed++
+  }
+
+  if (rows.length < 2) return null // need at least header + 1 body row
+
+  return { tableNode: { type: 'table', content: rows }, consumed }
+}
+
 function editorContentFromText(content: string) {
-  return content
-    ? { type: 'doc', content: content.split('\n').map((line: string) => ({
-        type: 'paragraph',
-        content: line ? [{ type: 'text', text: line }] : []
-      })) }
-    : { type: 'doc', content: [{ type: 'paragraph' }] }
+  if (!content) return { type: 'doc', content: [{ type: 'paragraph' }] }
+  const lines = content.split('\n')
+  const blocks: object[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    // detect markdown table: line has | and next line is separator
+    if (line.includes('|') && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}:?\s*(\|)/.test(lines[i + 1])) {
+      const result = parseMarkdownTable(lines, i)
+      if (result) {
+        blocks.push(result.tableNode)
+        i += result.consumed
+        continue
+      }
+    }
+    blocks.push({
+      type: 'paragraph',
+      content: line ? [{ type: 'text', text: line }] : []
+    })
+    i++
+  }
+  return { type: 'doc', content: blocks }
 }
 
 function getEditorText(ed = editor.value) {
@@ -705,9 +829,13 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   currentDocName.value = doc.title
   aiToolbar.value.visible = false
   // 打开文档时自动跟随其所属分组切 Tab
-  const rootType = findRootType(doc)
-  if (rootType && SETTING_TYPES.includes(rootType)) sideTab.value = 'setting'
-  else if (rootType && CHAPTER_TYPES.includes(rootType)) sideTab.value = 'chapter'
+  const rootDoc = findRootDoc(doc)
+  const scopes = rootDoc ? docTabScope(rootDoc) : []
+  if (scopes.includes(sideTab.value)) {
+    // 当前 Tab 已匹配，不切
+  } else if (scopes.length > 0) {
+    sideTab.value = scopes[0] as 'chapter' | 'setting'
+  }
   // 切换章节时清空搜索状态与高亮（全项目跳转除外）
   if (!opts?.keepSearch && (searchQuery.value || searchTotal.value)) {
     searchQuery.value = ''
@@ -755,7 +883,7 @@ async function autoSave() {
   }
 }
 
-function openCreateDocModal(parentId: number | null = null, type: 'volume' | 'chapter' = 'chapter') {
+function openCreateDocModal(parentId: number | null = null, type: string = 'chapter') {
   createDocParent.value = parentId
   createDocType.value = type
   newDocName.value = ''
@@ -763,12 +891,12 @@ function openCreateDocModal(parentId: number | null = null, type: 'volume' | 'ch
 }
 
 // 拆分组件 CreateDocModal 触发（emit create）
-async function onCreateDocConfirm(name: string) {
+async function onCreateDocConfirm(name: string, folderType?: string) {
   newDocName.value = name
-  await createDoc()
+  await createDoc(folderType)
 }
 
-async function createDoc() {
+async function createDoc(folderType?: string) {
   if (!newDocName.value.trim()) return
   try {
     // 计算 sort_order
@@ -777,19 +905,25 @@ async function createDoc() {
     )
     const maxSort = siblings.reduce((m, d) => Math.max(m, d.sort_order || 0), 0)
 
+    // ponytail: 新建文件夹时 folderType 决定真实 type 和 tab_scope
+    const actualType = folderType || createDocType.value
+    const isFolderType = ['volume', 'outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline'].includes(actualType)
+    const tabScope = isFolderType ? sideTab.value : (actualType === 'chapter' ? 'chapter' : 'setting')
+
     const res = await documentApi.create({
       project_id: projectId,
       branch_id: activeBranchId.value || undefined,
       title: newDocName.value.trim(),
-      type: createDocType.value,
+      type: actualType,
       parent_id: createDocParent.value || undefined,
       sort_order: maxSort + 1,
+      tab_scope: tabScope,
     })
     showCreateDocModal.value = false
     newDocName.value = ''
     await loadDocs()
     const newDoc = res.data?.data || res.data
-    if (newDoc && createDocType.value === 'chapter') {
+    if (newDoc && actualType === 'chapter') {
       openDoc(newDoc)
     }
   } catch (e: any) {
@@ -828,13 +962,40 @@ function newDocUnder(type: 'volume' | 'chapter') {
   const actualType = isSetting && type === 'chapter' ? 'note' : type
   // 空白区域右键 → 根级创建；右键文件夹 → 在其下创建；右键文件 → 同级创建
   if (!doc) {
-    openCreateDocModal(null, actualType as any)
+    openCreateDocModal(null, actualType)
   } else {
-    const isFolder = ['volume', 'outline', 'characters', 'worldbuilding'].includes(doc.type)
+    const isFolder = isFolderNode(doc)
     const parentId = isFolder ? doc.id : (doc.parent_id || null)
-    openCreateDocModal(parentId, actualType as any)
+    openCreateDocModal(parentId, actualType)
   }
   closeDocContextMenu()
+}
+
+// ponytail: 判断是否文件夹容器（含 tab_scope 多选归属的）
+function isFolderNode(doc: any): boolean {
+  const t = doc.type
+  return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
+}
+
+// 右键文件夹 → 属性
+function openFolderProps() {
+  const doc = docContextMenu.value.doc
+  if (!doc) return
+  folderPropsDoc.value = doc
+  showFolderPropsModal.value = true
+  closeDocContextMenu()
+}
+
+async function onFolderPropsSave(data: { tab_scope: string; icon: string }) {
+  const doc = folderPropsDoc.value
+  if (!doc) return
+  try {
+    await documentApi.update(doc.id, { tab_scope: data.tab_scope, icon: data.icon })
+    showFolderPropsModal.value = false
+    await loadDocs()
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '更新属性失败')
+  }
 }
 
 async function renameDoc() {

@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toasts } from './composables/useToast'
 
@@ -32,6 +32,11 @@ const router = useRouter()
 const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
+
+// 全局禁用浏览器原生右键菜单（应用内有自定义右键交互）
+onMounted(() => {
+  document.addEventListener('contextmenu', (e) => e.preventDefault())
+})
 
 function logout() {
   localStorage.removeItem('access_token')

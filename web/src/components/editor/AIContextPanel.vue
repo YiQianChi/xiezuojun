@@ -98,11 +98,13 @@ const GROUP_LABELS: Record<string, string> = {
   outline: '大纲',
   characters: '人物',
   worldbuilding: '世界观',
+  storyline: '故事主线',
+  chapter_outline: '章节大纲',
 }
 
 const groupedDocs = computed(() => {
   const groups: { type: string; label: string; docs: SettingDocItem[]; enabled: number }[] = []
-  for (const type of ['outline', 'characters', 'worldbuilding']) {
+  for (const type of ['outline', 'storyline', 'chapter_outline', 'characters', 'worldbuilding']) {
     const docs = settingDocs.value.filter(d => d.type === type)
     if (docs.length === 0) continue
     groups.push({
@@ -113,7 +115,7 @@ const groupedDocs = computed(() => {
     })
   }
   // 其他类型
-  const others = settingDocs.value.filter(d => !['outline', 'characters', 'worldbuilding'].includes(d.type))
+  const others = settingDocs.value.filter(d => !['outline', 'storyline', 'chapter_outline', 'characters', 'worldbuilding'].includes(d.type))
   if (others.length > 0) {
     groups.push({ type: 'other', label: '其他', docs: others, enabled: others.filter(d => d.ai_include !== false).length })
   }
@@ -140,14 +142,24 @@ async function loadSettings() {
     const res = await documentApi.list(String(props.projectId))
     const data = res.data?.data
     const allDocs = Array.isArray(data) ? data : []
+    // ponytail: note docs grouped by parent's type instead of generic "其他"
+    const typeById = new Map<number, string>()
+    allDocs.forEach((d: any) => { if (d.id) typeById.set(d.id, d.type) })
+    // ponytail: root folder hidden when it has child notes
+    const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline']
+    const hasChildNotes = new Set<number>()
+    allDocs.forEach((d: any) => { if (d.type === 'note' && d.parent_id) hasChildNotes.add(d.parent_id) })
     settingDocs.value = allDocs
-      .filter((d: any) => ['outline', 'characters', 'worldbuilding', 'note'].includes(d.type))
-      .map((d: any) => ({
-        id: d.id,
-        title: d.title,
-        type: d.type,
-        ai_include: d.ai_include,
-      }))
+      .filter((d: any) => [...SETTING_TYPES, 'note'].includes(d.type))
+      .filter((d: any) => !(SETTING_TYPES.includes(d.type) && hasChildNotes.has(d.id)))
+      .map((d: any) => {
+        let groupType = d.type
+        if (d.type === 'note' && d.parent_id) {
+          const pt = typeById.get(d.parent_id)
+          if (pt && SETTING_TYPES.includes(pt)) groupType = pt
+        }
+        return { id: d.id, title: d.title, type: groupType, ai_include: d.ai_include }
+      })
   } catch {
     toast.error('加载设定列表失败')
   } finally {
@@ -166,9 +178,8 @@ async function toggleDoc(doc: SettingDocItem) {
   }
 }
 
-watch(() => props.open, (v) => {
-  if (v && settingDocs.value.length === 0) loadSettings()
-}, { immediate: true })
+// ponytail: load on mount, not on first open — panel is collapsed by default
+watch(() => props.projectId, () => loadSettings(), { immediate: true })
 </script>
 
 <style scoped>
