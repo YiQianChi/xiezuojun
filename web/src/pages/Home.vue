@@ -54,6 +54,10 @@
         <p>大纲、人物、世界观，结构清晰</p>
       </div>
     </div>
+
+    <footer class="home-footer">
+      <a href="https://beian.mps.gov.cn/#/query/webSearch" target="_blank" rel="noopener">苏ICP备2026036211号-4</a>
+    </footer>
   </div>
 </template>
 
@@ -167,4 +171,16 @@ const isLoggedIn = ref(!!localStorage.getItem('access_token'))
   .features { grid-template-columns: 1fr; }
   .home-hero { padding: 20px 0 32px; }
 }
+
+.home-footer {
+  text-align: center;
+  padding: 40px 0 0;
+  font-size: 12px;
+}
+.home-footer a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  opacity: 0.6;
+}
+.home-footer a:hover { opacity: 1; }
 </style>

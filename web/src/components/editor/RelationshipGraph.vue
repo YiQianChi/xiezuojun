@@ -1,5 +1,9 @@
 <template>
   <div class="rel-graph">
+    <!-- 右上角 2D/3D 切换 -->
+    <button class="view-toggle" v-if="nodes.length" @click="toggle3D" :title="is3D ? '切换到 2D' : '切换到 3D'">
+      {{ is3D ? '2D' : '3D' }}
+    </button>
     <div class="graph-toolbar">
       <button class="g-btn" @click="addNode">+ 角色</button>
       <button class="g-btn" @click="addLink">+ 关系</button>
@@ -27,7 +31,8 @@
       <span v-if="!showAllTimeline" class="tl-label">{{ timelineCh }}/{{ chapters.length }} {{ chapters[timelineCh-1]?.title || '' }}</span>
     </div>
 
-    <div ref="svgContainer" class="graph-canvas"></div>
+    <div ref="svgContainer" class="graph-canvas" v-show="!is3D"></div>
+    <div ref="threeContainer" class="graph-canvas" v-show="is3D" style="background:#0a0a1a"></div>
 
     <!-- 模式切换浮层：编辑模式 / 播放，悬浮在画布底部居中 -->
     <div class="mode-fab" v-if="nodes.length">
@@ -233,6 +238,10 @@ let nodeGroup: any = null
 let zoomBehavior: any = null
 let saveTimer: any = null
 
+// 3D 模式
+const is3D = ref(false)
+const threeContainer = ref<HTMLElement | null>(null)
+
 // UI state
 const showAddNode = ref(false)
 const editingNode = ref<any>(null) // null=新增模式；有值=编辑该节点
@@ -260,9 +269,9 @@ let playTimer: any = null
 // 编辑模式切换：冻住所有球，只有被拖的那个能动，松手后弹回原位
 let editSnap: Record<string, { x: number; y: number }> = {}
 watch(editMode, (on) => {
+  if (is3D.value) { if (on) sync3DNodes(); return } // 3D 模式：同步全部节点位置后返回
   if (!sim) return
   if (on) {
-    // 禁用缩放，避免拖球时被滚轮/手势干扰
     svgSel.on('.zoom', null)
     sim.stop()
     editSnap = {}
@@ -271,7 +280,6 @@ watch(editMode, (on) => {
       editSnap[n.name] = { x: n.x, y: n.y }
     })
   } else {
-    // 恢复缩放
     svgSel.call(zoomBehavior)
     sim.nodes().forEach((n: any) => { n.fx = null; n.fy = null })
     sim.alpha(0.5).restart()
@@ -442,6 +450,7 @@ function isRelated(a: any, b: any): boolean {
 }
 function render() {
   if (!d3.value || !sim) return
+  if (is3D.value) { render3D(); return } // 3D 模式不跑 D3
 
   updateMarkers()
 
@@ -540,6 +549,9 @@ function render() {
 
   // click blank to deselect
   svgSel.on('click', () => { selected.value = null; connectedNames.value = new Set(); render() })
+
+  // 同步 3D（如果在 3D 模式）
+  if (is3D.value) render3D()
 }
 
 function ticked() {
@@ -719,7 +731,356 @@ async function syncCharacters() {
   } catch { /* ignore */ }
 }
 
-// --- Save / Load ---
+// --- 3D mode: 纯 Canvas 2D 手写 3D 投影（零依赖，复用 demo 风格）---
+let canvas3D: HTMLCanvasElement | null = null
+let ctx3D: CanvasRenderingContext2D | null = null
+let raf3D: number | null = null
+let cam3D = { rx: 0.4, ry: -0.3, zoom: 1, px: 0, py: 0 }
+const pos3D = new Map<string, { x: number; y: number; z: number }>()
+const vel3D = new Map<string, { x: number; y: number; z: number }>()
+let dragNode3D: any = null
+let hoverTarget3D: any = null // 编辑模式拖拽时高亮的目标节点
+let isRot3D = false
+let isPan3D = false
+let lastM3D = { x: 0, y: 0 }
+
+function project3D(x: number, y: number, z: number, W: number, H: number) {
+  const x1 = x * Math.cos(cam3D.ry) - z * Math.sin(cam3D.ry)
+  const z1 = x * Math.sin(cam3D.ry) + z * Math.cos(cam3D.ry)
+  const y2 = y * Math.cos(cam3D.rx) - z1 * Math.sin(cam3D.rx)
+  const z2 = y * Math.sin(cam3D.rx) + z1 * Math.cos(cam3D.rx)
+  const fov = 600
+  const s = fov / (fov + z2)
+  return { x: x1 * s * cam3D.zoom + W / 2 + cam3D.px, y: y2 * s * cam3D.zoom + H / 2 + cam3D.py, s, z: z2 }
+}
+
+function toWorld3D(sx: number, sy: number, W: number, H: number) {
+  const ix = (sx - W / 2 - cam3D.px) / cam3D.zoom, iy = (sy - H / 2 - cam3D.py) / cam3D.zoom
+  const z2 = 0
+  const y1 = iy * Math.cos(cam3D.rx) + z2 * Math.sin(cam3D.rx)
+  const z1 = -iy * Math.sin(cam3D.rx) + z2 * Math.cos(cam3D.rx)
+  const x1 = ix * Math.cos(-cam3D.ry) - z1 * Math.sin(-cam3D.ry)
+  const z1f = ix * Math.sin(-cam3D.ry) + z1 * Math.cos(-cam3D.ry)
+  return { x: x1, y: y1, z: z1f }
+}
+
+function stepSim3D() {
+  const vn = visibleNodes.value
+  const vl = visibleLinks.value
+  const REP = 6000, SPR = 0.008, REST = 160, DAMP = 0.82, CGRAV = 0.0008
+  // 编辑模式：冻住所有节点，只有被拖的能动
+  if (editMode.value) {
+    for (const n of vn) {
+      const v = vel3D.get(n.name); if (!v) continue
+      v.x = 0; v.y = 0; v.z = 0
+    }
+    return
+  }
+  for (let i = 0; i < vn.length; i++) {
+    const pi = pos3D.get(vn[i].name)!, vi = vel3D.get(vn[i].name)!
+    for (let j = i + 1; j < vn.length; j++) {
+      const pj = pos3D.get(vn[j].name)!, vj = vel3D.get(vn[j].name)!
+      const dx = pj.x - pi.x, dy = pj.y - pi.y, dz = pj.z - pi.z
+      const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy + dz * dz))
+      const f = REP / (dist * dist)
+      const fx = dx / dist * f, fy = dy / dist * f, fz = dz / dist * f
+      vi.x -= fx; vi.y -= fy; vi.z -= fz
+      vj.x += fx; vj.y += fy; vj.z += fz
+    }
+  }
+  for (const l of vl) {
+    const sn = linkName(l.source), tn = linkName(l.target)
+    const sp = pos3D.get(sn), tp = pos3D.get(tn)
+    if (!sp || !tp) continue
+    const sv = vel3D.get(sn)!, tv = vel3D.get(tn)!
+    const dx = tp.x - sp.x, dy = tp.y - sp.y, dz = tp.z - sp.z
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy + dz * dz))
+    const f = (dist - REST) * SPR
+    const fx = dx / dist * f, fy = dy / dist * f, fz = dz / dist * f
+    sv.x += fx; sv.y += fy; sv.z += fz
+    tv.x -= fx; tv.y -= fy; tv.z -= fz
+  }
+  for (const n of vn) {
+    const p = pos3D.get(n.name)!, v = vel3D.get(n.name)!
+    v.x += -p.x * CGRAV; v.y += -p.y * CGRAV; v.z += -p.z * CGRAV
+    v.x *= DAMP; v.y *= DAMP; v.z *= DAMP
+    if (!dragNode3D || dragNode3D.name !== n.name) { p.x += v.x; p.y += v.y; p.z += v.z }
+  }
+}
+
+// 3D 节点形状绘制（和 2D shapePath 对应）
+function drawShape3D(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, shape: string) {
+  ctx.beginPath()
+  switch (shape) {
+    case 'square':
+      ctx.rect(x - r, y - r, r * 2, r * 2); break
+    case 'triangle': {
+      const h = r * 1.15
+      ctx.moveTo(x, y - h); ctx.lineTo(x + r, y + h * 0.7); ctx.lineTo(x - r, y + h * 0.7); ctx.closePath(); break
+    }
+    case 'diamond':
+      ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); break
+    case 'star': {
+      for (let i = 0; i < 10; i++) {
+        const rad = i % 2 === 0 ? r : r * 0.45
+        const a = (Math.PI / 5) * i - Math.PI / 2
+        const px = x + Math.cos(a) * rad, py = y + Math.sin(a) * rad
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+      }
+      ctx.closePath(); break
+    }
+    default:
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+  }
+  ctx.fill()
+}
+
+function draw3D() {
+  if (!ctx3D || !canvas3D) return
+  const W = canvas3D.clientWidth, H = canvas3D.clientHeight
+  const dpr = devicePixelRatio || 1
+  if (canvas3D.width !== W * dpr || canvas3D.height !== H * dpr) {
+    canvas3D.width = W * dpr; canvas3D.height = H * dpr
+    ctx3D.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+  const ctx = ctx3D
+  ctx.clearRect(0, 0, W, H)
+
+  // 星空
+  ctx.fillStyle = '#333'
+  for (let i = 0; i < 80; i++) {
+    ctx.fillRect((i * 137.5) % W, (i * 97.3) % H, 1.5, 1.5)
+  }
+
+  // 网格地板
+  const gridY = 160
+  ctx.strokeStyle = 'rgba(50,50,100,0.2)'; ctx.lineWidth = 1
+  for (let i = -300; i <= 300; i += 60) {
+    const a = project3D(i, gridY, -300, W, H), b = project3D(i, gridY, 300, W, H)
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
+    const c = project3D(-300, gridY, i, W, H), d = project3D(300, gridY, i, W, H)
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke()
+  }
+
+  // z-sort
+  const vn = visibleNodes.value, vl = visibleLinks.value
+  const drawList: any[] = []
+  for (const n of vn) {
+    const p = pos3D.get(n.name); if (!p) continue
+    drawList.push({ type: 'node', n, pr: project3D(p.x, p.y, p.z, W, H) })
+  }
+  for (const l of vl) {
+    const sn = linkName(l.source), tn = linkName(l.target)
+    const sp = pos3D.get(sn), tp = pos3D.get(tn)
+    if (!sp || !tp) continue
+    const sPr = project3D(sp.x, sp.y, sp.z, W, H), tPr = project3D(tp.x, tp.y, tp.z, W, H)
+    drawList.push({ type: 'link', l, sPr, tPr, z: (sPr.z + tPr.z) / 2 })
+  }
+  drawList.sort((a, b) => b.z - a.z)
+
+  for (const item of drawList) {
+    if (item.type === 'link') {
+      const { l, sPr, tPr } = item
+      const info = getTypeMeta(l.type)
+      const color = info?.color || '#999'
+      // 连线带渐变发光感
+      ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2.5 * cam3D.zoom; ctx.globalAlpha = 0.6
+      if (info?.dash.length) ctx.setLineDash(info.dash); else ctx.setLineDash([])
+      ctx.moveTo(sPr.x, sPr.y); ctx.lineTo(tPr.x, tPr.y); ctx.stroke()
+      ctx.setLineDash([])
+      // 箭头
+      const ang = Math.atan2(tPr.y - sPr.y, tPr.x - sPr.x)
+      const ar = 16 * cam3D.zoom
+      const ax = tPr.x - Math.cos(ang) * ar, ay = tPr.y - Math.sin(ang) * ar
+      ctx.globalAlpha = 0.8; ctx.fillStyle = color
+      ctx.beginPath(); ctx.moveTo(ax, ay)
+      ctx.lineTo(ax - 9 * cam3D.zoom * Math.cos(ang - .35), ay - 9 * cam3D.zoom * Math.sin(ang - .35))
+      ctx.lineTo(ax - 9 * cam3D.zoom * Math.cos(ang + .35), ay - 9 * cam3D.zoom * Math.sin(ang + .35))
+      ctx.fill()
+      // 关系标签带背景框
+      if (l.label) {
+        const lx = (sPr.x + tPr.x) / 2, ly = (sPr.y + tPr.y) / 2 - 6 * cam3D.zoom
+        ctx.font = (11 * cam3D.zoom) + 'px sans-serif'; ctx.textAlign = 'center'
+        const tw = ctx.measureText(l.label).width
+        ctx.globalAlpha = 0.7; ctx.fillStyle = 'rgba(0,0,0,0.5)'
+        ctx.fillRect(lx - tw / 2 - 4, ly - 10, tw + 8, 16)
+        ctx.globalAlpha = 0.9; ctx.fillStyle = '#ddd'
+        ctx.fillText(l.label, lx, ly + 2)
+      }
+    } else {
+      const { n, pr } = item
+      const r = Math.max(1, 16 * pr.s * cam3D.zoom)
+      // 选中态外圈高亮
+      if (selected.value?.type === 'node' && selected.value.data.name === n.name) {
+        ctx.globalAlpha = 0.3; ctx.fillStyle = '#fff'
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, r + 12, 0, Math.PI * 2); ctx.fill()
+      }
+      // 编辑模式拖拽碰撞目标高亮（绿色脉冲）
+      if (hoverTarget3D && hoverTarget3D.name === n.name) {
+        ctx.globalAlpha = 0.4; ctx.fillStyle = '#06d6a0'
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, r + 14, 0, Math.PI * 2); ctx.fill()
+        ctx.globalAlpha = 0.8; ctx.strokeStyle = '#06d6a0'; ctx.lineWidth = 3
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, r + 14, 0, Math.PI * 2); ctx.stroke()
+      }
+      // glow
+      ctx.globalAlpha = 0.2; ctx.fillStyle = n.color
+      ctx.beginPath(); ctx.arc(pr.x, pr.y, r + 8, 0, Math.PI * 2); ctx.fill()
+      // 球体渐变（按形状画）
+      ctx.globalAlpha = 1
+      const grad = ctx.createRadialGradient(pr.x - r * .3, pr.y - r * .3, Math.max(0.5, r * .1), pr.x, pr.y, r)
+      grad.addColorStop(0, 'rgba(255,255,255,0.4)')
+      grad.addColorStop(0.4, n.color)
+      grad.addColorStop(1, 'rgba(0,0,0,0.5)')
+      ctx.fillStyle = grad
+      drawShape3D(ctx, pr.x, pr.y, r, n.shape || 'circle')
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; ctx.stroke()
+      // 名字带背景
+      ctx.globalAlpha = 1; ctx.fillStyle = '#fff'
+      ctx.font = 'bold ' + (14 * cam3D.zoom) + 'px sans-serif'; ctx.textAlign = 'center'
+      const nw = ctx.measureText(n.name).width
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'
+      ctx.fillRect(pr.x - nw / 2 - 4, pr.y - r - 20 * cam3D.zoom, nw + 8, 16)
+      ctx.fillStyle = '#fff'
+      ctx.fillText(n.name, pr.x, pr.y - r - 8 * cam3D.zoom)
+      // 身份
+      ctx.fillStyle = '#999'; ctx.font = (11 * cam3D.zoom) + 'px sans-serif'
+      ctx.fillText(n.role, pr.x, pr.y - r + 6 * cam3D.zoom)
+    }
+  }
+  ctx.globalAlpha = 1
+}
+
+function loop3D() {
+  stepSim3D(); draw3D()
+  raf3D = requestAnimationFrame(loop3D)
+}
+
+function sync3DNodes() {
+  const vn = visibleNodes.value
+  for (const n of vn) {
+    if (!pos3D.has(n.name)) {
+      const a = Math.random() * Math.PI * 2, r = 180
+      pos3D.set(n.name, { x: Math.cos(a) * r, y: (Math.random() - .5) * 120, z: Math.sin(a) * r })
+      vel3D.set(n.name, { x: 0, y: 0, z: 0 })
+    }
+  }
+  // 清理已删除的
+  for (const k of pos3D.keys()) {
+    if (!vn.some(n => n.name === k)) { pos3D.delete(k); vel3D.delete(k) }
+  }
+}
+
+function bindCanvas3D() {
+  if (!canvas3D) return
+  canvas3D.style.cursor = 'crosshair'
+  canvas3D.onmousedown = (e: MouseEvent) => {
+    const W = canvas3D!.clientWidth, H = canvas3D!.clientHeight
+    const sx = e.clientX - canvas3D!.getBoundingClientRect().left
+    const sy = e.clientY - canvas3D!.getBoundingClientRect().top
+    for (const n of visibleNodes.value) {
+      const p = pos3D.get(n.name); if (!p) continue
+      const pr = project3D(p.x, p.y, p.z, W, H)
+      const r = Math.max(1, 14 * pr.s * cam3D.zoom) + 6
+      if ((sx - pr.x) ** 2 + (sy - pr.y) ** 2 < r * r) { dragNode3D = n; canvas3D!.style.cursor = 'grabbing'; return }
+    }
+    if (e.button === 2) isPan3D = true; else isRot3D = true
+    lastM3D = { x: sx, y: sy }
+  }
+  canvas3D.onmousemove = (e: MouseEvent) => {
+    const W = canvas3D!.clientWidth, H = canvas3D!.clientHeight
+    const sx = e.clientX - canvas3D!.getBoundingClientRect().left
+    const sy = e.clientY - canvas3D!.getBoundingClientRect().top
+    if (dragNode3D) {
+      const wp = toWorld3D(sx, sy, W, H)
+      const p = pos3D.get(dragNode3D.name), v = vel3D.get(dragNode3D.name)
+      if (p && v) { p.x = wp.x; p.y = wp.y; p.z = wp.z; v.x = 0; v.y = 0; v.z = 0 }
+      // 编辑模式：检测最近的碰撞目标
+      if (editMode.value) {
+        hoverTarget3D = null
+        for (const n of visibleNodes.value) {
+          if (n.name === dragNode3D.name) continue
+          const np = pos3D.get(n.name); if (!np || !p) continue
+          const dist = Math.sqrt((p.x - np.x) ** 2 + (p.y - np.y) ** 2 + (p.z - np.z) ** 2)
+          if (dist < 50) { hoverTarget3D = n; break }
+        }
+      }
+    } else if (isRot3D) {
+      cam3D.ry += (sx - lastM3D.x) * 0.005
+      cam3D.rx += (sy - lastM3D.y) * 0.005
+      cam3D.rx = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cam3D.rx))
+      lastM3D = { x: sx, y: sy }
+    } else if (isPan3D) {
+      cam3D.px += sx - lastM3D.x; cam3D.py += sy - lastM3D.y
+      lastM3D = { x: sx, y: sy }
+    }
+  }
+  canvas3D.onmouseup = () => {
+    if (dragNode3D && editMode.value && hoverTarget3D) {
+      // 编辑模式：拖到目标节点松手 → 弹出添加关系弹窗
+      const sn = dragNode3D.name, tn = hoverTarget3D.name
+      const exists = links.value.some(l =>
+        (linkName(l.source) === sn && linkName(l.target) === tn) ||
+        (linkName(l.source) === tn && linkName(l.target) === sn))
+      if (!exists && nodes.value.length >= 2) {
+        showAddLink.value = true
+        newLinkSource.value = sn
+        newLinkTarget.value = tn
+        newLinkType.value = relTypes.value[0].key
+        newLinkLabel.value = ''
+        newLinkFromCh.value = (showAllTimeline.value || timelineCh.value === 0) ? 0 : timelineCh.value
+        linkSearch1.value = ''
+        linkSearch2.value = ''
+      }
+      hoverTarget3D = null
+    }
+    dragNode3D = null; isRot3D = false; isPan3D = false; if (canvas3D) canvas3D.style.cursor = 'crosshair'
+  }
+  canvas3D.oncontextmenu = (e) => {
+    e.preventDefault()
+    if (!editMode.value) return
+    // 右键编辑节点属性
+    const W = canvas3D!.clientWidth, H = canvas3D!.clientHeight
+    const sx = e.clientX - canvas3D!.getBoundingClientRect().left
+    const sy = e.clientY - canvas3D!.getBoundingClientRect().top
+    for (const n of visibleNodes.value) {
+      const p = pos3D.get(n.name); if (!p) continue
+      const pr = project3D(p.x, p.y, p.z, W, H)
+      const r = Math.max(1, 14 * pr.s * cam3D.zoom) + 6
+      if ((sx - pr.x) ** 2 + (sy - pr.y) ** 2 < r * r) { editNode(n); return }
+    }
+  }
+  canvas3D.onwheel = (e) => { e.preventDefault(); cam3D.zoom *= e.deltaY > 0 ? .9 : 1.1; cam3D.zoom = Math.max(.2, Math.min(5, cam3D.zoom)) }
+}
+
+async function toggle3D() {
+  if (!is3D.value) {
+    is3D.value = true
+    if (sim) sim.stop() // 停掉 D3 物理引擎，避免两个引擎同时跑卡死
+    await new Promise(r => requestAnimationFrame(r))
+    if (!canvas3D) {
+      canvas3D = document.createElement('canvas')
+      canvas3D.style.width = '100%'; canvas3D.style.height = '100%'; canvas3D.style.display = 'block'
+      ctx3D = canvas3D.getContext('2d')
+      threeContainer.value?.appendChild(canvas3D)
+      bindCanvas3D()
+    }
+    cam3D = { rx: 0.4, ry: -0.3, zoom: 1, px: 0, py: 0 }
+    sync3DNodes()
+    if (raf3D) cancelAnimationFrame(raf3D)
+    loop3D()
+  } else {
+    is3D.value = false
+    if (raf3D) { cancelAnimationFrame(raf3D); raf3D = null }
+    if (sim) sim.alpha(0.5).restart() // 恢复 D3
+  }
+}
+
+function render3D() {
+  if (!is3D.value) return
+  sync3DNodes()
+}
+
+
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(async () => {
@@ -771,6 +1132,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (sim) sim.stop()
   if (svgSel) svgSel.remove()
+  if (raf3D) cancelAnimationFrame(raf3D)
   if (saveTimer) clearTimeout(saveTimer)
   if (playTimer) clearInterval(playTimer)
 })
@@ -803,6 +1165,25 @@ onBeforeUnmount(() => {
   transition: all 0.12s;
 }
 .g-btn:hover { background: var(--accent-light, rgba(0,122,255,0.08)); }
+/* 右上角 2D/3D 切换按钮 */
+.view-toggle {
+  position: absolute;
+  top: 8px;
+  right: 42px;
+  z-index: 20;
+  width: 36px;
+  height: 24px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  background: rgba(26,26,46,0.85);
+  backdrop-filter: blur(8px);
+  color: rgba(255,255,255,0.8);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.view-toggle:hover { background: var(--accent, #007aff); border-color: var(--accent, #007aff); color: #fff; }
 /* 模式切换浮层：悬浮在画布底部居中，玻璃胶囊风格 */
 .mode-fab {
   position: absolute;

@@ -240,6 +240,15 @@
           <MemoryPanel :project-id="String(projectId)" />
         </div>
       </div>
+      <div class="memory-trigger" :class="{ open: threadOpen }">
+        <button class="memory-btn" @click="threadOpen = !threadOpen" :title="threadOpen ? '收起追踪' : '伏笔追踪'">
+          <span v-if="!threadOpen">🧵</span>
+          <span v-else>✕</span>
+        </button>
+        <div class="memory-popup thread-popup" v-show="threadOpen" @click.stop>
+          <ThreadPanel :project-id="String(projectId)" />
+        </div>
+      </div>
     </div>
 
     <!-- 新建文档弹窗 -->
@@ -307,6 +316,7 @@ import EditorSidebar from '../components/editor/EditorSidebar.vue'
 import AIContextPanel from '../components/editor/AIContextPanel.vue'
 import MemoryPanel from '../components/editor/MemoryPanel.vue'
 import RelationshipGraph from '../components/editor/RelationshipGraph.vue'
+import ThreadPanel from '../components/editor/ThreadPanel.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
 import FolderPropsModal from '../components/editor/FolderPropsModal.vue'
 import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
@@ -431,6 +441,7 @@ const currentChapterIndex = computed(() => {
 const sideTab = ref<'chapter' | 'setting'>('chapter')
 const memoryOpen = ref(false)
 const graphOpen = ref(false)
+const threadOpen = ref(false)
 const graphMaximized = ref(false)
 
 // 顶部工作模式：计划 / 写作 / 审核
@@ -634,6 +645,17 @@ function initEditor() {
       AIMark,
       AIStrikethrough,
     ],
+    // ponytail: 粘贴强制纯文本，去掉外部加粗/斜体等格式
+    editorProps: {
+      handlePaste: (view, event) => {
+        const text = event.clipboardData?.getData('text/plain')
+        if (text) {
+          view.dispatch(view.state.tr.insertText(text))
+          return true
+        }
+        return false
+      },
+    },
     onUpdate: ({ editor: ed }) => {
       if (isSettingContent.value) return
       const plainText = getEditorText(ed)
@@ -697,7 +719,27 @@ function parseMarkdownTable(lines: string[], startIdx: number): { tableNode: obj
   const headers = splitCells(headerLine)
   if (headers.length < 1) return null
 
-  const makeTextContent = (text: string) => text ? [{ type: 'text', text }] : []
+  // ponytail: parse **bold** and *italic* inline marks into ProseMirror text nodes
+  const makeTextContent = (text: string) => {
+    if (!text) return []
+    const nodes: object[] = []
+    // split on **bold** or *italic* patterns
+    const regex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g
+    let last = 0
+    let m: RegExpExecArray | null
+    while ((m = regex.exec(text)) !== null) {
+      if (m.index > last) nodes.push({ type: 'text', text: text.slice(last, m.index) })
+      const matched = m[0]
+      if (matched.startsWith('**')) {
+        nodes.push({ type: 'text', text: matched.slice(2, -2), marks: [{ type: 'bold' }] })
+      } else {
+        nodes.push({ type: 'text', text: matched.slice(1, -1), marks: [{ type: 'italic' }] })
+      }
+      last = m.index + matched.length
+    }
+    if (last < text.length) nodes.push({ type: 'text', text: text.slice(last) })
+    return nodes
+  }
 
   const rows: object[] = []
   // header row

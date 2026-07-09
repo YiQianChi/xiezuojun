@@ -258,3 +258,32 @@ export const trashApi = {
     return api.delete('/trash')
   },
 }
+
+// 伏笔/钩子追踪
+export interface StoryThread {
+  id?: number
+  project_id: number
+  type: 'foreshadowing' | 'hook' | 'promise' | 'suspense'
+  title: string
+  description?: string
+  status: 'open' | 'resolved' | 'abandoned'
+  planted_chapter?: number | null
+  resolved_chapter?: number | null
+  urgency?: number
+  sort_order?: number
+}
+
+export const threadApi = {
+  list(projectId: string | number) {
+    return api.get(`/projects/${projectId}/threads`)
+  },
+  create(projectId: string | number, data: Partial<StoryThread>) {
+    return api.post(`/projects/${projectId}/threads`, { ...data, project_id: Number(projectId) })
+  },
+  update(id: string | number, data: Partial<StoryThread>) {
+    return api.patch(`/threads/${id}`, data)
+  },
+  delete(id: string | number) {
+    return api.delete(`/threads/${id}`)
+  },
+}

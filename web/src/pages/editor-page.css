@@ -627,12 +627,14 @@
   margin: 0;
 }
 /* 第一列通常放维度名（姓名/身份/性格），加粗强调 */
+:deep(.ProseMirror colgroup col:first-child) {
+  width: 120px !important;
+}
 :deep(.ProseMirror td:first-child) {
   font-weight: 600;
   font-family: var(--font-sans, -apple-system, 'SF Pro', sans-serif);
   font-size: 14px;
   color: var(--text-secondary, #555);
-  width: 120px;
   background: var(--bg-tertiary, #fafafa);
 }
 /* 选中的单元格 */
@@ -893,6 +895,9 @@
 .memory-trigger {
   margin-left: auto;
   position: relative;
+}
+.memory-trigger + .memory-trigger {
+  margin-left: 0;
 }
 .memory-btn {
   width: 26px;
