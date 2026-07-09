@@ -12,6 +12,7 @@ type RelationshipNode struct {
 	Name  string `json:"name"`
 	Role  string `json:"role"`
 	Color string `json:"color"`
+	Shape string `json:"shape"`
 }
 
 type RelationshipLink struct {
@@ -19,6 +20,8 @@ type RelationshipLink struct {
 	Target string `json:"target"` // node name
 	Type   string `json:"type"`
 	Label  string `json:"label"`
+	FromCh int    `json:"from_ch"` // 关系起始章节序号 (1-based, 0=从一开始)
+	ToCh   int    `json:"to_ch"`   // 关系结束章节序号 (0=至今)
 }
 
 type RelType struct {

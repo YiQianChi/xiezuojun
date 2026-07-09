@@ -13,12 +13,11 @@ import (
 
 // GenerateHTTPRequest HTTP API 请求体
 type GenerateHTTPRequest struct {
-	ProjectID       string `json:"project_id"`
-	DocumentID      string `json:"document_id"`
-	Mode            string `json:"mode" binding:"required"`
-	Content         string `json:"content" binding:"required"`
-	Stream          bool   `json:"stream"`
-	IncludeSettings *bool  `json:"include_settings"` // 默认 true，写作模式可关
+	ProjectID  string `json:"project_id"`
+	DocumentID string `json:"document_id"`
+	Mode       string `json:"mode" binding:"required"`
+	Content    string `json:"content" binding:"required"`
+	Stream     bool   `json:"stream"`
 }
 
 // HandleGenerate AI 生成接口
@@ -47,21 +46,14 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 		req.ProjectID = "default"
 	}
 
-	// 默认注入设定文档（作者可传 include_settings=false 关闭）
-	includeSettings := true
-	if req.IncludeSettings != nil {
-		includeSettings = *req.IncludeSettings
-	}
-
 	// 构建 AI 生成请求
 	genReq := GenerateRequest{
-		ProjectID:       req.ProjectID,
-		DocumentID:      req.DocumentID,
-		UserID:          userIDStr,
-		UserTier:        c.GetString("plan"),
-		AIMode:          req.Mode,
-		UserPrompt:      req.Content,
-		IncludeSettings: includeSettings,
+		ProjectID:  req.ProjectID,
+		DocumentID: req.DocumentID,
+		UserID:     userIDStr,
+		UserTier:   c.GetString("plan"),
+		AIMode:     req.Mode,
+		UserPrompt: req.Content,
 	}
 
 	// 从 DB 读取文档内容作为 SceneText（通过 docContentLoader）

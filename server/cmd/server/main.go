@@ -53,9 +53,15 @@ func main() {
 		&model.DocumentVersion{},
 		&model.WordCountLog{},
 		&model.UsageRecord{},
+		&model.StoryThread{},
 	); err != nil {
 		log.Fatal("auto migrate failed:", err)
 	}
+
+	// ponytail: 旧行 tab_scope 被 DEFAULT 'chapter' 填充，设定类文档需修正为 'setting'
+	db.Model(&model.Document{}).
+		Where("type IN ? AND tab_scope = ?", []string{"outline", "characters", "worldbuilding", "storyline", "chapter_outline"}, "chapter").
+		Update("tab_scope", "setting")
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -119,6 +125,15 @@ func main() {
 			})
 		}
 		return result, nil
+	})
+
+	// 设置伏笔加载器（AI 上下文注入未回收的伏笔/钩子）
+	gw.SetThreadLoader(func(projectID uint) (string, error) {
+		threads, err := projectHandler.LoadOpenThreads(projectID)
+		if err != nil {
+			return "", err
+		}
+		return project.FormatThreadsForAI(threads), nil
 	})
 
 	r := gin.Default()
@@ -290,6 +305,12 @@ func main() {
 	aiGroup.Use(gw.RateLimitMiddleware())
 	aiGroup.POST("/ai/generate", gw.HandleGenerate)
 	aiGroup.GET("/ai/models", gw.HandleGetModels)
+
+	// 伏笔/钩子追踪
+	authd.GET("/projects/:id/threads", projectHandler.ListThreads)
+	authd.POST("/projects/:id/threads", projectHandler.CreateThread)
+	authd.PATCH("/threads/:id", projectHandler.UpdateThread)
+	authd.DELETE("/threads/:id", projectHandler.DeleteThread)
 
 	port := os.Getenv("PORT")
 	if port == "" {

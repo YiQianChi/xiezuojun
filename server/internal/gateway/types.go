@@ -281,10 +281,6 @@ type GenerateRequest struct {
 	SceneText  string         // 文档内容/前文（由 API handler 填入）
 	Context    []ContextBlock // 可选：预构建的上下文
 	Style      string         // 风格偏好
-
-	// 是否注入项目设定文档作为 AI 背景（大纲/人物/世界观）
-	// 默认 true；作者可在写作模式关掉
-	IncludeSettings bool
 }
 
 type GenerateResult struct {

@@ -17,12 +17,13 @@ import (
 
 // DefaultGateway 默认网关实现
 type DefaultGateway struct {
-	aiClient        *ai.Client
-	contextBuilder  *ContextBuilder
-	modelRouter     *ModelRouter
-	usageTracker    *UsageTracker
+	aiClient         *ai.Client
+	contextBuilder   *ContextBuilder
+	modelRouter      *ModelRouter
+	usageTracker     *UsageTracker
 	docContentLoader func(docID uint64) (string, error)                // 加载文档正文
 	settingLoader    func(projectID uint) ([]SettingDoc, error)        // 加载项目的设定文档
+	threadLoader     func(projectID uint) (string, error)              // 加载未回收伏笔
 
 	// 并发控制
 	semaphores map[string]chan struct{} // userID -> semaphore
@@ -37,6 +38,11 @@ func (g *DefaultGateway) SetDocContentLoader(fn func(docID uint64) (string, erro
 // SetSettingLoader 设置项目设定文档加载器
 func (g *DefaultGateway) SetSettingLoader(fn func(projectID uint) ([]SettingDoc, error)) {
 	g.settingLoader = fn
+}
+
+// SetThreadLoader 设置伏笔加载器
+func (g *DefaultGateway) SetThreadLoader(fn func(projectID uint) (string, error)) {
+	g.threadLoader = fn
 }
 
 // NewGateway 创建网关
@@ -72,11 +78,24 @@ func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*Ge
 	if len(req.Context) > 0 {
 		ctxReq.MemoryBlocks = req.Context
 	}
-	// 加载项目设定文档（大纲/人物/世界观）—— 默认开启
-	if req.IncludeSettings && g.settingLoader != nil && req.ProjectID != "" {
+	// 加载项目设定文档（大纲/人物/世界观），由 documents.ai_include 控制
+	if g.settingLoader != nil && req.ProjectID != "" {
 		if pid, err := parseProjectID(req.ProjectID); err == nil && pid > 0 {
 			if docs, err := g.settingLoader(pid); err == nil {
 				ctxReq.SettingDocs = docs
+			}
+		}
+	}
+	// 加载未回收伏笔，注入到项目层
+	if g.threadLoader != nil && req.ProjectID != "" {
+		if pid, err := parseProjectID(req.ProjectID); err == nil && pid > 0 {
+			if text, err := g.threadLoader(pid); err == nil && text != "" {
+				ctxReq.MemoryBlocks = append(ctxReq.MemoryBlocks, ContextBlock{
+					Level:    LevelProject,
+					Content:  text,
+					Priority: 0.88,
+					Source:   "story-threads",
+				})
 			}
 		}
 	}
@@ -163,10 +182,23 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 	if len(req.Context) > 0 {
 		ctxReq.MemoryBlocks = req.Context
 	}
-	if req.IncludeSettings && g.settingLoader != nil && req.ProjectID != "" {
+	if g.settingLoader != nil && req.ProjectID != "" {
 		if pid, err := parseProjectID(req.ProjectID); err == nil && pid > 0 {
 			if docs, err := g.settingLoader(pid); err == nil {
 				ctxReq.SettingDocs = docs
+			}
+		}
+	}
+	// 加载未回收伏笔，注入到项目层
+	if g.threadLoader != nil && req.ProjectID != "" {
+		if pid, err := parseProjectID(req.ProjectID); err == nil && pid > 0 {
+			if text, err := g.threadLoader(pid); err == nil && text != "" {
+				ctxReq.MemoryBlocks = append(ctxReq.MemoryBlocks, ContextBlock{
+					Level:    LevelProject,
+					Content:  text,
+					Priority: 0.88,
+					Source:   "story-threads",
+				})
 			}
 		}
 	}

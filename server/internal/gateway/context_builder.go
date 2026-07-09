@@ -144,9 +144,11 @@ func (b *ContextBuilder) buildUsedSettings(docs []SettingDoc, truncated []Contex
 // settingSourceKey 统一设定文档的 Source 标识
 func settingSourceKey(d SettingDoc) string {
 	typeLabel := map[string]string{
-		"outline":       "大纲",
-		"characters":    "人物",
-		"worldbuilding": "世界观",
+		"outline":         "大纲",
+		"characters":      "人物",
+		"worldbuilding":   "世界观",
+		"storyline":       "故事主线",
+		"chapter_outline": "章节大纲",
 	}[d.Type]
 	if typeLabel == "" {
 		typeLabel = d.Type
@@ -244,9 +246,11 @@ func (b *ContextBuilder) collectBlocks(req BuildContextRequest) []ContextBlock {
 	// 优先级：大纲 > 人物 > 世界观（大纲直接决定情节，人物次之，世界观兜底）
 	if len(req.SettingDocs) > 0 {
 		typePriority := map[string]float64{
-			"outline":       0.95,
-			"characters":    0.90,
-			"worldbuilding": 0.80,
+			"outline":         0.95,
+			"storyline":       0.93,
+			"chapter_outline": 0.91,
+			"characters":      0.90,
+			"worldbuilding":   0.80,
 		}
 		for _, doc := range req.SettingDocs {
 			content := strings.TrimSpace(doc.Content)
