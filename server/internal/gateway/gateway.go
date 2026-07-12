@@ -56,11 +56,6 @@ func NewGateway(aiClient *ai.Client, memoryReader MemoryReader) *DefaultGateway 
 	}
 }
 
-// BuildContext 构建上下文
-func (g *DefaultGateway) BuildContext(ctx context.Context, req BuildContextRequest) (*BuildContextResult, error) {
-	return g.contextBuilder.Build(ctx, req)
-}
-
 // Generate 非流式生成
 func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*GenerateResult, error) {
 	// 配额检查已关闭（测试阶段不限制）
@@ -284,16 +279,6 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 	}()
 
 	return outCh, nil
-}
-
-// CheckQuota 检查配额
-func (g *DefaultGateway) CheckQuota(userID string, tier string) (*QuotaStatus, error) {
-	return g.usageTracker.CheckQuota(userID, tier)
-}
-
-// TrackUsage 记录用量（手动调用）
-func (g *DefaultGateway) TrackUsage(record UsageRecord) error {
-	return g.usageTracker.Track(record)
 }
 
 // SetDB 设置数据库（供 UsageTracker 持久化）

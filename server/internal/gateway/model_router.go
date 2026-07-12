@@ -55,11 +55,6 @@ func (r *ModelRouter) Route(req RouteRequest) RouteResult {
 	}
 }
 
-// RegisterModel 注册新模型
-func (r *ModelRouter) RegisterModel(model ModelConfig) {
-	r.models = append(r.models, model)
-}
-
 // GetModels 获取所有模型配置
 func (r *ModelRouter) GetModels() []ModelConfig {
 	return r.models

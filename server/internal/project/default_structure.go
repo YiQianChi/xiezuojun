@@ -8,13 +8,6 @@ import (
 
 const articleRootTitle = "文章"
 
-type defaultProjectDoc struct {
-	Title    string
-	Type     string
-	Content  string
-	ParentID *uint
-}
-
 func defaultDocContent(docType, title string) string {
 	switch docType {
 	case "outline":
@@ -35,13 +28,21 @@ func defaultDocContent(docType, title string) string {
 }
 
 func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uint) error {
-	defs := []defaultProjectDoc{
-		{Title: "大纲", Type: "outline", Content: ""},
-		{Title: "人物设定", Type: "characters", Content: ""},
-		{Title: "世界观", Type: "worldbuilding", Content: ""},
-		{Title: "故事主线", Type: "storyline", Content: ""},
-		{Title: "章节大纲", Type: "chapter_outline", Content: ""},
-		{Title: articleRootTitle, Type: "volume", Content: ""},
+	// ponytail: tab_scope 按类型固定，与前端 createDoc 一致
+	type defaultDocX struct {
+		Title    string
+		Type     string
+		TabScope string
+		Content  string
+		ParentID *uint
+	}
+	defs := []defaultDocX{
+		{Title: "大纲", Type: "outline", TabScope: "setting", Content: ""},
+		{Title: "人物设定", Type: "characters", TabScope: "setting", Content: ""},
+		{Title: "世界观", Type: "worldbuilding", TabScope: "setting", Content: ""},
+		{Title: "故事主线", Type: "storyline", TabScope: "setting", Content: ""},
+		{Title: "章节大纲", Type: "chapter_outline", TabScope: "setting", Content: ""},
+		{Title: articleRootTitle, Type: "volume", TabScope: "chapter", Content: ""},
 	}
 
 	var articleRootID uint
@@ -52,6 +53,7 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 			Type:       def.Type,
 			Title:      def.Title,
 			SortOrder:  i,
+			TabScope:   def.TabScope,
 			WordCount:  countWords(def.Content),
 			SearchText: def.Content,
 			Status:     1,
@@ -77,6 +79,7 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 		Type:       "chapter",
 		Title:      "第一章",
 		SortOrder:  len(defs),
+		TabScope:   "chapter",
 		WordCount:  countWords(defaultDocContent("chapter", "第一章")),
 		SearchText: defaultDocContent("chapter", "第一章"),
 		Status:     1,

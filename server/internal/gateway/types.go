@@ -4,7 +4,6 @@
 package gateway
 
 import (
-	"context"
 	"time"
 )
 
@@ -250,25 +249,6 @@ var DefaultQuota = QuotaConfig{
 type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
-}
-
-// ========== Gateway 接口 ==========
-
-type Gateway interface {
-	// BuildContext 构建上下文
-	BuildContext(ctx context.Context, req BuildContextRequest) (*BuildContextResult, error)
-
-	// Generate 生成内容（非流式）
-	Generate(ctx context.Context, req GenerateRequest) (*GenerateResult, error)
-
-	// GenerateStream 流式生成
-	GenerateStream(ctx context.Context, req GenerateRequest) (<-chan StreamChunk, error)
-
-	// CheckQuota 检查配额
-	CheckQuota(userID string, tier string) (*QuotaStatus, error)
-
-	// TrackUsage 记录用量
-	TrackUsage(record UsageRecord) error
 }
 
 type GenerateRequest struct {

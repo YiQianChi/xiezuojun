@@ -27,11 +27,6 @@ func NewMemoryStorage(docRoot string) *MemoryStorage {
 	return &MemoryStorage{docRoot: docRoot}
 }
 
-// MemRoot 返回文档根目录（兼容旧代码）
-func (s *MemoryStorage) MemRoot() string {
-	return s.docRoot
-}
-
 // memoryPath 返回项目辅助记忆目录（.memory/ 子目录）
 // ponytail: 隐藏目录，与 .structure.json 同级，不污染文档列表
 func (s *MemoryStorage) memoryPath(uid, pid string) string {

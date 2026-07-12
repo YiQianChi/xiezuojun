@@ -130,20 +130,6 @@ func (g *DefaultGateway) HandleGenerate(c *gin.Context) {
 	})
 }
 
-// HandleGetUsage 获取用量信息
-func (g *DefaultGateway) HandleGetUsage(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		userID = "anonymous"
-	}
-	stats := g.usageTracker.GetUsageStats(userID)
-
-	c.JSON(http.StatusOK, gin.H{
-		"user_id": userID,
-		"usage":   stats,
-	})
-}
-
 // HandleGetModels 获取可用模型列表
 func (g *DefaultGateway) HandleGetModels(c *gin.Context) {
 	models := g.modelRouter.GetModels()
