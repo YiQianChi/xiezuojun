@@ -64,6 +64,8 @@ function logout() {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-main.editor-mode {

@@ -70,7 +70,11 @@ const isLoggedIn = ref(!!localStorage.getItem('access_token'))
 .home {
   max-width: 1040px;
   margin: 0 auto;
-  padding: 40px 32px 56px;
+  padding: 40px 32px 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .home-hero {
@@ -166,16 +170,83 @@ const isLoggedIn = ref(!!localStorage.getItem('access_token'))
   line-height: 1.55;
 }
 
+/* 大屏：1440px+ 放大标题和间距 */
+@media (min-width: 1440px) {
+  .home { max-width: 1200px; }
+  .hero-title { font-size: 64px; }
+  .hero-tagline { font-size: 21px; }
+  .home-hero { padding: 48px 0 56px; }
+  .features { gap: 20px; }
+  .feature { padding: 28px 24px; }
+}
+
+/* 2K 1920+ (含4K缩放150%) */
+@media (min-width: 1920px) {
+  .home { max-width: 1400px; }
+  .hero-title { font-size: 72px; }
+  .hero-tagline { font-size: 24px; }
+  .hero-desc { font-size: 17px; }
+  .home-hero { padding: 56px 0 64px; }
+  .features { gap: 24px; max-width: 1008px; margin: 0 auto; }
+  .feature { padding: 32px 28px; }
+  .feature-icon { width: 52px; height: 52px; }
+  .feature-icon svg { width: 26px; height: 26px; }
+  .feature h3 { font-size: 18px; }
+  .feature p { font-size: 15px; }
+  .btn.big { padding: 12px 30px; font-size: 16px; }
+}
+
+/* 4K 2560+ (原生4K或2K缩放125%) */
+@media (min-width: 2560px) {
+  .home { max-width: 1800px; padding: 80px 48px 0; }
+  .hero-title { font-size: 96px; letter-spacing: 6px; }
+  .hero-tagline { font-size: 28px; }
+  .hero-desc { font-size: 20px; margin-bottom: 40px; }
+  .home-hero { padding: 64px 0 72px; }
+  .btn.big { padding: 14px 36px; font-size: 18px; }
+  .features { gap: 28px; max-width: 1136px; margin: 0 auto; }
+  .feature { padding: 40px 32px; }
+  .feature-icon { width: 64px; height: 64px; border-radius: 18px; }
+  .feature-icon svg { width: 32px; height: 32px; }
+  .feature h3 { font-size: 22px; }
+  .feature p { font-size: 17px; line-height: 1.6; }
+  .home-footer { font-size: 14px; padding: 32px 0 28px; }
+}
+
+/* 中等屏：1024-1439px 微调 */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .hero-title { font-size: 52px; }
+  .home-hero { padding: 36px 0 40px; }
+}
+
+/* 平板：721-1023px 两列 */
+@media (min-width: 721px) and (max-width: 1023px) {
+  .features { grid-template-columns: repeat(2, 1fr); }
+  .hero-title { font-size: 48px; }
+}
+
+/* 手机：<=720px 单列 */
 @media (max-width: 720px) {
-  .hero-title { font-size: 44px; }
-  .features { grid-template-columns: 1fr; }
-  .home-hero { padding: 20px 0 32px; }
+  .hero-title { font-size: 36px; letter-spacing: 2px; }
+  .hero-tagline { font-size: 17px; }
+  .hero-desc { font-size: 14px; margin-bottom: 24px; }
+  .features { grid-template-columns: 1fr; gap: 12px; }
+  .home-hero { padding: 20px 0 28px; }
+  .home { padding: 24px 20px 0; }
+  .btn.big { padding: 9px 22px; font-size: 13px; }
+}
+
+/* 小手机：<=380px */
+@media (max-width: 380px) {
+  .hero-title { font-size: 30px; }
+  .home-actions { gap: 8px; }
 }
 
 .home-footer {
   text-align: center;
-  padding: 40px 0 0;
+  padding: 24px 0 20px;
   font-size: 12px;
+  margin-top: auto;
 }
 .home-footer a {
   color: var(--text-secondary);

@@ -378,6 +378,7 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   max-width: 1200px;
   margin: 0 auto;
   padding: 40px 32px;
+  width: 100%;
 }
 
 .bookshelf-header {
@@ -438,8 +439,9 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 
 .books-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 220px));
   gap: 24px;
+  justify-content: center;
 }
 
 .book-card {
@@ -667,5 +669,76 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   text-transform: uppercase;
   background: rgba(0,122,255,.1);
   color: var(--accent, #007aff);
+}
+
+/* 大屏 1440+ */
+@media (min-width: 1440px) {
+  .bookshelf { max-width: 1400px; }
+  .books-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 240px)); gap: 28px; }
+}
+
+/* 2K 1920+ (含4K缩放150%) */
+@media (min-width: 1920px) {
+  .bookshelf { max-width: 1600px; padding: 48px 40px; }
+  .bookshelf-header h2 { font-size: 32px; }
+  .books-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 280px)); gap: 32px; }
+  .book-cover { font-size: 56px; }
+  .book-info h3 { font-size: 16px; }
+  .book-meta { font-size: 13px; }
+  .btn { font-size: 15px; padding: 9px 18px; }
+  .modal { width: 480px; padding: 36px; }
+}
+
+/* 4K 2560+ (原生4K或2K缩放125%) */
+@media (min-width: 2560px) {
+  .bookshelf { max-width: 2000px; padding: 64px 48px; }
+  .bookshelf-header h2 { font-size: 36px; }
+  .bookshelf-header .subtitle { font-size: 16px; }
+  .books-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 320px)); gap: 36px; }
+  .book-cover { font-size: 64px; }
+  .book-info h3 { font-size: 18px; }
+  .book-meta { font-size: 14px; }
+  .btn { font-size: 16px; padding: 10px 20px; }
+  .modal { width: 560px; padding: 40px; }
+  .modal h3 { font-size: 24px; }
+  .empty-icon { font-size: 80px; }
+  .empty-state h3 { font-size: 24px; }
+  .loading { font-size: 18px; padding: 120px; }
+}
+
+/* 平板 */
+@media (max-width: 1023px) {
+  .bookshelf { padding: 32px 24px; }
+  .books-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 200px)); gap: 20px; }
+}
+
+/* 手机 */
+@media (max-width: 720px) {
+  .bookshelf { padding: 24px 16px; }
+  .bookshelf-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .header-actions { width: 100%; justify-content: flex-end; }
+  .bookshelf-header h2 { font-size: 24px; }
+  .books-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 180px));
+    gap: 16px;
+  }
+  .book-cover { font-size: 40px; }
+  .book-info h3 { font-size: 14px; }
+  .book-meta { font-size: 11px; }
+  .modal { width: 100%; padding: 24px 20px; }
+  .trash-modal { width: 100%; }
+  .empty-state { padding: 60px 0; }
+  .empty-icon { font-size: 48px; }
+}
+
+/* 小手机 */
+@media (max-width: 380px) {
+  .books-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .book-cover { font-size: 32px; }
+  .header-actions .btn { font-size: 12px; padding: 6px 12px; }
 }
 </style>
