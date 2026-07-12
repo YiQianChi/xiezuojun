@@ -239,14 +239,16 @@ export const memoryApi = {
 
 // 回收站
 export const trashApi = {
-  list() {
-    return api.get('/trash')
+  list(projectId?: string | number) {
+    const params = projectId ? { project_id: projectId } : {}
+    return api.get('/trash', { params })
   },
   restore(data: { project_id: number; doc_id: number }) {
     return api.post('/trash/restore', data)
   },
-  empty() {
-    return api.delete('/trash')
+  empty(projectId?: string | number) {
+    const params = projectId ? { project_id: projectId } : {}
+    return api.delete('/trash', { params })
   },
 }
 

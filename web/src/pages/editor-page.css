@@ -887,6 +887,9 @@
   flex-direction: column;
   z-index: 400;
 }
+.memory-popup.trash-popup {
+  width: 360px;
+}
 
 /* 图谱浮层（编辑器内右下角） */
 .graph-fab {

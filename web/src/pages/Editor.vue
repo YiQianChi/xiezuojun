@@ -249,6 +249,15 @@
           <ThreadPanel :project-id="String(projectId)" />
         </div>
       </div>
+      <div class="memory-trigger" :class="{ open: trashOpen }">
+        <button class="memory-btn" @click="trashOpen = !trashOpen" :title="trashOpen ? '收起回收站' : '回收站'">
+          <span v-if="!trashOpen">🗑</span>
+          <span v-else>✕</span>
+        </button>
+        <div class="memory-popup trash-popup" v-show="trashOpen" @click.stop>
+          <TrashPanel ref="trashPanelRef" :project-id="String(projectId)" @restored="onTrashRestored" />
+        </div>
+      </div>
     </div>
 
     <!-- 新建文档弹窗 -->
@@ -317,6 +326,7 @@ import AIContextPanel from '../components/editor/AIContextPanel.vue'
 import MemoryPanel from '../components/editor/MemoryPanel.vue'
 import RelationshipGraph from '../components/editor/RelationshipGraph.vue'
 import ThreadPanel from '../components/editor/ThreadPanel.vue'
+import TrashPanel from '../components/editor/TrashPanel.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
 import FolderPropsModal from '../components/editor/FolderPropsModal.vue'
 import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
@@ -442,6 +452,8 @@ const sideTab = ref<'chapter' | 'setting'>('chapter')
 const memoryOpen = ref(false)
 const graphOpen = ref(false)
 const threadOpen = ref(false)
+const trashOpen = ref(false)
+const trashPanelRef = ref<any>(null)
 const graphMaximized = ref(false)
 
 // 顶部工作模式：计划 / 写作 / 审核
@@ -1070,9 +1082,14 @@ async function deleteDoc() {
       if (editor.value) editor.value.commands.setContent('')
     }
     await loadDocs()
+    trashPanelRef.value?.load()
   } catch (e: any) {
     toast.error(e.response?.data?.error || '删除失败')
   }
+}
+
+async function onTrashRestored() {
+  await loadDocs()
 }
 
 async function handleDropNode(srcId: number, dstId: number, position: 'before' | 'after' | 'inside') {

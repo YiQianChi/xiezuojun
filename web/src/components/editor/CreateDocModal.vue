@@ -60,6 +60,7 @@ watch(() => props.modelValue, (v) => {
   if (v) {
     name.value = ''
     if (props.folderTypeOptions?.length) selectedFolderType.value = props.folderTypeOptions[0].value
+    else selectedFolderType.value = '' // ponytail: 必须清空，否则上次建文件夹残留的值会覆盖 chapter 类型
   }
 })
 

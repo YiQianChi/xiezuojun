@@ -249,7 +249,7 @@ const pickerWriting = ref(false)
 const pickerError = ref('')
 const pickerStep = ref<PlanStep | null>(null)
 
-const SETTING_TYPES = ['outline', 'characters', 'worldbuilding']
+const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline']
 
 async function openFolderPicker(step: PlanStep) {
   pickerStep.value = step
