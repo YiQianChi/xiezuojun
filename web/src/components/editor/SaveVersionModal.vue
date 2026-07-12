@@ -26,7 +26,6 @@ import { ref, watch } from 'vue'
 const props = defineProps<{
   modelValue: boolean
   saving: boolean
-  defaultLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -34,11 +33,11 @@ const emit = defineEmits<{
   save: [label: string]
 }>()
 
-const label = ref(props.defaultLabel || '第一版v1.0')
+const label = ref('第一版v1.0')
 
 // 打开时复位输入值
 watch(() => props.modelValue, (v) => {
-  if (v) label.value = props.defaultLabel || '第一版v1.0'
+  if (v) label.value = '第一版v1.0'
 })
 
 function cancel() {

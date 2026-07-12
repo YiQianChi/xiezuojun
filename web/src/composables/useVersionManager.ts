@@ -198,7 +198,6 @@ export function useVersionManager(opts: UseVersionManagerOptions) {
     // 版本状态
     versions,
     selectedVersion,
-    versionLabel,
     loadingVersions,
     savingVersion,
     restoringVersion,
@@ -207,14 +206,12 @@ export function useVersionManager(opts: UseVersionManagerOptions) {
     // 版本操作
     openSaveVersionModal,
     onSaveVersionConfirm,
-    saveVersion,
     openVersionModal,
     loadVersions,
     selectVersion,
     restoreSelectedVersion,
     // 对比状态
     compareActive,
-    compareOldContent,
     compareCurrentContent,
     compareSyncScroll,
     compareRows,

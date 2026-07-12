@@ -845,10 +845,12 @@ async function loadDocs() {
 
 async function initDefaultStructure() {
   const defaults = [
-    { type: 'outline', title: '大纲', sort_order: 1 },
-    { type: 'characters', title: '人物设定', sort_order: 2 },
-    { type: 'worldbuilding', title: '世界观', sort_order: 3 },
-    { type: 'volume', title: '正文', sort_order: 4 },
+    { type: 'outline', title: '大纲', sort_order: 1, tab_scope: 'setting' },
+    { type: 'characters', title: '人物设定', sort_order: 2, tab_scope: 'setting' },
+    { type: 'worldbuilding', title: '世界观', sort_order: 3, tab_scope: 'setting' },
+    { type: 'storyline', title: '故事主线', sort_order: 4, tab_scope: 'setting' },
+    { type: 'chapter_outline', title: '章节大纲', sort_order: 5, tab_scope: 'setting' },
+    { type: 'volume', title: '文章', sort_order: 6, tab_scope: 'chapter' },
   ]
   for (const d of defaults) {
     try {
@@ -857,6 +859,7 @@ async function initDefaultStructure() {
         title: d.title,
         type: d.type,
         sort_order: d.sort_order,
+        tab_scope: d.tab_scope,
       })
     } catch (e) {
       console.error('创建默认结构失败', d, e)
@@ -947,10 +950,9 @@ async function createDoc(folderType?: string) {
     )
     const maxSort = siblings.reduce((m, d) => Math.max(m, d.sort_order || 0), 0)
 
-    // ponytail: 新建文件夹时 folderType 决定真实 type 和 tab_scope
+    // ponytail: tab_scope 按类型固定，不跟随当前 Tab
     const actualType = folderType || createDocType.value
-    const isFolderType = ['volume', 'outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline'].includes(actualType)
-    const tabScope = isFolderType ? sideTab.value : (actualType === 'chapter' ? 'chapter' : 'setting')
+    const tabScope = (actualType === 'volume' || actualType === 'chapter') ? 'chapter' : 'setting'
 
     const res = await documentApi.create({
       project_id: projectId,
@@ -992,9 +994,10 @@ function createDocAtRoot() {
   openCreateDocModal(null, 'volume')
 }
 
-// ponytail: 文件夹内+按钮
+// ponytail: 文件夹内+按钮，根据当前 Tab 决定类型
 function createDocInFolder(folder: any) {
-  openCreateDocModal(folder.id, 'chapter')
+  const type = sideTab.value === 'setting' ? 'note' : 'chapter'
+  openCreateDocModal(folder.id, type)
 }
 
 function newDocUnder(type: 'volume' | 'chapter') {

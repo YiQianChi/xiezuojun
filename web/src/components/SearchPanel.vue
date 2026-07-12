@@ -167,8 +167,6 @@ onMounted(() => {
     nextTick(() => inputRef.value?.focus())
   }
 })
-
-defineExpose({ focus: () => inputRef.value?.focus() })
 </script>
 
 <style scoped>

@@ -340,7 +340,6 @@ const visibleNodes = computed(() => {
   return nodes.value.filter(n => active.has(n.name))
 })
 const selected = ref<{ type: string; data: any } | null>(null)
-const connectedNames = ref<Set<string>>(new Set())
 
 // 作者切到第N章时，时间轴自动跟过去（但仅在非"全部"模式时跟随）
 watch(() => props.currentChapter, (ch) => {
@@ -548,7 +547,7 @@ function render() {
   sim.alpha(1).restart()
 
   // click blank to deselect
-  svgSel.on('click', () => { selected.value = null; connectedNames.value = new Set(); render() })
+  svgSel.on('click', () => { selected.value = null; render() })
 
   // 同步 3D（如果在 3D 模式）
   if (is3D.value) render3D()

@@ -156,12 +156,6 @@ export const branchApi = {
   list(projectId: string | number) {
     return api.get(`/projects/${projectId}/branches`)
   },
-  create(projectId: string | number, data: { name: string; base_branch_id?: number; fork_document_id: number }) {
-    return api.post(`/projects/${projectId}/branches`, data)
-  },
-  update(branchId: string | number, data: { name?: string; status?: number }) {
-    return api.patch(`/story-branches/${branchId}`, data)
-  },
 }
 
 // 项目内搜索
@@ -234,9 +228,6 @@ export const memoryApi = {
   },
   writeFile(projectId: string, path: string, content: string) {
     return api.put('/memory/file', { content }, { params: { project_id: projectId, path } })
-  },
-  getProjectMemory(projectId: string) {
-    return api.get(`/memory/${projectId}`)
   },
   getRelationships(projectId: string) {
     return api.get('/memory/relationships', { params: { project_id: projectId } })

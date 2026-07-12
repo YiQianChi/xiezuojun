@@ -164,17 +164,6 @@
   background: var(--bg-secondary);
 }
 
-.tree-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border-subtle);
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
 /* 左侧栏 章节/设定 Tab */
 .side-tabs {
   display: flex;
@@ -236,23 +225,6 @@
   font-size: 12px;
   padding: 0 8px;
   outline: none;
-}
-
-.add-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  transition: background var(--transition-fast);
-}
-
-.add-btn:hover {
-  background: var(--accent-hover);
 }
 
 .tree-list {
@@ -842,17 +814,6 @@
   color: #ff3b30;
 }
 
-.context-menu .divider {
-  height: 1px;
-  background: var(--border-subtle);
-  margin: 4px 0;
-  padding: 0;
-}
-
-.context-menu .divider:hover {
-  background: var(--border-subtle);
-}
-
 /* 右键高亮颜色选择 */
 .context-menu .ctx-highlight-row {
   display: flex;
@@ -1236,20 +1197,6 @@
   letter-spacing: 0.5px;
   font-weight: 600;
 }
-.toggle-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--text-secondary, #86868b);
-  cursor: pointer;
-  user-select: none;
-}
-.toggle-inline input[type="checkbox"] {
-  accent-color: var(--accent, #007aff);
-  width: 12px; height: 12px;
-  margin: 0;
-}
 
 .context-body {
   flex: 1;
@@ -1272,58 +1219,4 @@
   padding: 4px 4px 8px;
   border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
   margin-bottom: 6px;
-}
-
-.context-chip {
-  background: rgba(0, 122, 255, 0.05);
-  border-radius: 8px;
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-  border-left: 3px solid transparent;
-}
-.context-chip:hover { background: rgba(0, 122, 255, 0.1); }
-.context-chip.outline { border-left-color: #ff9500; }
-.context-chip.characters { border-left-color: #af52de; }
-.context-chip.worldbuilding { border-left-color: #34c759; }
-.context-chip.unused { opacity: 0.5; background: rgba(0, 0, 0, 0.03); }
-
-.chip-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-}
-.chip-type {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--text-secondary, #86868b);
-  flex-shrink: 0;
-}
-.context-chip.outline .chip-type { background: rgba(255, 149, 0, 0.15); color: #c96f00; }
-.context-chip.characters .chip-type { background: rgba(175, 82, 222, 0.15); color: #8a3fb0; }
-.context-chip.worldbuilding .chip-type { background: rgba(52, 199, 89, 0.15); color: #268a3f; }
-
-.chip-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-primary, #1d1d1f);
-  font-weight: 500;
-}
-.chip-tokens {
-  font-size: 10px;
-  color: var(--text-tertiary, #aeaeb2);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-.chip-unused {
-  font-size: 10px;
-  color: var(--text-tertiary, #aeaeb2);
-  flex-shrink: 0;
 }

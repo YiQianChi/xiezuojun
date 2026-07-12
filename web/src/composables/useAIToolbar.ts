@@ -123,18 +123,6 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     }
   }
 
-  function hideAIToolbar() {
-    aiToolbar.value.visible = false
-  }
-
-  function resetAIState() {
-    aiToolbar.value.visible = false
-    aiInsert.value.active = false
-    aiPhase.value = 'idle'
-    aiDirection.value = ''
-    pendingAction.value = null
-  }
-
   function buildAIPrompt(action: AIAction, selectedText: string, direction?: string) {
     const instructions: Record<AIAction, string> = {
       continue: '你是小说写作助手。请直接续写下面的小说文本，只输出续写的正文内容。不要解释、不要加标题、不要输出多个版本、不要分析。直接开始写小说正文。',
@@ -450,8 +438,6 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     // methods
     pendingAction,
     showAIToolbar,
-    hideAIToolbar,
-    resetAIState,
     prepareAIAction,
     executeAIAction,
     stopAIGeneration,

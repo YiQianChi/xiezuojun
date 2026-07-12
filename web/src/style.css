@@ -16,25 +16,19 @@
   --accent-subtle: #007aff0a;
   --border: #00000014;
   --border-subtle: #0000000a;
-  --glass-bg: #ffffffb8;
   --glass-bg-solid: #ffffffe0;
-  --glass-bg-heavy: #ffffffd1;
-  --glass-border: #ffffff80;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px #0000000a;
   --shadow-md: 0 2px 8px #0000000f, 0 0 1px #00000014;
   --shadow-lg: 0 8px 30px #00000014, 0 2px 8px #0000000a;
   --shadow-xl: 0 20px 60px #0000001f, 0 4px 16px #0000000f;
-  --shadow-inner: inset 0 1px 0 #fff9;
-  --shadow-glow: 0 0 20px #007aff26;
 
   /* Radius */
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --radius-xl: 20px;
 
   /* Sizes */
   --nav-height: 56px;
@@ -43,12 +37,10 @@
   /* Fonts */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Noto Sans SC", sans-serif;
   --font-serif: "Noto Serif SC", "PingFang SC", "SimSun", serif;
-  --font-mono: "SF Mono", "Fira Code", Menlo, Consolas, monospace;
 
   /* Transitions */
   --transition-fast: .15s cubic-bezier(.25, .46, .45, .94);
   --transition-normal: .25s cubic-bezier(.25, .46, .45, .94);
-  --transition-spring: .4s cubic-bezier(.34, 1.56, .64, 1);
 }
 
 *, *::before, *::after {

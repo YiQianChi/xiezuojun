@@ -306,6 +306,5 @@ export function useEditorSearch(opts: UseEditorSearchOptions) {
     searchPrev,
     onJumpProject,
     applyEditorSearch,
-    updateProjectHighlightForCurrentDoc,
   }
 }
