@@ -201,10 +201,11 @@ func main() {
 			}
 
 			idStr := c.Param("id")
-			docID, err := strconv.ParseUint(idStr, 10, 64)
+			docID64, err := strconv.ParseUint(idStr, 10, 64)
 			if err != nil {
 				return
 			}
+			docID := uint(docID64)
 			userIDStr := ""
 			if val, exists := c.Get("userID"); exists {
 				userIDStr, _ = val.(string)
@@ -217,20 +218,38 @@ func main() {
 
 			if doc.Type == "characters" {
 				pid := fmt.Sprintf("%d", doc.ProjectID)
+				// 查出项目所有人物设定文档，拼接全文提取角色
+				var charDocs []model.Document
+				db.Where("project_id = ? AND type = ? AND status = 1", doc.ProjectID, "characters").Find(&charDocs)
+
+				allContent := req.Content
+				for _, cd := range charDocs {
+					if uint(cd.ID) == docID {
+						continue
+					}
+					docPath := pathConfig.DocPath(userIDStr, doc.ProjectID, "", cd.ID)
+					if b, err := os.ReadFile(docPath); err == nil {
+						allContent += "\n\n" + string(b)
+					}
+				}
+
+				// 闭包捕获变量
+				uid := userIDStr
+				pidStr := pid
+				content := allContent
 				go func() {
 					defer func() {
 						if r := recover(); r != nil {
 							log.Printf("[main] extract panic: %v", r)
 						}
 					}()
-					memory.ExtractAndSaveSummary(
+					memory.ExtractCharacters(
 						context.Background(),
 						aiClient,
 						memStorage,
-						userIDStr,
-						pid,
-						idStr,
-						req.Content,
+						uid,
+						pidStr,
+						content,
 					)
 				}()
 			}

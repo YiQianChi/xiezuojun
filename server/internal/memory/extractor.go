@@ -1,5 +1,5 @@
-// extractor — 章节提取器
-// 异步调用 AI 从章节内容提取摘要、角色、事件等，写入记忆文件系统
+// extractor — 人物设定角色提取器
+// 异步调用 AI 从项目所有人物设定文档提取角色，写入角色卡文件
 
 package memory
 
@@ -28,21 +28,19 @@ func memoryModel() string {
 	return "MiniMax-M3"
 }
 
-// ExtractAndSaveSummary 从章节内容提取摘要、角色、事件等并保存
-// 此函数会被 goroutine 异步调用，内部 recover panic
-func ExtractAndSaveSummary(ctx context.Context, aiClient *ai.Client, storage *MemoryStorage, uid, pid, docID, content string) {
+// ExtractCharacters 从项目所有人物设定文档拼接的全文中提取角色
+func ExtractCharacters(ctx context.Context, aiClient *ai.Client, storage *MemoryStorage, uid, pid, content string) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("[memory] ExtractAndSaveSummary panicked for doc %s: %v", docID, r)
+			log.Printf("[memory] ExtractCharacters panicked: %v", r)
 		}
 	}()
 
 	if content == "" {
-		log.Printf("[memory] empty content for doc %s, skip", docID)
+		log.Printf("[memory] empty content, skip")
 		return
 	}
 
-	// 1. 从人物设定文档提取角色信息
 	extractPrompt := `分析以下小说人物设定文档，提取所有角色信息，以JSON格式返回：
 {
   "characters": [{"name": "角色名", "role": "主角/配角/路人", "description": "简短描述"}]
@@ -54,11 +52,10 @@ func ExtractAndSaveSummary(ctx context.Context, aiClient *ai.Client, storage *Me
 		{Role: "user", Content: content},
 	})
 	if err != nil {
-		log.Printf("[memory] failed to extract characters from doc %s: %v", docID, err)
+		log.Printf("[memory] failed to extract characters: %v", err)
 		return
 	}
 
-	// 3. 解析 JSON 结果
 	var extracted struct {
 		Characters []struct {
 			Name        string `json:"name"`
@@ -84,23 +81,20 @@ func ExtractAndSaveSummary(ctx context.Context, aiClient *ai.Client, storage *Me
 	jsonStr = strings.TrimSpace(jsonStr)
 
 	if err := json.Unmarshal([]byte(jsonStr), &extracted); err != nil {
-		log.Printf("[memory] failed to parse extract JSON for doc %s: %v", docID, err)
+		log.Printf("[memory] failed to parse extract JSON: %v", err)
 		return
 	}
 
-	// 4. 新角色自动创建骨架角色卡
 	for _, char := range extracted.Characters {
 		if char.Name == "" {
 			continue
 		}
-		// 检查是否已存在
 		existing, err := storage.ReadCharacter(uid, pid, char.Name)
 		if err == nil && existing != "" {
 			log.Printf("[memory] character %s already exists, skip", char.Name)
 			continue
 		}
 
-		// 创建骨架角色卡
 		card := fmt.Sprintf(`# %s
 
 > auto_generated: true
