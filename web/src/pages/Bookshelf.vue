@@ -110,14 +110,31 @@
               <span class="trash-meta">{{ item.type === 'project' ? '书籍' : item.type }} · 删除于 {{ formatDate(item.trashed_at || item.deleted_at) }}</span>
             </div>
             <button class="btn small" @click="restoreDoc(item)">恢复</button>
+            <button class="btn small danger" @click="openDestroyDoc(item)">彻底删除</button>
           </div>
         </div>
         <div v-if="trashItems.length > 0" class="modal-actions">
-          <button class="btn danger" @click="emptyTrash">清空回收站</button>
+          <button class="btn danger" @click="openEmptyTrash">清空回收站</button>
           <button class="btn" @click="showTrash = false">关闭</button>
         </div>
         <div v-else class="modal-actions">
           <button class="btn" @click="showTrash = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 确认彻底删除/清空 弹窗 -->
+    <div v-if="confirmModal" class="modal-overlay" @click="closeConfirm">
+      <div class="modal confirm-modal-box" @click.stop>
+        <div class="confirm-icon">⚠️</div>
+        <h3>{{ confirmModal.title }}</h3>
+        <p class="confirm-desc">{{ confirmModal.desc }}</p>
+        <p class="confirm-warn">⚠️ 删除后不可恢复</p>
+        <p class="confirm-hint">请输入 <strong>确认删除</strong> 以继续</p>
+        <input v-model="confirmText" class="input" placeholder="确认删除" />
+        <div class="modal-actions">
+          <button class="btn" @click="closeConfirm">取消</button>
+          <button class="btn danger" :disabled="confirmText !== '确认删除'" @click="confirmModal.action">确认删除</button>
         </div>
       </div>
     </div>
@@ -178,6 +195,8 @@ const creating = ref(false)
 const showTrash = ref(false)
 const trashItems = ref<any[]>([])
 const trashLoading = ref(false)
+const confirmModal = ref<{ title: string; desc: string; action: () => void } | null>(null)
+const confirmText = ref('')
 
 // 用户中心
 const showUserCenter = ref(false)
@@ -328,14 +347,58 @@ async function restoreDoc(item: any) {
 }
 
 async function emptyTrash() {
-  if (!confirm('确定清空回收站？此操作不可恢复')) return
   try {
     await trashApi.empty()
     trashItems.value = []
     toast.success('已清空')
   } catch (e: any) {
     toast.error(e.response?.data?.error || '清空失败')
+  } finally {
+    closeConfirm()
   }
+}
+
+function openEmptyTrash() {
+  confirmText.value = ''
+  confirmModal.value = {
+    title: '清空回收站',
+    desc: `确定要清空回收站吗？将删除全部 ${trashItems.value.length} 个项目。`,
+    action: emptyTrash,
+  }
+}
+
+function closeConfirm() {
+  confirmModal.value = null
+  confirmText.value = ''
+}
+
+async function destroyDoc() {
+  const item = (confirmModal.value as any)?._item
+  if (!item) return
+  try {
+    if (item.type === 'project') {
+      await trashApi.destroy({ project_id: item.id || item.project_id, doc_id: 0 })
+    } else {
+      await trashApi.destroy({ project_id: item.project_id, doc_id: item.id })
+    }
+    await loadTrash()
+    await loadProjects()
+    toast.success('已彻底删除')
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '删除失败')
+  } finally {
+    closeConfirm()
+  }
+}
+
+function openDestroyDoc(item: any) {
+  confirmText.value = ''
+  confirmModal.value = {
+    title: '彻底删除',
+    desc: `确定要彻底删除「${item.title}」吗？`,
+    action: destroyDoc,
+    _item: item,
+  } as any
 }
 
 // 用户中心
@@ -564,6 +627,17 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 }
 
 .trash-modal { width: 560px; }
+
+.confirm-modal-box {
+  max-width: 380px;
+  text-align: center;
+}
+.confirm-modal-box .confirm-icon { font-size: 32px; margin-bottom: 8px; }
+.confirm-modal-box .confirm-desc { font-size: 13px; color: var(--text-secondary); margin: 8px 0 6px; }
+.confirm-modal-box .confirm-warn { font-size: 13px; color: var(--danger, #ff4d6d); font-weight: 600; margin-bottom: 12px; }
+.confirm-modal-box .confirm-hint { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.confirm-modal-box .input { text-align: center; margin-bottom: 4px; }
+.confirm-modal-box .modal-actions { justify-content: center; }
 
 .form-group {
   margin-bottom: 16px;

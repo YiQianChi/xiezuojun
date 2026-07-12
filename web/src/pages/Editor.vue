@@ -300,6 +300,19 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
       <span>退出专注 (Esc)</span>
     </div>
+
+    <!-- 通用确认弹窗 -->
+    <div v-if="confirmModal" class="confirm-overlay" @click="confirmModal = null">
+      <div class="confirm-modal-box" @click.stop>
+        <div class="confirm-icon">⚠️</div>
+        <h3>{{ confirmModal.title }}</h3>
+        <p class="confirm-desc">{{ confirmModal.desc }}</p>
+        <div class="confirm-buttons">
+          <button class="btn-cancel" @click="confirmModal = null">取消</button>
+          <button class="btn-confirm" @click="confirmModal.action()">确认</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -455,6 +468,10 @@ const threadOpen = ref(false)
 const trashOpen = ref(false)
 const trashPanelRef = ref<any>(null)
 const graphMaximized = ref(false)
+
+// 通用确认弹窗
+const confirmModal = ref<{ title: string; desc: string; action: () => void } | null>(null)
+const confirmText = ref('')
 
 // 顶部工作模式：计划 / 写作 / 审核
 type EditorMode = 'plan' | 'write' | 'review'
@@ -1073,18 +1090,27 @@ async function deleteDoc() {
   const doc = docContextMenu.value.doc
   if (!doc) return
   closeDocContextMenu()
-  if (!confirm(`确定删除「${doc.title}」？`)) return
-  try {
-    await documentApi.delete(doc.id)
-    if (activeDocId.value === doc.id) {
-      activeDocId.value = null
-      currentDocName.value = ''
-      if (editor.value) editor.value.commands.setContent('')
-    }
-    await loadDocs()
-    trashPanelRef.value?.load()
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || '删除失败')
+  confirmText.value = ''
+  confirmModal.value = {
+    title: '删除文档',
+    desc: `确定删除「${doc.title}」？删除后可在回收站恢复。`,
+    action: async () => {
+      try {
+        await documentApi.delete(doc.id)
+        if (activeDocId.value === doc.id) {
+          activeDocId.value = null
+          currentDocName.value = ''
+          if (editor.value) editor.value.commands.setContent('')
+        }
+        await loadDocs()
+        trashPanelRef.value?.load()
+        toast.success('已移入回收站')
+      } catch (e: any) {
+        toast.error(e.response?.data?.error || '删除失败')
+      } finally {
+        confirmModal.value = null
+      }
+    },
   }
 }
 

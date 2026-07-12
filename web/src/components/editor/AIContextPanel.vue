@@ -94,30 +94,16 @@ defineEmits<{
 const loading = ref(false)
 const settingDocs = ref<SettingDocItem[]>([])
 
-const GROUP_LABELS: Record<string, string> = {
-  outline: '大纲',
-  characters: '人物',
-  worldbuilding: '世界观',
-  storyline: '故事主线',
-  chapter_outline: '章节大纲',
-}
-
 const groupedDocs = computed(() => {
   const groups: { type: string; label: string; docs: SettingDocItem[]; enabled: number }[] = []
-  for (const type of ['outline', 'storyline', 'chapter_outline', 'characters', 'worldbuilding']) {
-    const docs = settingDocs.value.filter(d => d.type === type)
-    if (docs.length === 0) continue
-    groups.push({
-      type,
-      label: GROUP_LABELS[type] || type,
-      docs,
-      enabled: docs.filter(d => d.ai_include !== false).length,
-    })
-  }
-  // 其他类型
-  const others = settingDocs.value.filter(d => !['outline', 'storyline', 'chapter_outline', 'characters', 'worldbuilding'].includes(d.type))
-  if (others.length > 0) {
-    groups.push({ type: 'other', label: '其他', docs: others, enabled: others.filter(d => d.ai_include !== false).length })
+  for (const doc of settingDocs.value) {
+    let g = groups.find(g => g.type === doc.type)
+    if (!g) {
+      g = { type: doc.type, label: doc.type, docs: [], enabled: 0 }
+      groups.push(g)
+    }
+    g.docs.push(doc)
+    if (doc.ai_include !== false) g.enabled++
   }
   return groups
 })
@@ -142,23 +128,14 @@ async function loadSettings() {
     const res = await documentApi.list(String(props.projectId))
     const data = res.data?.data
     const allDocs = Array.isArray(data) ? data : []
-    // ponytail: note docs grouped by parent's type instead of generic "其他"
-    const typeById = new Map<number, string>()
-    allDocs.forEach((d: any) => { if (d.id) typeById.set(d.id, d.type) })
-    // ponytail: root folder hidden when it has child notes
-    const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline']
-    const hasChildNotes = new Set<number>()
-    allDocs.forEach((d: any) => { if (d.type === 'note' && d.parent_id) hasChildNotes.add(d.parent_id) })
+    // ponytail: group by parent folder's title — dynamic, not hardcoded
+    const titleById = new Map<number, string>()
+    allDocs.forEach((d: any) => { if (d.id) titleById.set(d.id, d.title) })
     settingDocs.value = allDocs
-      .filter((d: any) => [...SETTING_TYPES, 'note'].includes(d.type))
-      .filter((d: any) => !(SETTING_TYPES.includes(d.type) && hasChildNotes.has(d.id)))
+      .filter((d: any) => d.type === 'note' && d.tab_scope === 'setting')
       .map((d: any) => {
-        let groupType = d.type
-        if (d.type === 'note' && d.parent_id) {
-          const pt = typeById.get(d.parent_id)
-          if (pt && SETTING_TYPES.includes(pt)) groupType = pt
-        }
-        return { id: d.id, title: d.title, type: groupType, ai_include: d.ai_include }
+        const groupLabel = d.parent_id ? (titleById.get(d.parent_id) || '其他') : '其他'
+        return { id: d.id, title: d.title, type: groupLabel, ai_include: d.ai_include }
       })
   } catch {
     toast.error('加载设定列表失败')

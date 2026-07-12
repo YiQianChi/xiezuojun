@@ -1223,3 +1223,45 @@
   border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
   margin-bottom: 6px;
 }
+
+/* 通用确认弹窗 */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.confirm-modal-box {
+  background: var(--bg-primary, #fff);
+  border-radius: 12px;
+  padding: 28px 24px 20px;
+  max-width: 360px;
+  width: calc(100% - 48px);
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.confirm-modal-box .confirm-icon { font-size: 32px; margin-bottom: 8px; }
+.confirm-modal-box h3 { font-size: 16px; font-weight: 600; margin: 0 0 8px; }
+.confirm-modal-box .confirm-desc { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+.confirm-buttons { display: flex; gap: 8px; justify-content: center; }
+.confirm-buttons .btn-cancel {
+  padding: 8px 20px;
+  border: 1px solid var(--border, rgba(0,0,0,0.1));
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.confirm-buttons .btn-confirm {
+  padding: 8px 20px;
+  border: none;
+  background: var(--danger, #ff4d6d);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}

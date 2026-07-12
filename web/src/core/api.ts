@@ -250,6 +250,9 @@ export const trashApi = {
     const params = projectId ? { project_id: projectId } : {}
     return api.delete('/trash', { params })
   },
+  destroy(data: { project_id: number; doc_id: number }) {
+    return api.post('/trash/destroy', data)
+  },
 }
 
 // 伏笔/钩子追踪
