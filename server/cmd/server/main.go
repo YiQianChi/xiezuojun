@@ -246,6 +246,7 @@ func main() {
 	authd.GET("/trash", projectHandler.TrashListHandler)
 	authd.POST("/trash/restore", projectHandler.RestoreDocument)
 	authd.DELETE("/trash", projectHandler.EmptyTrash)
+	authd.POST("/trash/destroy", projectHandler.DestroyDocument)
 
 	// 回收站定时清理（每小时一次）
 	go func() {

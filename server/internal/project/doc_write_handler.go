@@ -136,6 +136,8 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	}
 	if req.TabScope != "" {
 		updates["tab_scope"] = req.TabScope
+		// ponytail: 级联更新子文档的 tab_scope，否则文件夹改 tab 后旧子文件还留在旧 tab
+		h.db.Model(&model.Document{}).Where("parent_id = ?", id).Update("tab_scope", req.TabScope)
 	}
 	if req.Icon != "" {
 		updates["icon"] = req.Icon

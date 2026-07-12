@@ -206,6 +206,71 @@ func (h *Handler) TrashListHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": items})
 }
 
+// DestroyDocument 彻底删除回收站中的单条文档（或整个 trash_group）
+func (h *Handler) DestroyDocument(c *gin.Context) {
+	userID := getUserID(c)
+	var req struct {
+		ProjectID uint `json:"project_id"`
+		DocID     uint `json:"doc_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.DocID == 0 && req.ProjectID > 0 {
+		// ponytail: 彻底删除整个软删 project（书架全局回收站用）
+		if !h.requireProjectOwner(c, req.ProjectID) {
+			return
+		}
+		projName := h.getProjectName(req.ProjectID)
+		trashDir := h.paths.TrashDir(userID, req.ProjectID, projName)
+		_ = os.RemoveAll(trashDir)
+		h.db.Where("project_id = ? AND status = 0", req.ProjectID).Delete(&model.Document{})
+		h.db.Where("id = ? AND status = 0", req.ProjectID).Delete(&model.Project{})
+		c.JSON(http.StatusOK, gin.H{"message": "destroyed"})
+		return
+	}
+
+	if req.DocID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "doc_id required"})
+		return
+	}
+	if !h.requireProjectOwner(c, req.ProjectID) {
+		return
+	}
+
+	var trashed model.Document
+	if err := h.db.First(&trashed, req.DocID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "doc not found"})
+		return
+	}
+	groupID := trashed.TrashGroup
+	if groupID == 0 {
+		groupID = req.DocID
+	}
+
+	var docs []model.Document
+	h.db.Where("project_id = ? AND status = 0 AND (trash_group = ? OR id = ?)", req.ProjectID, groupID, req.DocID).Find(&docs)
+
+	projName := h.getProjectName(req.ProjectID)
+	trashDir := h.paths.TrashDir(userID, req.ProjectID, projName)
+
+	h.locks.Lock(userID)
+	for _, d := range docs {
+		docName := fmt.Sprintf("%d.md", d.ID)
+		_ = os.Remove(filepath.Join(trashDir, docName))
+		_ = os.Remove(filepath.Join(trashDir, docName+".meta.json"))
+		h.db.Delete(&d)
+	}
+	_ = store.AppendChangelog(h.paths, userID, store.ChangeEntry{
+		Action: "destroy_doc", Project: projName,
+		Doc: uintToStr(req.DocID), Summary: "彻底删除文档",
+	})
+	h.locks.Unlock(userID)
+
+	c.JSON(http.StatusOK, gin.H{"message": "destroyed"})
+}
+
 // enforceTrashLimit 删除文档后检查回收站上限，按 trash_group FIFO 淘汰最旧的组
 func (h *Handler) enforceTrashLimit(userID string, projectID uint) {
 	// ponytail: 每个 trash_group 算1个名额（单文档 trash_group=自身ID）
