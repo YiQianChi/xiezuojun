@@ -65,6 +65,7 @@ func (h *Handler) GetDocument(c *gin.Context) {
 }
 
 // DeleteDocument 删除文档（移入回收站）
+// 文件夹删除：文件夹+所有子文档作为1个 trash_group 整体进回收站，算1个名额
 func (h *Handler) DeleteDocument(c *gin.Context) {
 	userID := getUserID(c)
 	id := c.Param("id")
@@ -77,19 +78,52 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Model(&model.Document{}).Where("id = ?", id).Updates(map[string]interface{}{"status": 0, "search_text": ""}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	isFolder := doc.Type == "volume" || doc.Type == "outline" || doc.Type == "characters" ||
+		doc.Type == "worldbuilding" || doc.Type == "storyline" || doc.Type == "chapter_outline"
+
+	trashGroup := doc.ID // ponytail: 用文件夹doc ID作为组号，保证唯一
+	softDeleteIDs := []uint{doc.ID}
+
+	if isFolder {
+		// 递归收集所有子文档
+		var children []model.Document
+		h.db.Where("project_id = ? AND status = 1 AND parent_id = ?", doc.ProjectID, doc.ID).Find(&children)
+		for _, ch := range children {
+			softDeleteIDs = append(softDeleteIDs, ch.ID)
+		}
+		// 嵌套文件夹的孙子
+		for len(children) > 0 {
+			var nextLevel []model.Document
+			for _, ch := range children {
+				var gc []model.Document
+				h.db.Where("project_id = ? AND status = 1 AND parent_id = ?", doc.ProjectID, ch.ID).Find(&gc)
+				for _, g := range gc {
+					softDeleteIDs = append(softDeleteIDs, g.ID)
+					nextLevel = append(nextLevel, g)
+				}
+			}
+			children = nextLevel
+		}
 	}
 
+	// 软删：status=0 + 设 trash_group + 清搜索缓存
+	h.db.Model(&model.Document{}).Where("id IN ?", softDeleteIDs).
+		Updates(map[string]interface{}{"status": 0, "search_text": "", "trash_group": trashGroup})
+
+	// 移文件到 .trash/
 	proj, err := h.getProject(doc.ProjectID)
 	if err == nil && proj != nil {
 		h.locks.Lock(proj.UserID)
-		_ = h.ds.trashMove(proj.UserID, proj.ID, proj.Name, doc.ID, doc.ParentID, map[string]interface{}{
-			"id": doc.ID, "title": doc.Title, "type": doc.Type,
-		})
-		// 如果删除的是文件夹且目录空了，删除目录
-		if doc.Type == "volume" {
+		for _, did := range softDeleteIDs {
+			var d model.Document
+			if h.db.First(&d, did).Error != nil {
+				continue
+			}
+			_ = h.ds.trashMove(proj.UserID, proj.ID, proj.Name, d.ID, d.ParentID, map[string]interface{}{
+				"id": d.ID, "title": d.Title, "type": d.Type, "trash_group": trashGroup,
+			})
+		}
+		if isFolder {
 			_ = h.ds.removeFolderDir(proj.UserID, proj.ID, proj.Name, doc.ID)
 		}
 		h.locks.Unlock(proj.UserID)
@@ -100,6 +134,9 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 		Action: "delete_doc", Project: projName,
 		Doc: uintToStr(doc.ID), Summary: "删除: " + doc.Title,
 	})
+
+	// ponytail: FIFO 淘汰 — 按 trash_group 算名额，超过30组删最旧的组
+	h.enforceTrashLimit(userID, doc.ProjectID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }

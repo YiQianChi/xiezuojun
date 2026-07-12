@@ -52,6 +52,7 @@ type Document struct {
 	SearchText string    `gorm:"type:mediumtext" json:"-"` // 搜索缓存；正文权威源仍是文件
 	AIInclude  *bool     `gorm:"default:true" json:"ai_include"` // 是否参与 AI 上下文（设定文档用），nil=true
 	Status     int       `gorm:"default:1" json:"status"`
+	TrashGroup uint      `gorm:"index;default:0" json:"-"` // ponytail: 回收组ID，0=正常；>0=同组一起进/出回收站
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
