@@ -42,50 +42,29 @@ func ExtractAndSaveSummary(ctx context.Context, aiClient *ai.Client, storage *Me
 		return
 	}
 
-	// 1. 生成章节摘要
-	summary, err := aiClient.Complete(ctx, memoryModel(), []ai.Message{
-		{Role: "system", Content: "你是一个专业的小说章节摘要生成器。请用简洁的Markdown格式总结以下章节的核心情节，不超过500字。包含：主要事件、人物互动、关键转折。"},
-		{Role: "user", Content: content},
-	})
-	if err != nil {
-		log.Printf("[memory] failed to generate summary for doc %s: %v", docID, err)
-	} else {
-		if err := storage.WriteChapterSummary(uid, pid, docID, summary); err != nil {
-			log.Printf("[memory] failed to save summary for doc %s: %v", docID, err)
-		} else {
-			log.Printf("[memory] saved summary for doc %s", docID)
-		}
-	}
-
-	// 2. 提取角色、事件、地点、伏笔（一次调用，JSON返回）
-	extractPrompt := `分析以下小说章节内容，提取以下信息，以JSON格式返回：
+	// 1. 从人物设定文档提取角色信息
+	extractPrompt := `分析以下小说人物设定文档，提取所有角色信息，以JSON格式返回：
 {
-  "characters": [{"name": "角色名", "role": "主角/配角/路人", "description": "简短描述"}],
-  "events": ["事件1", "事件2"],
-  "locations": ["地点1", "地点2"],
-  "foreshadowing": ["伏笔1", "伏笔2"]
+  "characters": [{"name": "角色名", "role": "主角/配角/路人", "description": "简短描述"}]
 }
-只返回JSON，不要其他内容。如果没有某类信息，返回空数组。`
+只返回JSON，不要其他内容。如果没有角色信息，返回空数组。`
 
 	extractResult, err := aiClient.Complete(ctx, memoryModel(), []ai.Message{
 		{Role: "system", Content: extractPrompt},
 		{Role: "user", Content: content},
 	})
 	if err != nil {
-		log.Printf("[memory] failed to extract entities for doc %s: %v", docID, err)
+		log.Printf("[memory] failed to extract characters from doc %s: %v", docID, err)
 		return
 	}
 
 	// 3. 解析 JSON 结果
 	var extracted struct {
-		Characters   []struct {
+		Characters []struct {
 			Name        string `json:"name"`
 			Role        string `json:"role"`
 			Description string `json:"description"`
 		} `json:"characters"`
-		Events       []string `json:"events"`
-		Locations    []string `json:"locations"`
-		Foreshadowing []string `json:"foreshadowing"`
 	}
 
 	// 尝试提取 JSON（可能被 ```json 包裹）
@@ -141,30 +120,6 @@ func ExtractAndSaveSummary(ctx context.Context, aiClient *ai.Client, storage *Me
 		} else {
 			log.Printf("[memory] auto-created character card: %s", char.Name)
 		}
-	}
-
-	// 5. 追加到 TIMELINE.md
-	if len(extracted.Events) > 0 {
-		timelineEntry := fmt.Sprintf("\n## %s\n", docID)
-		for _, evt := range extracted.Events {
-			timelineEntry += fmt.Sprintf("- %s\n", evt)
-		}
-
-		existing, _ := storage.ReadMemoryFile(uid, pid, "TIMELINE.md")
-		storage.WriteMemoryFile(uid, pid, "TIMELINE.md", existing+timelineEntry)
-		log.Printf("[memory] appended to TIMELINE.md for doc %s", docID)
-	}
-
-	// 6. 追加到 HOOKS.md
-	if len(extracted.Foreshadowing) > 0 {
-		hoooksEntry := fmt.Sprintf("\n## %s\n", docID)
-		for _, hook := range extracted.Foreshadowing {
-			hoooksEntry += fmt.Sprintf("- [ ] %s\n", hook)
-		}
-
-		existing, _ := storage.ReadMemoryFile(uid, pid, "HOOKS.md")
-		storage.WriteMemoryFile(uid, pid, "HOOKS.md", existing+hoooksEntry)
-		log.Printf("[memory] appended to HOOKS.md for doc %s", docID)
 	}
 }
 

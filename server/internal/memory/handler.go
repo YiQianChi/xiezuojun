@@ -20,8 +20,8 @@ type Handler struct {
 }
 
 // NewHandler 创建 Handler
-func NewHandler(db *gorm.DB, memRoot string) *Handler {
-	storage := NewMemoryStorage(memRoot)
+func NewHandler(db *gorm.DB, docRoot string) *Handler {
+	storage := NewMemoryStorage(docRoot)
 	return &Handler{storage: storage, db: db}
 }
 

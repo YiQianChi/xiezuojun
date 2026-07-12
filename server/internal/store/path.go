@@ -10,7 +10,6 @@ import (
 // PathConfig 存储根目录配置
 type PathConfig struct {
 	DocRoot string // /opt/xiezuojun/documents
-	MemRoot string // /opt/xiezuojun/memory
 }
 
 // SanitizeName 书名/文件名安全化
@@ -64,10 +63,7 @@ func (p *PathConfig) DocPath(userID string, projectID uint, projectName string, 
 	return filepath.Join(base, fmt.Sprintf("%d.md", docID))
 }
 
-// MemoryDir 返回记忆目录
-func (p *PathConfig) MemoryDir(userID string, projectID uint) string {
-	return filepath.Join(p.MemRoot, userID, fmt.Sprintf("%d", projectID))
-}
+// ponytail: MemoryDir 删除，角色卡/关系图已移到项目文档目录
 
 // QuotaPath 返回配额文件路径
 func (p *PathConfig) QuotaPath(userID string) string {

@@ -79,11 +79,7 @@ func main() {
 	if docRoot == "" {
 		docRoot = filepath.Join(dataRoot, "documents")
 	}
-	memRoot := os.Getenv("MEMORY_ROOT")
-	if memRoot == "" {
-		memRoot = filepath.Join(dataRoot, "memory")
-	}
-	pathConfig := &store.PathConfig{DocRoot: docRoot, MemRoot: memRoot}
+	pathConfig := &store.PathConfig{DocRoot: docRoot}
 	userLocks := &store.UserLocks{}
 
 	// handlers
@@ -98,7 +94,7 @@ func main() {
 	}
 	aiClient := ai.NewClient(apiKey, os.Getenv("AI_BASE_URL"))
 
-	memHandler := memory.NewHandler(db, memRoot)
+	memHandler := memory.NewHandler(db, docRoot)
 	memHandler.SetAIClient(aiClient)
 	memStorage := memHandler.Storage()
 	gw := gateway.NewGateway(aiClient, memStorage)
@@ -195,7 +191,7 @@ func main() {
 		// 调用原 handler
 		projectHandler.UpdateDocument(c)
 
-		// 如果更新成功，异步触发章节提取
+		// 如果更新成功，异步触发记忆提取（仅人物设定文档提取角色）
 		if c.Writer.Status() == 200 {
 			var req struct {
 				Content string `json:"content"`
@@ -209,7 +205,6 @@ func main() {
 			if err != nil {
 				return
 			}
-
 			userIDStr := ""
 			if val, exists := c.Get("userID"); exists {
 				userIDStr, _ = val.(string)
@@ -219,24 +214,26 @@ func main() {
 			if err := db.First(&doc, docID).Error; err != nil {
 				return
 			}
-			pid := fmt.Sprintf("%d", doc.ProjectID)
 
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						log.Printf("[main] extract panic: %v", r)
-					}
+			if doc.Type == "characters" {
+				pid := fmt.Sprintf("%d", doc.ProjectID)
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							log.Printf("[main] extract panic: %v", r)
+						}
+					}()
+					memory.ExtractAndSaveSummary(
+						context.Background(),
+						aiClient,
+						memStorage,
+						userIDStr,
+						pid,
+						idStr,
+						req.Content,
+					)
 				}()
-				memory.ExtractAndSaveSummary(
-					context.Background(),
-					aiClient,
-					memStorage,
-					userIDStr,
-					pid,
-					idStr,
-					req.Content,
-				)
-			}()
+			}
 		}
 	})
 

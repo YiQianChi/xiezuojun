@@ -1,5 +1,5 @@
-// MemoryStorage — 文件即记忆：Markdown 记忆文件读写
-// 新目录结构：memory/{uid}/{pid}/
+// MemoryStorage — 项目级辅助记忆文件读写（角色卡、关系图等）
+// 存储在项目文档目录下，与章节文件同级
 
 package memory
 
@@ -16,35 +16,36 @@ import (
 
 // MemoryStorage 记忆文件存储
 type MemoryStorage struct {
-	memRoot string
+	docRoot string
 }
 
-// NewMemoryStorage 创建记忆存储，memRoot 为记忆根目录（如 /opt/xiezuojun/memory）
-func NewMemoryStorage(memRoot string) *MemoryStorage {
-	if memRoot == "" {
-		memRoot = "./memory"
+// NewMemoryStorage 创建记忆存储，docRoot 为文档根目录（如 /opt/xiezuojun/documents）
+func NewMemoryStorage(docRoot string) *MemoryStorage {
+	if docRoot == "" {
+		docRoot = "./documents"
 	}
-	return &MemoryStorage{memRoot: memRoot}
+	return &MemoryStorage{docRoot: docRoot}
 }
 
-// MemRoot 返回记忆根目录（供外部查询）
+// MemRoot 返回文档根目录（兼容旧代码）
 func (s *MemoryStorage) MemRoot() string {
-	return s.memRoot
+	return s.docRoot
 }
 
-// memoryPath 返回用户项目的记忆目录
+// memoryPath 返回项目辅助记忆目录（.memory/ 子目录）
+// ponytail: 隐藏目录，与 .structure.json 同级，不污染文档列表
 func (s *MemoryStorage) memoryPath(uid, pid string) string {
-	return filepath.Join(s.memRoot, uid, pid)
+	return filepath.Join(s.docRoot, uid, fmt.Sprintf("p-%010s", pid), ".memory")
 }
 
 // charDir 返回角色卡目录
 func (s *MemoryStorage) charDir(uid, pid string) string {
-	return filepath.Join(s.memRoot, uid, pid, "CHARACTERS")
+	return filepath.Join(s.memoryPath(uid, pid), "CHARACTERS")
 }
 
 // chapterDir 返回章节摘要目录
 func (s *MemoryStorage) chapterDir(uid, pid string) string {
-	return filepath.Join(s.memRoot, uid, pid, "chapters")
+	return filepath.Join(s.memoryPath(uid, pid), "chapters")
 }
 
 // safePath 检查路径安全性（防目录遍历）
