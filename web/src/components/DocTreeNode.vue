@@ -59,8 +59,12 @@ const emit = defineEmits<{
   'add-child': [node: any]
 }>()
 
-const expanded = ref(true)
 const dropPos = ref<'before' | 'after' | 'inside' | null>(null)
+
+// ponytail: expanded 状态挂在 node 对象上（响应式），而非组件本地 ref。
+// loadDocs → loadingDocs 翻转会卸载/重建整棵 DocTreeNode 树，
+// 组件本地 ref 会被重置为 true → 用户手动折叠的节点全部弹开。
+const expanded = computed(() => props.node._expanded !== false)
 
 const children = computed(() => {
   return props.allDocs
@@ -101,7 +105,7 @@ const childLabel = computed(() => {
 })
 
 function toggleExpand() {
-  expanded.value = !expanded.value
+  props.node._expanded = !expanded.value
 }
 
 function handleClick() {

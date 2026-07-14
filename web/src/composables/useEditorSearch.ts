@@ -6,6 +6,7 @@
  * - 全项目搜索（后端接口 /api/projects/:id/search，≥2 中文/3 英文字符触发，debounce 250ms）
  * - Ctrl+F 本章 / Ctrl+Shift+F 全项目 / Esc 关闭
  * - Enter 循环、Shift+Enter 上一个、跳转不选中文字
+ * - 本章查找替换：replaceOne（替换当前激活项）+ replaceAll（替换全部）
  *
  * 契约（老板偏好）：
  * - 输入只显示计数徽章 3/12，不选中文字
@@ -98,6 +99,7 @@ export function useEditorSearch(opts: UseEditorSearchOptions) {
   const searchActiveIndex = ref(0)
   const searchLoading = ref(false)
   const searchProjectMatches = ref<ProjectMatch[]>([])
+  const replaceText = ref('')
 
   let searchProjectTimer: any = null
   let searchProjectSeq = 0
@@ -288,6 +290,88 @@ export function useEditorSearch(opts: UseEditorSearchOptions) {
     })
   }
 
+  // ===== 本章查找替换 =====
+
+  /** 找到第 N 个匹配的位置范围，返回 null 如果不存在 */
+  function findNthMatch(query: string, n: number): { from: number; to: number } | null {
+    if (!editor.value || !query) return null
+    const needle = query.toLowerCase()
+    let occurrence = 0
+    let result: { from: number; to: number } | null = null
+    editor.value.state.doc.descendants((node: any, pos: number) => {
+      if (result) return false // 已找到，停止遍历
+      if (!node.isText) return true
+      const text = (node.text || '').toLowerCase()
+      let idx = 0
+      while (idx < text.length) {
+        const found = text.indexOf(needle, idx)
+        if (found < 0) break
+        if (occurrence === n) {
+          result = { from: pos + found, to: pos + found + needle.length }
+          return false
+        }
+        occurrence++
+        idx = found + needle.length
+      }
+      return true
+    })
+    return result
+  }
+
+  /** 替换当前激活的匹配项 */
+  function replaceOne() {
+    if (!editor.value || !searchQuery.value || searchTotal.value === 0) return
+    const match = findNthMatch(searchQuery.value, searchActiveIndex.value)
+    if (!match) return
+    const view = editor.value.view
+    const tr = view.state.tr.replaceWith(match.from, match.to, view.state.schema.text(replaceText.value))
+    view.dispatch(tr)
+    // 重新计数（总数减一）并更新高亮
+    const newTotal = countMatches(searchQuery.value)
+    searchTotal.value = newTotal
+    if (newTotal === 0) {
+      searchActiveIndex.value = 0
+      applyEditorSearch('', -1)
+    } else {
+      searchActiveIndex.value = Math.min(searchActiveIndex.value, newTotal - 1)
+      applyEditorSearch(searchQuery.value, searchActiveIndex.value)
+      scrollActiveHitIntoView()
+    }
+  }
+
+  /** 替换本章全部匹配项，返回替换数量 */
+  function replaceAll(): number {
+    if (!editor.value || !searchQuery.value) return 0
+    const query = searchQuery.value
+    const replacement = replaceText.value
+    const view = editor.value.view
+    // 从后往前替换，避免位置偏移
+    const matches: { from: number; to: number }[] = []
+    const needle = query.toLowerCase()
+    editor.value.state.doc.descendants((node: any, pos: number) => {
+      if (!node.isText) return true
+      const text = (node.text || '').toLowerCase()
+      let idx = 0
+      while (idx < text.length) {
+        const found = text.indexOf(needle, idx)
+        if (found < 0) break
+        matches.push({ from: pos + found, to: pos + found + needle.length })
+        idx = found + needle.length
+      }
+      return true
+    })
+    if (matches.length === 0) return 0
+    let tr = view.state.tr
+    for (let i = matches.length - 1; i >= 0; i--) {
+      tr = tr.replaceWith(matches[i].from, matches[i].to, view.state.schema.text(replacement))
+    }
+    view.dispatch(tr)
+    searchTotal.value = 0
+    searchActiveIndex.value = 0
+    applyEditorSearch('', -1)
+    return matches.length
+  }
+
   return {
     // state
     searchVisible,
@@ -297,6 +381,7 @@ export function useEditorSearch(opts: UseEditorSearchOptions) {
     searchActiveIndex,
     searchLoading,
     searchProjectMatches,
+    replaceText,
     // methods
     openSearch,
     closeSearch,
@@ -306,5 +391,7 @@ export function useEditorSearch(opts: UseEditorSearchOptions) {
     searchPrev,
     onJumpProject,
     applyEditorSearch,
+    replaceOne,
+    replaceAll,
   }
 }

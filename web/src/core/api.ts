@@ -149,6 +149,12 @@ export const projectApi = {
   exportProject(id: string | number) {
     return api.get(`/projects/${id}/export`)
   },
+  exportEPUB(id: string | number) {
+    return api.get(`/projects/${id}/export/epub`, { responseType: 'blob' })
+  },
+  exportTXT(id: string | number) {
+    return api.get(`/projects/${id}/export/txt`, { responseType: 'blob' })
+  },
 }
 
 // 故事线相关

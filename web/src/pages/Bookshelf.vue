@@ -39,7 +39,14 @@
         </div>
         <div class="card-actions">
           <button class="card-btn" @click.stop="startRename(project)" title="重命名">✏️</button>
-          <button class="card-btn" @click.stop="exportBook(project)" title="导出">📥</button>
+          <div class="export-dropdown" @click.stop>
+            <button class="card-btn" @click="toggleExportMenu(project.id || project.project_id)" title="导出">📥</button>
+            <div v-if="exportMenuId === (project.id || project.project_id)" class="export-menu">
+              <button @click="exportBook(project, 'md')">Markdown</button>
+              <button @click="exportBook(project, 'txt')">TXT 纯文本</button>
+              <button @click="exportBook(project, 'epub')">EPUB 电子书</button>
+            </div>
+          </div>
           <button class="card-btn delete" @click.stop="deleteBook(project)" title="删除">×</button>
         </div>
       </div>
@@ -214,6 +221,7 @@ const renameTarget = ref<any>(null)
 
 onMounted(() => {
   loadProjects()
+  document.addEventListener('click', closeExportMenu)
 })
 
 async function loadProjects() {
@@ -292,29 +300,52 @@ async function confirmRename() {
 }
 
 // 导出
-async function exportBook(project: any) {
+const exportMenuId = ref<number | null>(null)
+
+function toggleExportMenu(id: number) {
+  exportMenuId.value = exportMenuId.value === id ? null : id
+}
+
+// 点击外部关闭导出菜单
+function closeExportMenu() { exportMenuId.value = null }
+
+async function exportBook(project: any, format: 'md' | 'txt' | 'epub') {
+  exportMenuId.value = null
+  const pid = project.id || project.project_id
+  const name = project.name || '未命名'
   try {
-    const res = await projectApi.exportProject(project.id || project.project_id)
-    const data = res.data?.data || res.data
-    const docs = data.document_contents || []
-    let md = `# ${data.project.name}\n\n`
-    if (data.project.description) md += `> ${data.project.description}\n\n`
-    for (const doc of docs) {
-      if (doc.type === 'chapter' || doc.type === 'volume') {
-        md += `## ${doc.title}\n\n${doc.content || ''}\n\n`
+    if (format === 'md') {
+      const res = await projectApi.exportProject(pid)
+      const data = res.data?.data || res.data
+      const docs = data.document_contents || []
+      let md = `# ${data.project.name}\n\n`
+      if (data.project.description) md += `> ${data.project.description}\n\n`
+      for (const doc of docs) {
+        if (doc.type === 'chapter' || doc.type === 'volume') {
+          md += `## ${doc.title}\n\n${doc.content || ''}\n\n`
+        }
       }
+      downloadBlob(new Blob([md], { type: 'text/markdown;charset=utf-8' }), `${name}.md`)
+    } else if (format === 'epub') {
+      const res = await projectApi.exportEPUB(pid)
+      downloadBlob(new Blob([res.data], { type: 'application/epub+zip' }), `${name}.epub`)
+    } else {
+      const res = await projectApi.exportTXT(pid)
+      downloadBlob(new Blob([res.data], { type: 'text/plain;charset=utf-8' }), `${name}.txt`)
     }
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${data.project.name}.md`
-    a.click()
-    URL.revokeObjectURL(url)
     toast.success('导出成功')
   } catch (e: any) {
     toast.error(e.response?.data?.error || '导出失败')
   }
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 // 回收站
@@ -550,6 +581,31 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 }
 
 .card-btn.delete:hover { background: #ff3b30; }
+
+.export-dropdown { position: relative; display: inline-flex; }
+.export-menu {
+  position: absolute;
+  top: 32px;
+  right: 0;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  overflow: hidden;
+  z-index: 100;
+  min-width: 130px;
+}
+.export-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #1d1d1f;
+  cursor: pointer;
+}
+.export-menu button:hover { background: rgba(0,122,255,0.06); color: var(--accent, #007aff); }
 
 .book-cover {
   width: 100%;

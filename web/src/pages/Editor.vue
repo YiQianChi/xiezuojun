@@ -89,12 +89,16 @@
           :active-index="searchActiveIndex"
           :loading="searchLoading"
           :project-matches="searchProjectMatches"
+          :replace-value="replaceText"
           @close="closeSearch"
           @next="searchNext"
           @prev="searchPrev"
           @update:query="onSearchQueryUpdate"
           @update:scope="onSearchScopeChange"
+          @update:replace-value="replaceText = $event"
           @jump-project="onJumpProject"
+          @replace-one="() => { replaceOne(); autoSave() }"
+          @replace-all="() => { const n = replaceAll(); autoSave(); toast.success(`已替换 ${n} 处`) }"
         />
 
         <!-- AI 参考面板（写作模式） -->
@@ -424,6 +428,7 @@ const {
   searchActiveIndex,
   searchLoading,
   searchProjectMatches,
+  replaceText,
   openSearch,
   closeSearch,
   onSearchQueryUpdate,
@@ -432,6 +437,8 @@ const {
   searchPrev,
   onJumpProject,
   applyEditorSearch,
+  replaceOne,
+  replaceAll,
 } = useEditorSearch({
   editor,
   projectId,
@@ -863,7 +870,13 @@ async function loadDocs() {
   loadingDocs.value = true
   try {
     const res = await documentApi.list(String(projectId), activeBranchId.value)
-    documents.value = res.data?.data || res.data || []
+    const fresh = res.data?.data || res.data || []
+    // ponytail: 保留用户手动设置的折叠状态，避免 loadDocs 后树全部弹开
+    const prev = new Map(documents.value.map(d => [d.id, d._expanded]))
+    for (const d of fresh) {
+      if (prev.has(d.id)) d._expanded = prev.get(d.id)
+    }
+    documents.value = fresh
   } catch (e) {
     console.error('加载文档失败', e)
     documents.value = []
@@ -984,9 +997,11 @@ async function createDoc(folderType?: string) {
     )
     const maxSort = siblings.reduce((m, d) => Math.max(m, d.sort_order || 0), 0)
 
-    // ponytail: tab_scope 按类型固定，不跟随当前 Tab
+    // ponytail: 根级文件夹跟随当前 Tab；子文档按 type 推导
     const actualType = folderType || createDocType.value
-    const tabScope = (actualType === 'volume' || actualType === 'chapter') ? 'chapter' : 'setting'
+    const tabScope = createDocParent.value === null
+      ? sideTab.value
+      : (actualType === 'volume' || actualType === 'chapter') ? 'chapter' : 'setting'
 
     const res = await documentApi.create({
       project_id: projectId,
@@ -1199,6 +1214,11 @@ function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
     e.preventDefault()
     openSearch(e.shiftKey ? 'project' : 'chapter')
+    return
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+    e.preventDefault()
+    openSearch('chapter')
     return
   }
   if (e.key === 'Escape' && searchVisible.value) {

@@ -42,9 +42,29 @@
       <button class="icon-btn" @click="$emit('next')" :disabled="total === 0" title="下一个 (Enter)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
+      <button class="icon-btn" :class="{ active: showReplace }" @click="showReplace = !showReplace" title="替换">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h13l-3-3"/><path d="M21 17H8l3 3"/></svg>
+      </button>
       <button class="icon-btn close-btn" @click="$emit('close')" title="关闭 (Esc)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
       </button>
+    </div>
+
+    <!-- 替换栏（仅本章模式） -->
+    <div v-if="showReplace && scope === 'chapter'" class="replace-row">
+      <span class="replace-icon" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h13l-3-3"/><path d="M21 17H8l3 3"/></svg>
+      </span>
+      <input
+        :value="replaceValue"
+        @input="onReplaceInput"
+        class="search-input replace-input"
+        placeholder="替换为..."
+        @keydown.enter.prevent="onReplaceEnter"
+        @keydown.esc.prevent="$emit('close')"
+      />
+      <button class="text-btn" @click="$emit('replaceOne')" :disabled="total === 0">替换</button>
+      <button class="text-btn" @click="$emit('replaceAll')" :disabled="total === 0">全部替换</button>
     </div>
 
     <!-- 全项目模式：显示分组结果列表 -->
@@ -93,6 +113,7 @@ const props = defineProps<{
   activeIndex: number
   loading?: boolean
   projectMatches?: ProjectMatch[]
+  replaceValue?: string
 }>()
 
 const emit = defineEmits<{
@@ -102,18 +123,30 @@ const emit = defineEmits<{
   'update:query': [q: string]
   'update:scope': [s: 'chapter' | 'project']
   jumpProject: [m: ProjectMatch]
+  'update:replaceValue': [v: string]
+  replaceOne: []
+  replaceAll: []
 }>()
 
 const inputRef = ref<HTMLInputElement>()
+const showReplace = ref(false)
 
 function onInput(e: Event) {
   const target = e.target as HTMLInputElement
   emit('update:query', target.value)
 }
 
+function onReplaceInput(e: Event) {
+  emit('update:replaceValue', (e.target as HTMLInputElement).value)
+}
+
 function onEnter(e: KeyboardEvent) {
   if (e.shiftKey) emit('prev')
   else emit('next')
+}
+
+function onReplaceEnter() {
+  emit('replaceOne')
 }
 
 function switchScope(s: 'chapter' | 'project') {
@@ -360,5 +393,45 @@ onMounted(() => {
   text-align: center;
   color: var(--text-tertiary, #aeaeb2);
   font-size: 12px;
+}
+
+/* 替换栏 */
+.replace-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--border-subtle, #f0f0f0);
+}
+.replace-icon {
+  color: var(--text-secondary, #86868b);
+  display: inline-flex;
+  padding: 0 2px 0 4px;
+}
+.replace-input {
+  flex: 1;
+  min-width: 100px;
+}
+.icon-btn.active {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--accent, #007aff);
+}
+.text-btn {
+  border: none;
+  background: rgba(0, 122, 255, 0.08);
+  color: var(--accent, #007aff);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.text-btn:hover:not(:disabled) {
+  background: rgba(0, 122, 255, 0.16);
+}
+.text-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 </style>
