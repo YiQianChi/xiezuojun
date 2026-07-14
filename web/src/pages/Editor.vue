@@ -899,6 +899,11 @@ async function initDefaultStructure() {
 
 async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   compareActive.value = false
+  // ponytail: flush pending auto-save BEFORE switching activeDocId.
+  // Without this, a pending saveTimer fires after activeDocId changes but before
+  // the new doc's content loads — saving the old doc's content over the new doc.
+  // Just clearing the timer would lose up to 1.5s of edits; flushing saves them first.
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; await autoSave() }
   activeDocId.value = doc.id
   currentDocName.value = doc.title
   aiToolbar.value.visible = false
