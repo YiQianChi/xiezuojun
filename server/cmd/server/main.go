@@ -166,6 +166,8 @@ func main() {
 	authd.POST("/projects/:id/branches", projectHandler.CreateStoryBranch)
 	authd.PATCH("/story-branches/:branch_id", projectHandler.UpdateStoryBranch)
 	authd.GET("/projects/:id/export", projectHandler.ExportProject)
+	authd.GET("/projects/:id/export/epub", projectHandler.ExportEPUB)
+	authd.GET("/projects/:id/export/txt", projectHandler.ExportTXT)
 
 	authd.GET("/documents", projectHandler.ListDocuments)
 	authd.POST("/documents", projectHandler.CreateDocument)
