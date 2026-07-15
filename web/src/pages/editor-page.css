@@ -503,7 +503,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 60px 24px 60px 40px;
+  padding: 60px 24px 60px 52px;
 }
 
 .tiptap-container > :deep(div) {
@@ -548,9 +548,9 @@
 :deep(.ProseMirror) > pre::before {
   content: counter(para);
   position: absolute;
-  left: -2.6em;
+  left: -3.5em;
   top: 1.32em;
-  width: 1.6em;
+  width: 2.5em;
   text-align: center;
   font-family: var(--font-sans, -apple-system, 'SF Pro', sans-serif);
   font-size: 12px;
@@ -1264,4 +1264,22 @@
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
+}
+/* ponytail: rename modal reuses confirm-modal-box, just adds input */
+.rename-box .rename-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border, rgba(0,0,0,0.15));
+  border-radius: 8px;
+  font-size: 14px;
+  margin: 8px 0 16px;
+  outline: none;
+  background: var(--bg-secondary, #fff);
+  color: var(--text-primary);
+}
+.rename-box .rename-input:focus {
+  border-color: var(--accent, #007aff);
+}
+.rename-box .btn-confirm {
+  background: var(--accent, #007aff);
 }

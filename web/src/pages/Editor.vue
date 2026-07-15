@@ -305,6 +305,24 @@
       <span>退出专注 (Esc)</span>
     </div>
 
+    <!-- 重命名弹窗 -->
+    <div v-if="renameModal" class="confirm-overlay" @click="renameModal = null">
+      <div class="confirm-modal-box rename-box" @click.stop>
+        <h3>重命名</h3>
+        <input
+          ref="renameInputRef"
+          v-model="renameModal.title"
+          class="rename-input"
+          @keydown.enter.prevent="confirmRename"
+          @keydown.escape.prevent="renameModal = null"
+        />
+        <div class="confirm-buttons">
+          <button class="btn-cancel" @click="renameModal = null">取消</button>
+          <button class="btn-confirm" @click="confirmRename">确认</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 通用确认弹窗 -->
     <div v-if="confirmModal" class="confirm-overlay" @click="confirmModal = null">
       <div class="confirm-modal-box" @click.stop>
@@ -479,6 +497,8 @@ const graphMaximized = ref(false)
 // 通用确认弹窗
 const confirmModal = ref<{ title: string; desc: string; action: () => void } | null>(null)
 const confirmText = ref('')
+const renameModal = ref<{ docId: number; title: string } | null>(null)
+const renameInputRef = ref<HTMLInputElement | null>(null)
 
 // 顶部工作模式：计划 / 写作 / 审核
 type EditorMode = 'plan' | 'write' | 'review'
@@ -962,6 +982,7 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   }
 }
 
+let saveRetryCount = 0
 async function autoSave() {
   if (!activeDocId.value || !editor.value) return
   try {
@@ -970,8 +991,16 @@ async function autoSave() {
       content: getEditorHTML()
     })
     saveStatus.value = '已保存'
+    saveRetryCount = 0
   } catch (e) {
-    saveStatus.value = '保存失败'
+    if (saveRetryCount < 3) {
+      saveRetryCount++
+      saveStatus.value = `保存失败，重试中(${saveRetryCount}/3)...`
+      setTimeout(() => autoSave(), 2000 * saveRetryCount)
+    } else {
+      saveStatus.value = '⚠️ 保存失败，请检查网络'
+      saveRetryCount = 0
+    }
   }
 }
 
@@ -1096,11 +1125,20 @@ async function renameDoc() {
   const doc = docContextMenu.value.doc
   if (!doc) return
   closeDocContextMenu()
-  const newName = prompt('新名称', doc.title)
-  if (!newName || newName === doc.title) return
+  renameModal.value = { docId: doc.id, title: doc.title }
+  nextTick(() => { renameInputRef.value?.focus(); renameInputRef.value?.select() })
+}
+
+async function confirmRename() {
+  if (!renameModal.value) return
+  const { docId, title } = renameModal.value
+  if (!title.trim()) return
+  const trimmed = title.trim()
+  renameModal.value = null
   try {
-    await documentApi.update(doc.id, { title: newName })
+    await documentApi.update(docId, { title: trimmed })
     await loadDocs()
+    if (activeDocId.value === docId) currentDocName.value = trimmed
   } catch (e: any) {
     toast.error(e.response?.data?.error || '重命名失败')
   }
