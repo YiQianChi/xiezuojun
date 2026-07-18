@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -26,6 +27,57 @@ func memoryModel() string {
 		return m
 	}
 	return "MiniMax-M3"
+}
+
+// ExtractChapterSummary 从章节正文生成摘要，写入章节摘要文件
+// docIDStr 作为 chapter_id，对应 .summary.md 文件名
+func ExtractChapterSummary(ctx context.Context, aiClient *ai.Client, storage *MemoryStorage, uid, pid, docIDStr, title, content string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[memory] ExtractChapterSummary panicked: %v", r)
+		}
+	}()
+
+	if content == "" {
+		return
+	}
+
+	// ponytail: 截断 4000 字符避免超 token；摘要不需要全文细节
+	promptContent := content
+	if len([]rune(promptContent)) > 4000 {
+		promptContent = string([]rune(promptContent)[:4000])
+	}
+
+	prompt := fmt.Sprintf(`请为以下小说章节生成简明摘要（300字以内），包含：
+- 主要事件
+- 关键人物动作
+- 推动剧情的转折点
+
+章节标题：%s
+
+只输出摘要正文，不要标题、不要 markdown 标记。`, title)
+
+	result, err := aiClient.Complete(ctx, memoryModel(), []ai.Message{
+		{Role: "system", Content: prompt},
+		{Role: "user", Content: promptContent},
+	})
+	if err != nil {
+		log.Printf("[memory] failed to summarize chapter %s: %v", docIDStr, err)
+		return
+	}
+
+	summary := strings.TrimSpace(result)
+	if summary == "" {
+		return
+	}
+
+	// 标注为自动生成 + 时间戳，便于用户在 MemoryPanel 编辑
+	stamped := fmt.Sprintf("> auto_generated: %s\n\n%s", time.Now().Format("2006-01-02 15:04"), summary)
+	if err := storage.WriteChapterSummary(uid, pid, docIDStr, stamped); err != nil {
+		log.Printf("[memory] failed to save summary for chapter %s: %v", docIDStr, err)
+		return
+	}
+	log.Printf("[memory] auto-created chapter summary: %s (title=%s)", docIDStr, title)
 }
 
 // ExtractCharacters 从项目所有人物设定文档拼接的全文中提取角色

@@ -10,8 +10,7 @@ import (
 	"path/filepath"
 )
 
-// atomicWriteFile 原子写入：写临时文件 → rename
-// TODO: 等 store 包完成后，替换为完整的 AtomicWrite（含 fsync）
+// atomicWriteFile 原子写入：写临时文件 → fsync → rename
 func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -48,18 +47,25 @@ func AtomicWrite(path string, data []byte, perm os.FileMode) error {
 	return atomicWriteFile(path, data, perm)
 }
 
-// AtomicAppend 原子追加内容到文件
+// AtomicAppend 追加内容到文件
+// ponytail: O_APPEND — POSIX atomic per write up to PIPE_BUF (4096 on Linux).
+// Ceiling: caller must serialize when single write exceeds PIPE_BUF; changelog
+// single-line JSON may exceed on long summaries, fine here because
+// AppendChangelog is called serially from request handlers. Add mutex if concurrency appears.
 func AtomicAppend(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("mkdir: %w", err)
+	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return atomicWriteFile(path, data, 0644)
+		return fmt.Errorf("open append: %w", err)
 	}
-	f.Close()
-	existing, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("read for append: %w", err)
+	defer f.Close()
+	if _, err := f.Write(data); err != nil {
+		return fmt.Errorf("write append: %w", err)
 	}
-	return atomicWriteFile(path, append(existing, data...), 0644)
+	return nil
 }
 
 // AtomicWriteJSON 原子写入 JSON 文件

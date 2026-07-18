@@ -25,6 +25,7 @@ import (
 	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/project"
 	"xiezuojun-server/internal/store"
+	"xiezuojun-server/internal/tts"
 	"xiezuojun-server/internal/user"
 )
 
@@ -238,6 +239,28 @@ func main() {
 						content,
 					)
 				}()
+			} else if doc.Type == "chapter" {
+				// ponytail: 复用同一段异步提取骨架，差异只在调用的函数
+				pid := fmt.Sprintf("%d", doc.ProjectID)
+				docIDStr := strconv.FormatUint(uint64(doc.ID), 10)
+				title, content := doc.Title, req.Content
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							log.Printf("[main] summary panic: %v", r)
+						}
+					}()
+					memory.ExtractChapterSummary(
+						context.Background(),
+						aiClient,
+						memStorage,
+						userIDStr,
+						pid,
+						docIDStr,
+						title,
+						content,
+					)
+				}()
 			}
 		}
 	})
@@ -308,6 +331,10 @@ func main() {
 	aiGroup.Use(gw.RateLimitMiddleware())
 	aiGroup.POST("/ai/generate", gw.HandleGenerate)
 	aiGroup.GET("/ai/models", gw.HandleGetModels)
+
+	// TTS 朗读路由
+	authd.GET("/tts/voices", tts.HandleVoices)
+	authd.POST("/tts", tts.HandleTTS)
 
 	// 伏笔/钩子追踪
 	authd.GET("/projects/:id/threads", projectHandler.ListThreads)
