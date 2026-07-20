@@ -146,8 +146,17 @@ func (h *Handler) RestoreDocumentVersion(c *gin.Context) {
 		return
 	}
 
+	// ponytail: 整个 读当前内容→快照→写入新内容 必须在同一锁临界区内，
+	// 否则并发保存会在 loadDocumentContent 之后、updateDocWithMeta 之前覆盖文件，导致快照丢失。
+	proj, err := h.getProject(doc.ProjectID)
+	if err != nil || proj == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "project load failed"})
+		return
+	}
+	h.locks.Lock(proj.UserID)
 	currentContent := h.loadDocumentContent(doc)
 	if err := h.snapshotDocumentVersion(doc, currentContent); err != nil {
+		h.locks.Unlock(proj.UserID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "snapshot current: " + err.Error()})
 		return
 	}
@@ -159,16 +168,13 @@ func (h *Handler) RestoreDocumentVersion(c *gin.Context) {
 		"updated_at":  now,
 	}
 	if err := h.db.Model(&model.Document{}).Where("id = ?", doc.ID).Updates(updates).Error; err != nil {
+		h.locks.Unlock(proj.UserID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	proj, err := h.getProject(doc.ProjectID)
-	if err == nil && proj != nil {
-		h.locks.Lock(proj.UserID)
-		h.updateDocWithMeta(proj.UserID, proj.ID, proj.Name, doc, version.ContentSnapshot, false)
-		h.locks.Unlock(proj.UserID)
-	}
+	h.updateDocWithMeta(proj.UserID, proj.ID, proj.Name, doc, version.ContentSnapshot, false)
+	h.locks.Unlock(proj.UserID)
 	_ = h.db.First(&doc, doc.ID).Error
 	_ = h.pruneDocumentVersions(doc.ID)
 	projName := h.getProjectName(doc.ProjectID)

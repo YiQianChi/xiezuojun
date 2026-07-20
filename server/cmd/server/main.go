@@ -65,8 +65,8 @@ func main() {
 		Update("tab_scope", "setting")
 
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "change-me-in-production"
+	if jwtSecret == "" || jwtSecret == "change-me-in-production" || len(jwtSecret) < 32 {
+		log.Fatal("JWT_SECRET must be set to a strong value (>=32 chars); refusing to start")
 	}
 	jwtManager := auth.NewJWTManager(jwtSecret)
 

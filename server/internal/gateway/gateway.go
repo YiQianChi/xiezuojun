@@ -110,10 +110,10 @@ func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*Ge
 	routeResult := g.modelRouter.Route(routeReq)
 
 	// 4. 获取并发许可
-	if err := g.acquireSlot(ctx, req.ProjectID, routeResult.Model); err != nil {
+	if err := g.acquireSlot(ctx, req.UserID, routeResult.Model); err != nil {
 		return nil, err
 	}
-	defer g.releaseSlot(req.ProjectID)
+	defer g.releaseSlot(req.UserID)
 
 	// 5. 调用 AI
 	start := time.Now()
@@ -213,7 +213,7 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 	routeResult := g.modelRouter.Route(routeReq)
 
 	// 4. 获取并发许可
-	if err := g.acquireSlot(ctx, req.ProjectID, routeResult.Model); err != nil {
+	if err := g.acquireSlot(ctx, req.UserID, routeResult.Model); err != nil {
 		return nil, err
 	}
 
@@ -225,7 +225,7 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 	}
 	aiCh, err := g.aiClient.Stream(ctx, routeResult.Model.ModelID, aiMessages)
 	if err != nil {
-		g.releaseSlot(req.ProjectID)
+		g.releaseSlot(req.UserID)
 		return nil, fmt.Errorf("ai stream failed: %w", err)
 	}
 
@@ -235,7 +235,7 @@ func (g *DefaultGateway) GenerateStream(ctx context.Context, req GenerateRequest
 
 	go func() {
 		defer close(outCh)
-		defer g.releaseSlot(req.ProjectID)
+		defer g.releaseSlot(req.UserID)
 
 		// 首帧发送 UsedSettings 元数据（不带 Content）
 		if len(ctxResult.UsedSettings) > 0 {

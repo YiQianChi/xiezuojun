@@ -23,7 +23,9 @@ type UsageTracker struct {
 	records      []UsageRecord  // 历史记录（最近 1000 条，用于 GetUsageStats）
 
 	// 每日重置
-	lastResetDay int
+	lastResetDay   int
+	lastResetMonth time.Month
+	lastResetYear  int
 }
 
 // NewUsageTracker 创建追踪器
@@ -32,7 +34,9 @@ func NewUsageTracker() *UsageTracker {
 		dailyUsage:   make(map[string]int),
 		monthlyUsage: make(map[string]int),
 		records:      make([]UsageRecord, 0),
-		lastResetDay: time.Now().Day(),
+		lastResetDay:   time.Now().Day(),
+		lastResetMonth: time.Now().Month(),
+		lastResetYear:  time.Now().Year(),
 	}
 }
 
@@ -53,6 +57,12 @@ func (t *UsageTracker) Track(record UsageRecord) error {
 	if now.Day() != t.lastResetDay {
 		t.dailyUsage = make(map[string]int)
 		t.lastResetDay = now.Day()
+	}
+	// 跨月重置月配额
+	if now.Month() != t.lastResetMonth || now.Year() != t.lastResetYear {
+		t.monthlyUsage = make(map[string]int)
+		t.lastResetMonth = now.Month()
+		t.lastResetYear = now.Year()
 	}
 
 	// 累加用量

@@ -181,10 +181,14 @@ func (h *Handler) updateDocWithMeta(userID string, projectID uint, projName stri
 		parentID = *doc.ParentID
 		_ = h.ds.ensureFolderDir(userID, projectID, projName, parentID)
 	}
+	var saveErr error
 	if parentID > 0 {
-		_ = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content, parentID)
+		saveErr = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content, parentID)
 	} else {
-		_ = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content)
+		saveErr = h.ds.saveDocContent(userID, projectID, projName, doc.ID, content)
+	}
+	if saveErr != nil {
+		log.Printf("[CRITICAL] disk write failed doc=%d project=%d user=%s: %v (DB meta already updated, file content out of sync)", doc.ID, projectID, userID, saveErr)
 	}
 	h.updateStructure(userID, projectID, projName, doc.ID, doc.Title, doc.Type, "update")
 	h.updateQuota(userID)
