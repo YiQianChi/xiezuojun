@@ -235,6 +235,9 @@
     <div class="status-bar">
       <span class="status-item">{{ wordCount }} 字</span>
       <span class="status-item">{{ saveStatus }}</span>
+      <button class="status-item speech-btn" :class="{ speaking: isSpeaking }" @click="toggleSpeech" :disabled="ttsLoading" :title="isSpeaking ? '停止朗读' : '朗读（选区优先）'">
+        {{ ttsLoading ? '⏳ 生成中...' : isSpeaking ? '⏹ 朗读中' : '🔊 朗读' }}
+      </button>
       <div class="memory-trigger" :class="{ open: memoryOpen }">
         <button class="memory-btn" @click="memoryOpen = !memoryOpen" :title="memoryOpen ? '收起记忆' : '记忆'">
           <span v-if="!memoryOpen">🧠</span>
@@ -351,7 +354,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
-import { documentApi, branchApi, projectApi } from '../core/api'
+import { documentApi, branchApi, projectApi, ttsApi } from '../core/api'
 import SearchPanel from '../components/SearchPanel.vue'
 import PlanView from '../components/PlanView.vue'
 import ReviewView from '../components/ReviewView.vue'
@@ -386,6 +389,45 @@ const projectName = ref('')
 const loadingDocs = ref(false)
 const wordCount = ref(0)
 const saveStatus = ref('')
+const isSpeaking = ref(false)
+const ttsLoading = ref(false)
+let currentAudio: HTMLAudioElement | null = null
+
+async function toggleSpeech() {
+  if (isSpeaking.value) {
+    currentAudio?.pause()
+    currentAudio = null
+    isSpeaking.value = false
+    return
+  }
+  let text = ''
+  if (editor.value) {
+    const { from, to } = editor.value.state.selection
+    text = from < to ? editor.value.state.doc.textBetween(from, to, '\n') : getEditorText()
+  }
+  if (!text.trim()) { toast.info('没有可朗读的内容'); return }
+  // ponytail: Edge TTS 限 5000 字，超出截断
+  if (text.length > 5000) {
+    text = text.slice(0, 5000)
+    toast.info('内容超过5000字，已截断朗读')
+  }
+  ttsLoading.value = true
+  try {
+    const res = await ttsApi.synthesize(text, 'zh-CN')
+    const blob = new Blob([res.data], { type: 'audio/mpeg' })
+    const url = URL.createObjectURL(blob)
+    currentAudio = new Audio(url)
+    currentAudio.onended = () => { isSpeaking.value = false; URL.revokeObjectURL(url) }
+    currentAudio.onerror = () => { isSpeaking.value = false; URL.revokeObjectURL(url) }
+    await currentAudio.play()
+    isSpeaking.value = true
+  } catch (e) {
+    toast.error('朗读失败，请重试')
+    console.error('TTS error', e)
+  } finally {
+    ttsLoading.value = false
+  }
+}
 
 const contextMenu = ref({ visible: false, x: 0, y: 0 })
 // ponytail: 右键时编辑器会失焦丢选区，打开菜单前缓存
@@ -677,6 +719,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
   if (editor.value) editor.value.destroy()
   if (saveTimer) clearTimeout(saveTimer)
+  currentAudio?.pause()
+  currentAudio = null
   if (selectionHandler) {
     document.removeEventListener('selectionchange', selectionHandler)
     selectionHandler = null
@@ -932,6 +976,12 @@ async function initDefaultStructure() {
 
 async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   compareActive.value = false
+  // 切换文档时停止朗读
+  if (currentAudio) {
+    currentAudio.pause()
+    currentAudio = null
+    isSpeaking.value = false
+  }
   // ponytail: flush pending auto-save BEFORE switching activeDocId.
   // Without this, a pending saveTimer fires after activeDocId changes but before
   // the new doc's content loads — saving the old doc's content over the new doc.

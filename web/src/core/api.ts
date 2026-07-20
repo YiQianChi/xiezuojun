@@ -209,6 +209,16 @@ export const aiApi = {
   },
 }
 
+// TTS 朗读
+export const ttsApi = {
+  voices() {
+    return api.get('/tts/voices')
+  },
+  synthesize(text: string, voice: string) {
+    return api.post('/tts', { text, voice }, { responseType: 'blob', timeout: 30000 })
+  },
+}
+
 // 记忆系统
 export const memoryApi = {
   listCharacters(projectId: string) {

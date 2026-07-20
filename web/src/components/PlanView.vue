@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { documentApi } from '../core/api'
 import { streamGenerate } from '../core/sse'
 
@@ -149,7 +149,7 @@ const steps = ref<PlanStep[]>([
     desc: '时代 / 地点 / 规则 / 冲突源头。AI 会生成多张世界观卡。',
     status: 'pending',
     settingType: 'worldbuilding',
-    prompt: '请构建这部小说的世界观设定，包括：时代背景、地理环境、势力划分、能力体系（如有）、规则与禁忌、冲突的根源。用 Markdown 分段输出。',
+    prompt: '【必须基于上一步确定的故事梗概】请构建能支撑这个故事的世界观设定，包括：时代背景、地理环境、势力划分、能力体系（如有）、规则与禁忌、冲突的根源。世界观中的每一个设定都要服务于梗概中已确定的故事。用 Markdown 分段输出。',
     promptHint: '写下你的世界观：什么时代、什么地点、有什么规则、冲突从哪来……',
   },
   {
@@ -158,7 +158,7 @@ const steps = ref<PlanStep[]>([
     desc: '主要人物 3-5 人，各自的身份、动机、秘密。',
     status: 'pending',
     settingType: 'characters',
-    prompt: '请设计这部小说的主要人物（3-5人）。每个人物包括：姓名、身份、性格特点、核心动机、不为人知的秘密。最后附上人物之间的关系。用 Markdown 格式输出。',
+    prompt: '【必须基于已确定的故事梗概和世界观】请设计服务于这个故事的主要人物（3-5人）。人物必须生活在已确定的世界观设定中，其身份、动机、秘密都要与梗概中的核心冲突直接相关。每个人物包括：姓名、身份、性格特点、核心动机、不为人知的秘密。最后附上人物之间的关系。用 Markdown 格式输出。',
     promptHint: '写下你的人物：名字、身份、性格、想要什么、藏着什么秘密……',
   },
   {
@@ -167,7 +167,7 @@ const steps = ref<PlanStep[]>([
     desc: '开端 / 冲突升级 / 高潮与结局。',
     status: 'pending',
     settingType: 'outline',
-    prompt: '请用三幕结构设计故事主线：第一幕（开端/日常→打破日常的契机）、第二幕（冲突升级/障碍与成长）、第三幕（高潮与结局）。每幕列出关键情节点。用 Markdown 格式输出。',
+    prompt: '【必须基于已确定的梗概、世界观和人物】请用三幕结构设计故事主线，把已确定的人物放进已确定的世界观中，推动梗概中的核心冲突走向结局。第一幕（开端/日常→打破日常的契机）、第二幕（冲突升级/障碍与成长）、第三幕（高潮与结局）。每幕列出关键情节点，并标注涉及的核心人物。用 Markdown 格式输出。',
     promptHint: '写下你的故事主线：怎么开始、冲突怎么升级、高潮和结局是什么……',
   },
   {
@@ -176,10 +176,49 @@ const steps = ref<PlanStep[]>([
     desc: '按主线切分卷 / 章，每章一句话。完成后可切到「写作」模式。',
     status: 'pending',
     settingType: 'outline',
-    prompt: '请根据前面的梗概、世界观、人物和主线，切分章节大纲。按「卷→章」结构，每章给一句话标题和一句概要。用 Markdown 格式输出。',
+    prompt: '【必须基于以上全部设定：梗概、世界观、人物、三幕结构】请将三幕结构主线切分为章节大纲。按「卷→章」结构，每章给一句话标题和一句概要。章节顺序必须遵循三幕结构的节奏，涉及的人物必须来自已确定的人物列表。用 Markdown 格式输出。',
     promptHint: '列出你想写的章节：每章标题和一句话概要……',
   },
 ])
+
+// ---- 本地草稿持久化（刷新不丢） ----
+const DRAFT_KEY = `plan-draft-${props.projectId}`
+
+interface DraftEntry {
+  status: string
+  preview?: string
+  userNote?: string
+}
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return
+    const saved: Record<number, DraftEntry> = JSON.parse(raw)
+    for (const s of steps.value) {
+      const d = saved[s.id]
+      if (!d) continue
+      // doing 是瞬态（生成中途刷新），恢复成 pending 让用户重新点
+      if (d.status === 'doing') continue
+      s.status = d.status as PlanStep['status']
+      s.preview = d.preview
+      s.userNote = d.userNote
+    }
+  } catch { /* 旧格式/损坏，忽略 */ }
+}
+
+// 只持久化需要保留的字段，排除 prompt/desc 等静态定义（代码改了不会冲突）
+function saveDraft() {
+  const data: Record<number, DraftEntry> = {}
+  for (const s of steps.value) {
+    if (s.status === 'pending' && !s.userNote?.trim()) continue
+    data[s.id] = { status: s.status, preview: s.preview, userNote: s.userNote }
+  }
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(data))
+}
+
+watch(steps, saveDraft, { deep: true })
+loadDraft()
 
 function statusLabel(s: string) {
   return s === 'done' ? '已完成' : s === 'doing' ? '进行中' : '未开始'
@@ -195,13 +234,24 @@ async function startStep(id: number) {
 
   try {
     // 收集已完成步骤的结果作为上下文
-    const contextParts: string[] = [`项目名：${props.projectName || '未命名'}`]
-    if (step.userNote?.trim()) {
-      contextParts.push(`用户补充：${step.userNote.trim()}`)
+    const contextParts: string[] = []
+    // 书名只在第一步作为锚点，之后弱化为辅助信息
+    if (step.id === 1) {
+      contextParts.push(`项目名：${props.projectName || '未命名'}（注意：书名可能一语双关，请结合用户的构思判断方向，不要仅凭书名猜测）`)
+    } else {
+      contextParts.push(`项目名：${props.projectName || '未命名'}（仅供识别，以下设定才是准确依据）`)
     }
-    steps.value.filter(s => s.status === 'done' && s.preview).forEach(s => {
-      contextParts.push(`【${s.title}】\n${s.preview}`)
-    })
+    if (step.userNote?.trim()) {
+      contextParts.push(`作者补充：${step.userNote.trim()}`)
+    }
+    const doneSteps = steps.value.filter(s => s.status === 'done' && s.preview)
+    if (doneSteps.length > 0) {
+      contextParts.push('以下是前面已确定的核心设定，你必须严格继承，不得与之矛盾：')
+      doneSteps.forEach(s => {
+        contextParts.push(`【${s.title}】\n${s.preview}`)
+      })
+      contextParts.push('以上设定为约束条件，不是参考。新内容必须与它们保持完全一致。')
+    }
 
     let accumulated = ''
     let rafId = 0
@@ -209,7 +259,7 @@ async function startStep(id: number) {
       {
         project_id: String(props.projectId),
         mode: 'plan',
-        content: `${step.prompt}\n\n作者原始构思：\n${step.userNote || ''}\n\n请基于作者的构思进行完善和扩展，保留核心创意，补充细节、逻辑和结构。输出完整的设定内容。\n\n已完成的设定（作为参考）：\n${contextParts.join('\n\n')}`,
+        content: `${step.prompt}\n\n作者原始构思：\n${step.userNote || '（无补充，请基于已有设定生成）'}\n\n请基于作者的构思进行完善和扩展，保留核心创意，补充细节、逻辑和结构。输出完整的设定内容。\n\n${contextParts.join('\n\n')}`,
       },
       {
         onContent: (chunk) => {

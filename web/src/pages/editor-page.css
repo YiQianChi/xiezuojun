@@ -851,6 +851,28 @@
   font-size: 12px;
   color: var(--text-secondary);
 }
+.speech-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.speech-btn:hover { color: var(--accent, #007aff); }
+.speech-btn.speaking { color: var(--accent, #007aff); }
+.voice-select {
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 4px;
+  background: var(--bg-secondary, #fff);
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 1px 4px;
+  max-width: 160px;
+  cursor: pointer;
+}
+.voice-select:disabled { opacity: 0.5; }
 
 /* 记忆触发器（状态栏右侧） */
 .memory-trigger {

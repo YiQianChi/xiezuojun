@@ -21,14 +21,24 @@ const router = createRouter({
     {
       path: '/bookshelf',
       name: 'Bookshelf',
-      component: () => import('../pages/Bookshelf.vue')
+      component: () => import('../pages/Bookshelf.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/editor/:projectId/:docId?',
       name: 'Editor',
-      component: () => import('../pages/Editor.vue')
+      component: () => import('../pages/Editor.vue'),
+      meta: { requiresAuth: true }
     }
   ]
+})
+
+router.beforeEach((to, _from, next) => {
+  if (to.meta.requiresAuth && !localStorage.getItem('access_token')) {
+    next('/login')
+  } else {
+    next()
+  }
 })
 
 export default router

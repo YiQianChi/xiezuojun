@@ -67,7 +67,7 @@
 
         <div v-if="activeIssue.suggestion" class="ai-note">
           <strong>AI 建议：</strong>
-          <div v-html="activeIssue.suggestion"></div>
+          <div class="ai-note-content">{{ activeIssue.suggestion }}</div>
         </div>
 
         <div class="action-row">
