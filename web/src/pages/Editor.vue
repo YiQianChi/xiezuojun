@@ -249,7 +249,6 @@
       >
         <template v-if="docContextMenu.doc">
           <div @click="renameDoc">重命名</div>
-          <div v-if="isFolderNode(docContextMenu.doc)" @click="openFolderProps">属性</div>
           <div v-if="!isFolderNode(docContextMenu.doc)" class="submenu-trigger">
             标记为 ▸
             <div class="context-submenu">
@@ -258,7 +257,7 @@
               <div @click="handleDocStatusChange(docContextMenu.doc, 'final')"><span class="status-dot-mini" style="background:#34c759"></span> 定稿</div>
             </div>
           </div>
-          <div v-if="!isFolderNode(docContextMenu.doc)" @click="setWordGoal">设置目标字数</div>
+          <div @click="openFolderProps">属性</div>
           <div @click="deleteDoc" class="danger">删除</div>
         </template>
         <template v-else>
@@ -274,66 +273,80 @@
       <WritingTimer :current-word-count="wordCount" />
       <span class="status-item">{{ saveStatus }}</span>
       <button class="status-item speech-btn" :class="{ speaking: isSpeaking }" @click="toggleSpeech" :disabled="ttsLoading" :title="isSpeaking ? '停止朗读' : '朗读（选区优先）'">
-        {{ ttsLoading ? '⏳ 生成中...' : isSpeaking ? '⏹ 朗读中' : '🔊 朗读' }}
+        {{ ttsLoading ? '⏳' : isSpeaking ? '⏹' : '🔊' }}
       </button>
-      <!-- E2: TTS 音色选择 -->
       <select v-model="selectedVoice" class="status-item voice-select" title="朗读音色">
         <option value="zh-CN">默认女声</option>
         <option v-for="v in voiceList" :key="v.voice" :value="v.voice">{{ v.name }}</option>
       </select>
-      <!-- E1: 场景导航 -->
       <button class="status-item scene-nav-btn" @click="jumpScene(-1)" title="上一个场景 (Alt+↑)">⬆️</button>
       <button class="status-item scene-nav-btn" @click="jumpScene(1)" title="下一个场景 (Alt+↓)">⬇️</button>
-      <div class="memory-trigger" :class="{ open: memoryOpen }">
-        <button class="memory-btn" @click="memoryOpen = !memoryOpen" :title="memoryOpen ? '收起记忆' : '记忆'">
-          <span v-if="!memoryOpen">🧠</span>
+
+      <!-- 工具箱：低频功能收起来 -->
+      <div class="toolbox-trigger" :class="{ open: toolboxOpen }">
+        <button class="memory-btn" @click.stop="toolboxOpen = !toolboxOpen" title="工具箱">
+          <span v-if="!toolboxOpen">⋯</span>
           <span v-else>✕</span>
         </button>
-        <div class="memory-popup" v-show="memoryOpen" @click.stop>
-          <MemoryPanel :project-id="String(projectId)" />
+        <div class="toolbox-popup" v-show="toolboxOpen" @click.stop>
+          <div class="toolbox-grid">
+            <button class="tool-btn" :class="{ active: memoryOpen }" @click="memoryOpen = !memoryOpen; toolboxOpen = false">
+              <span class="tool-icon">🧠</span>
+              <span class="tool-label">记忆</span>
+            </button>
+            <button class="tool-btn" :class="{ active: threadOpen }" @click="threadOpen = !threadOpen; toolboxOpen = false">
+              <span class="tool-icon">🧵</span>
+              <span class="tool-label">伏笔</span>
+            </button>
+            <button class="tool-btn" :class="{ active: trashOpen }" @click="trashOpen = !trashOpen; toolboxOpen = false">
+              <span class="tool-icon">🗑</span>
+              <span class="tool-label">回收站</span>
+            </button>
+            <button class="tool-btn" :class="{ active: statsOpen }" @click="statsOpen = !statsOpen; toolboxOpen = false">
+              <span class="tool-icon">📊</span>
+              <span class="tool-label">统计</span>
+            </button>
+            <button class="tool-btn" :class="{ active: storyboardOpen }" @click="storyboardOpen = !storyboardOpen; toolboxOpen = false">
+              <span class="tool-icon">🎴</span>
+              <span class="tool-label">大纲卡</span>
+            </button>
+            <button class="tool-btn" :class="{ active: chatOpen }" @click="chatOpen = !chatOpen; toolboxOpen = false">
+              <span class="tool-icon">💬</span>
+              <span class="tool-label">AI对话</span>
+            </button>
+            <button class="tool-btn" :class="{ active: graphOpen }" @click="graphOpen = !graphOpen; toolboxOpen = false">
+              <span class="tool-icon">🔗</span>
+              <span class="tool-label">关系图</span>
+            </button>
+            <button class="tool-btn" @click="helpOpen = true; toolboxOpen = false">
+              <span class="tool-icon">⌨️</span>
+              <span class="tool-label">快捷键</span>
+            </button>
+          </div>
         </div>
       </div>
-      <div class="memory-trigger" :class="{ open: threadOpen }">
-        <button class="memory-btn" @click="threadOpen = !threadOpen" :title="threadOpen ? '收起追踪' : '伏笔追踪'">
-          <span v-if="!threadOpen">🧵</span>
-          <span v-else>✕</span>
-        </button>
-        <div class="memory-popup thread-popup" v-show="threadOpen" @click.stop>
-          <ThreadPanel :project-id="String(projectId)" />
-        </div>
-      </div>
-      <div class="memory-trigger" :class="{ open: trashOpen }">
-        <button class="memory-btn" @click="trashOpen = !trashOpen" :title="trashOpen ? '收起回收站' : '回收站'">
-          <span v-if="!trashOpen">🗑</span>
-          <span v-else>✕</span>
-        </button>
-        <div class="memory-popup trash-popup" v-show="trashOpen" @click.stop>
-          <TrashPanel ref="trashPanelRef" :project-id="String(projectId)" @restored="onTrashRestored" />
-        </div>
-      </div>
-      <div class="memory-trigger" :class="{ open: statsOpen }">
-        <button class="memory-btn" @click="statsOpen = !statsOpen" :title="statsOpen ? '收起统计' : '写作统计'">
-          <span v-if="!statsOpen">📊</span>
-          <span v-else>✕</span>
-        </button>
-        <div class="memory-popup" v-show="statsOpen" @click.stop style="bottom: 52px; right: 0; position: absolute;">
-          <WritingStatsPanel :project-id="projectId" />
-        </div>
-      </div>
-      <button class="status-item" @click="storyboardOpen = !storyboardOpen" :class="{ active: storyboardOpen }" title="章节大纲卡片">
-        🎴
-      </button>
-      <div class="memory-trigger" :class="{ open: chatOpen }">
-        <button class="memory-btn" @click="chatOpen = !chatOpen" :title="chatOpen ? '收起对话' : 'AI 对话'">
-          <span v-if="!chatOpen">💬</span>
-          <span v-else>✕</span>
-        </button>
-        <div class="memory-popup chat-popup" v-show="chatOpen" @click.stop>
-          <AIChatPanel :project-id="projectId" />
-        </div>
-      </div>
-      <!-- E5: 快捷键帮助 -->
-      <button class="status-item" @click="helpOpen = true" title="快捷键 (Ctrl+/)">⌨️</button>
+    </div>
+
+    <!-- 工具箱面板：记忆/伏笔/回收站/统计/AI对话（从状态栏触发，弹窗位置统一） -->
+    <div v-if="memoryOpen" class="panel-popup memory-popup" @click.stop>
+      <div class="panel-head"><span>🧠 记忆</span><button @click="memoryOpen = false">✕</button></div>
+      <MemoryPanel :project-id="String(projectId)" />
+    </div>
+    <div v-if="threadOpen" class="panel-popup thread-popup" @click.stop>
+      <div class="panel-head"><span>🧵 伏笔追踪</span><button @click="threadOpen = false">✕</button></div>
+      <ThreadPanel :project-id="String(projectId)" />
+    </div>
+    <div v-if="trashOpen" class="panel-popup trash-popup" @click.stop>
+      <div class="panel-head"><span>🗑 回收站</span><button @click="trashOpen = false">✕</button></div>
+      <TrashPanel ref="trashPanelRef" :project-id="String(projectId)" @restored="onTrashRestored" />
+    </div>
+    <div v-if="statsOpen" class="panel-popup stats-popup" @click.stop>
+      <div class="panel-head"><span>📊 写作统计</span><button @click="statsOpen = false">✕</button></div>
+      <WritingStatsPanel :project-id="projectId" />
+    </div>
+    <div v-if="chatOpen" class="panel-popup chat-popup" @click.stop>
+      <div class="panel-head"><span>💬 AI 对话</span><button @click="chatOpen = false">✕</button></div>
+      <AIChatPanel :project-id="projectId" />
     </div>
 
     <!-- E5: 快捷键帮助弹窗 -->
@@ -686,7 +699,6 @@ const graphMaximized = ref(false)
 
 // 通用确认弹窗
 const confirmModal = ref<{ title: string; desc: string; action: () => void } | null>(null)
-const confirmText = ref('')
 const renameModal = ref<{ docId: number; title: string } | null>(null)
 const renameInputRef = ref<HTMLInputElement | null>(null)
 
@@ -710,6 +722,7 @@ const storyboardOpen = ref(false) // 章节大纲卡片视图
 const statsOpen = ref(false) // 写作统计面板
 const chatOpen = ref(false) // AI 对话面板
 const helpOpen = ref(false) // E5: 快捷键帮助弹窗
+const toolboxOpen = ref(false) // 工具箱弹出菜单
 const selectedVoice = ref('zh-CN') // E2: TTS 音色选择
 
 // AI 工具栏 & 交互 —— composable
@@ -808,6 +821,11 @@ async function handleReviewAiFix(issue: any) {
   await quickRewrite(snippet, pos >= 0 ? pos : 0, pos >= 0 ? pos + snippet.length : 0)
 }
 
+// ponytail: click outside toolbox closes it; popup @click.stop prevents inner clicks from reaching here
+function closeToolboxOnClickOutside() {
+  if (toolboxOpen.value) toolboxOpen.value = false
+}
+
 function switchMode(next: EditorMode) {
   if (mode.value === next) return
   mode.value = next
@@ -819,6 +837,7 @@ function switchMode(next: EditorMode) {
   aiToolbar.value.visible = false
   aiInsert.value.active = false
   contextMenu.value.visible = false
+  toolboxOpen.value = false
   if (searchVisible.value) closeSearch()
 }
 
@@ -855,6 +874,7 @@ function findRootDoc(doc: any): any | null {
 onMounted(async () => {
   initEditor()
   window.addEventListener('keydown', handleGlobalKeydown)
+  document.addEventListener('click', closeToolboxOnClickOutside)
   loadProjectName()
   loadVoices() // E2: 非关键，不 await
   await loadBranches()
@@ -873,6 +893,7 @@ async function loadProjectName() {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
+  document.removeEventListener('click', closeToolboxOnClickOutside)
   if (editor.value) editor.value.destroy()
   if (saveTimer) clearTimeout(saveTimer)
   currentAudio?.pause()
@@ -1354,11 +1375,16 @@ function openFolderProps() {
   closeDocContextMenu()
 }
 
-async function onFolderPropsSave(data: { tab_scope: string; icon: string }) {
+async function onFolderPropsSave(data: { tab_scope?: string; icon?: string; doc_status?: string; word_goal?: number }) {
   const doc = folderPropsDoc.value
   if (!doc) return
   try {
-    await documentApi.update(doc.id, { tab_scope: data.tab_scope, icon: data.icon })
+    const update: any = {}
+    if (data.tab_scope !== undefined) update.tab_scope = data.tab_scope
+    if (data.icon !== undefined) update.icon = data.icon
+    if (data.doc_status !== undefined) update.doc_status = data.doc_status
+    if (data.word_goal !== undefined) update.word_goal = data.word_goal
+    await documentApi.update(doc.id, update)
     showFolderPropsModal.value = false
     await loadDocs()
   } catch (e: any) {
@@ -1366,7 +1392,7 @@ async function onFolderPropsSave(data: { tab_scope: string; icon: string }) {
   }
 }
 
-// B3: 状态切换（圆点点击循环 draft→revising→final→draft）
+// B3: 状态切换（圆点点击循环 draft->revising->final->draft）
 async function handleCycleStatus(doc: any) {
   const order = ['draft', 'revising', 'final']
   const cur = doc.doc_status || 'draft'
@@ -1383,27 +1409,6 @@ async function handleDocStatusChange(doc: any, newStatus: string) {
     if (d) d.doc_status = newStatus
   } catch (e: any) {
     toast.error(e.response?.data?.error || '更新状态失败')
-  }
-}
-
-// B6: 右键菜单设置目标字数
-async function setWordGoal() {
-  const doc = docContextMenu.value.doc
-  if (!doc) return
-  closeDocContextMenu()
-  const input = window.prompt('设置目标字数（输入 0 取消）', String(doc.word_goal || ''))
-  if (input === null) return
-  const num = parseInt(input, 10)
-  if (isNaN(num) || num < 0) {
-    toast.error('请输入有效的数字')
-    return
-  }
-  try {
-    await documentApi.update(doc.id, { word_goal: num })
-    const d = documents.value.find(x => x.id === doc.id)
-    if (d) d.word_goal = num
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || '设置目标字数失败')
   }
 }
 
@@ -1434,7 +1439,6 @@ async function deleteDoc() {
   const doc = docContextMenu.value.doc
   if (!doc) return
   closeDocContextMenu()
-  confirmText.value = ''
   confirmModal.value = {
     title: '删除文档',
     desc: `确定删除「${doc.title}」？删除后可在回收站恢复。`,

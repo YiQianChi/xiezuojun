@@ -128,7 +128,7 @@ async function loadSettings() {
     const res = await documentApi.list(String(props.projectId))
     const data = res.data?.data
     const allDocs = Array.isArray(data) ? data : []
-    // ponytail: group by parent folder's title — dynamic, not hardcoded
+    // ponytail: group by parent folder's title - dynamic, not hardcoded
     const titleById = new Map<number, string>()
     allDocs.forEach((d: any) => { if (d.id) titleById.set(d.id, d.title) })
     settingDocs.value = allDocs

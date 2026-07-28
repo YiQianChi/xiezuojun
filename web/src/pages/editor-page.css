@@ -926,12 +926,12 @@
 }
 .voice-select:disabled { opacity: 0.5; }
 
-/* 记忆触发器（状态栏右侧） */
-.memory-trigger {
+/* 工具箱触发器（状态栏右侧） */
+.toolbox-trigger {
   margin-left: auto;
   position: relative;
 }
-.memory-trigger + .memory-trigger {
+.toolbox-trigger + .toolbox-trigger {
   margin-left: 0;
 }
 .memory-btn {
@@ -947,10 +947,55 @@
   justify-content: center;
 }
 .memory-btn:hover { background: var(--bg-hover, rgba(0,0,0,0.06)); }
-.memory-popup {
+.toolbox-popup {
   position: absolute;
   bottom: calc(100% + 8px);
   right: 0;
+  background: var(--bg-secondary, #fff);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06);
+  overflow: hidden;
+  z-index: 400;
+  padding: 8px;
+}
+.toolbox-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 60px;
+  height: 60px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tool-btn:hover {
+  background: var(--bg-tertiary, #f0f0f0);
+}
+.tool-btn.active {
+  background: var(--accent-light);
+}
+.tool-icon {
+  font-size: 20px;
+}
+.tool-label {
+  font-size: 10px;
+  color: var(--text-secondary, #86868b);
+}
+
+/* 面板弹窗（记忆/伏笔/回收站/统计/AI对话） */
+.panel-popup {
+  position: fixed;
+  bottom: 60px;
+  right: 16px;
   width: 480px;
   height: 70vh;
   max-height: 640px;
@@ -961,7 +1006,31 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  z-index: 400;
+  z-index: 450;
+}
+.panel-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1d1d1f);
+  border-bottom: 1px solid var(--border-subtle, rgba(0,0,0,0.06));
+  background: var(--bg-secondary, #fff);
+}
+.panel-head button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text-tertiary, #86868b);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.panel-head button:hover {
+  background: var(--bg-tertiary, #f0f0f0);
 }
 
 /* 章节大纲卡片视图浮层 */

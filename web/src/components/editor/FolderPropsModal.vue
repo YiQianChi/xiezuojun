@@ -1,35 +1,82 @@
 <template>
   <div v-if="modelValue" class="modal-overlay" @click="close">
     <div class="modal" @click.stop>
-      <h3>文件夹属性</h3>
-      <div class="prop-row">
-        <label class="prop-label">显示在</label>
-        <div class="tab-checks">
-          <label class="tab-check" :class="{ active: scopes.includes('chapter') }">
-            <input type="checkbox" :checked="scopes.includes('chapter')" @change="toggleScope('chapter')" />
-            <span>章节</span>
-          </label>
-          <label class="tab-check" :class="{ active: scopes.includes('setting') }">
-            <input type="checkbox" :checked="scopes.includes('setting')" @change="toggleScope('setting')" />
-            <span>设定</span>
-          </label>
-        </div>
-        <p class="prop-hint">勾选文件夹显示在哪个标签页下，可多选</p>
+      <div class="modal-head">
+        <h3>{{ isFolder ? '文件夹属性' : '文件属性' }}</h3>
+        <button class="close-btn" @click="close">✕</button>
       </div>
-      <div class="prop-row">
-        <label class="prop-label">图标</label>
-        <div class="icon-picker">
-          <button
-            v-for="ic in iconChoices"
-            :key="ic"
-            class="icon-chip"
-            :class="{ active: selectedIcon === ic }"
-            @click="selectedIcon = ic"
-          >{{ ic }}</button>
+
+      <div class="modal-body">
+        <!-- 显示位置（文件和文件夹都有） -->
+        <div class="prop-row">
+          <label class="prop-label">显示在</label>
+          <div class="tab-checks">
+            <label class="tab-check" :class="{ active: scopes.includes('chapter') }">
+              <input type="checkbox" :checked="scopes.includes('chapter')" @change="toggleScope('chapter')" />
+              <span>章节</span>
+            </label>
+            <label class="tab-check" :class="{ active: scopes.includes('setting') }">
+              <input type="checkbox" :checked="scopes.includes('setting')" @change="toggleScope('setting')" />
+              <span>设定</span>
+            </label>
+          </div>
+          <p class="prop-hint">勾选显示在哪个标签页下，可多选</p>
         </div>
-        <p class="prop-hint">选择一个图标便于在文件树中区分</p>
+
+        <!-- 图标（文件和文件夹都有） -->
+        <div class="prop-row">
+          <label class="prop-label">图标</label>
+          <div class="icon-picker">
+            <button
+              v-for="ic in iconChoices"
+              :key="ic"
+              class="icon-chip"
+              :class="{ active: selectedIcon === ic }"
+              @click="selectedIcon = ic"
+            >{{ ic }}</button>
+          </div>
+        </div>
+
+        <!-- 文件专属：状态 + 目标字数 -->
+        <template v-if="!isFolder">
+          <div class="prop-row">
+            <label class="prop-label">状态</label>
+            <div class="status-picker">
+              <button
+                v-for="s in statusOptions"
+                :key="s.value"
+                class="status-chip"
+                :class="{ active: selectedStatus === s.value }"
+                @click="selectedStatus = s.value"
+              >
+                <span class="status-dot" :style="{ background: s.color }"></span>
+                {{ s.label }}
+              </button>
+            </div>
+          </div>
+          <div class="prop-row half">
+            <div class="prop-col">
+              <label class="prop-label">目标字数</label>
+              <input
+                v-model.number="wordGoal"
+                type="number"
+                min="0"
+                class="prop-input"
+                placeholder="0 = 不限"
+              />
+            </div>
+            <div class="prop-col" v-if="doc">
+              <label class="prop-label">当前字数</label>
+              <div class="prop-stat">
+                <span class="stat-val">{{ doc.word_count || 0 }}</span>
+                <span v-if="wordGoal > 0" class="stat-pct">{{ Math.min(100, Math.round(((doc.word_count || 0) / wordGoal) * 100)) }}%</span>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
-      <div class="modal-actions">
+
+      <div class="modal-foot">
         <button class="btn" @click="close">取消</button>
         <button class="btn primary" @click="save">保存</button>
       </div>
@@ -38,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -47,23 +94,35 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [v: boolean]
-  save: [data: { tab_scope: string; icon: string }]
+  save: [data: { tab_scope?: string; icon?: string; doc_status?: string; word_goal?: number }]
 }>()
+
+const isFolder = computed(() => {
+  if (!props.doc) return false
+  const t = props.doc.type
+  return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
+})
 
 const scopes = ref<string[]>([])
 const selectedIcon = ref('')
+const selectedStatus = ref('draft')
+const wordGoal = ref(0)
 
-// ponytail: 常用图标选择 — 文件夹/设定/写作/标记/物件
+const statusOptions = [
+  { value: 'draft', label: '草稿', color: '#8e8e93' },
+  { value: 'revising', label: '修改中', color: '#f5a623' },
+  { value: 'final', label: '定稿', color: '#34c759' },
+]
+
 const iconChoices = [
   '📁', '📋', '👥', '🌍', '📖', '📑', '📝', '📄',
   '🗂️', '🏷️', '⭐', '💡', '🔒', '⚔️', '🏰', '🗺️',
-  ' ✒️', '✏️', '🖊️', '📚', '🎨', '🎬', '🎵', '💎',
+  '✒️', '✏️', '🖊️', '📚', '🎨', '🎬', '🎵', '💎',
   '🔥', '❄️', '🌙', '☀️', '⚡', '🌟', '🎭', '🧩',
 ]
 
 watch(() => props.modelValue, (v) => {
   if (v && props.doc) {
-    // 解析 tab_scope，旧数据按 type 推导
     const ts = props.doc.tab_scope
     if (ts) {
       scopes.value = ts.split(',').map((s: string) => s.trim()).filter(Boolean)
@@ -73,6 +132,8 @@ watch(() => props.modelValue, (v) => {
       else scopes.value = ['setting']
     }
     selectedIcon.value = props.doc.icon || ''
+    selectedStatus.value = props.doc.doc_status || 'draft'
+    wordGoal.value = props.doc.word_goal || 0
   }
 })
 
@@ -87,12 +148,16 @@ function close() {
 }
 
 function save() {
-  // 至少选一个 tab
   if (scopes.value.length === 0) scopes.value = ['chapter']
-  emit('save', {
+  const data: any = {
     tab_scope: scopes.value.join(','),
     icon: selectedIcon.value,
-  })
+  }
+  if (!isFolder.value) {
+    data.doc_status = selectedStatus.value
+    data.word_goal = wordGoal.value || 0
+  }
+  emit('save', data)
 }
 </script>
 
@@ -108,39 +173,78 @@ function save() {
   z-index: 500;
 }
 .modal {
-  width: 420px;
+  width: 460px;
   max-width: 90vw;
   background: var(--bg-secondary, #fff);
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  padding: 24px;
+  overflow: hidden;
   font-family: 'SF Pro Display', 'PingFang SC', -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
-h3 {
-  margin: 0 0 16px 0;
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, rgba(0,0,0,0.06));
+}
+.modal-head h3 {
+  margin: 0;
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--text-primary, #1d1d1f);
 }
+.close-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text-tertiary, #86868b);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.close-btn:hover { background: rgba(0,0,0,0.06); }
+
+.modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
 .prop-row {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+.prop-row.half {
+  display: flex;
+  gap: 16px;
+}
+.prop-col {
+  flex: 1;
+  min-width: 0;
 }
 .prop-label {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--text-primary, #1d1d1f);
-  margin-bottom: 8px;
+  color: var(--text-secondary, #86868b);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 .prop-hint {
-  margin: 6px 0 0 0;
+  margin: 4px 0 0 0;
   font-size: 11px;
-  color: var(--text-secondary, #86868b);
+  color: var(--text-tertiary, #aeaeb2);
   line-height: 1.4;
 }
+
+/* tab checks */
 .tab-checks {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 .tab-check {
   padding: 6px 16px;
@@ -165,10 +269,12 @@ h3 {
   height: 14px;
   accent-color: var(--accent, #007aff);
 }
+
+/* icon picker */
 .icon-picker {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  gap: 6px;
+  gap: 5px;
 }
 .icon-chip {
   width: 100%;
@@ -183,22 +289,90 @@ h3 {
   cursor: pointer;
   transition: all 0.15s;
 }
-.icon-chip:hover {
-  border-color: var(--accent, #007aff);
-}
+.icon-chip:hover { border-color: var(--accent, #007aff); }
 .icon-chip.active {
   border-color: var(--accent, #007aff);
   background: rgba(0, 122, 255, 0.08);
   box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15);
 }
-.modal-actions {
+
+/* status picker */
+.status-picker {
+  display: flex;
+  gap: 8px;
+}
+.status-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 8px;
+  background: var(--bg-secondary, #fff);
+  font-size: 13px;
+  color: var(--text-primary, #1d1d1f);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.status-chip.active {
+  border-color: var(--accent, #007aff);
+  background: rgba(0, 122, 255, 0.08);
+  color: var(--accent, #007aff);
+}
+.status-chip .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* number input */
+.prop-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  background: var(--bg-primary, #f5f5f7);
+  color: var(--text-primary, #1d1d1f);
+  transition: all 0.15s;
+  box-sizing: border-box;
+}
+.prop-input:focus {
+  border-color: var(--accent, #007aff);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+/* stat display */
+.prop-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary, #f5f5f7);
+  border-radius: 8px;
+}
+.stat-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #1d1d1f);
+  font-variant-numeric: tabular-nums;
+}
+.stat-pct {
+  font-size: 12px;
+  color: var(--text-secondary, #86868b);
+}
+
+.modal-foot {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 20px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border, rgba(0,0,0,0.06));
 }
 .btn {
-  padding: 6px 14px;
+  padding: 7px 18px;
   border: 1px solid var(--border, #e5e5ea);
   border-radius: 8px;
   background: var(--bg-secondary, #fff);
