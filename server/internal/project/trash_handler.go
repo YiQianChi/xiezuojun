@@ -68,13 +68,18 @@ func (h *Handler) RestoreDocument(c *gin.Context) {
 
 	h.locks.Lock(userID)
 	for _, d := range docs {
-		docName := uintToStr(d.ID) + ".md"
-		trashPath := filepath.Join(trashDir, docName)
-		destPath := h.ds.docPath(userID, req.ProjectID, projName, d.ID, ptrUint(d.ParentID))
-		if err := store.TrashRestore(trashPath, destPath); err == nil {
-			h.db.Model(&model.Document{}).Where("id = ?", d.ID).
-				Updates(map[string]interface{}{"status": 1, "trash_group": 0})
+		// ponytail: trash 目录跟删除时一致：有 parent_id 在 folder-XX/.trash/，否则在 ProjectDir/.trash/
+		dir := trashDir
+		if d.ParentID != nil && *d.ParentID > 0 {
+			dir = filepath.Join(filepath.Dir(h.ds.docPath(userID, req.ProjectID, projName, d.ID, *d.ParentID)), ".trash")
 		}
+		docName := uintToStr(d.ID) + ".md"
+		trashPath := filepath.Join(dir, docName)
+		destPath := h.ds.docPath(userID, req.ProjectID, projName, d.ID, ptrUint(d.ParentID))
+		_ = store.TrashRestore(trashPath, destPath)
+		// ponytail: 无论文件恢复是否成功都恢复 DB，不该让文件缺失卡住用户
+		h.db.Model(&model.Document{}).Where("id = ?", d.ID).
+			Updates(map[string]interface{}{"status": 1, "trash_group": 0})
 	}
 	_ = store.AppendChangelog(h.paths, userID, store.ChangeEntry{
 		Action: "restore_doc", Project: projName,
