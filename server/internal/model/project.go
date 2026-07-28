@@ -44,7 +44,7 @@ type Document struct {
 	BranchID   *uint     `gorm:"index" json:"branch_id"` // nil=全故事线共享资料；有值=属于某条故事线
 	ParentID   *uint     `gorm:"index" json:"parent_id"` // 支持卷/章嵌套
 	Type       string    `gorm:"size:20" json:"type"`    // volume | chapter | note | outline | characters | worldbuilding | storyline | chapter_outline
-	TabScope   string    `gorm:"size:50;default:chapter" json:"tab_scope"` // 逗号分隔: chapter,setting — 文件夹在哪些 Tab 显示
+
 	Icon       string    `gorm:"size:10" json:"icon"`     // 用户自选 emoji 图标，空则按 type 默认
 	Title      string    `gorm:"size:200" json:"title"`
 	SortOrder  int       `gorm:"default:0" json:"sort_order"`

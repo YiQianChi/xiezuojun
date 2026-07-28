@@ -30,7 +30,7 @@ type documentUpdateRequest struct {
 	CreateVersion      bool   `json:"create_version"`
 	VersionLabel       string `json:"version_label"`
 	AIInclude          *bool  `json:"ai_include"`  // 设定文档是否参与 AI 上下文
-	TabScope           string `json:"tab_scope"`    // 文件夹归属 Tab（逗号分隔）
+
 	Icon               string `json:"icon"`         // 用户自选图标
 	DocStatus          string `json:"doc_status"`   // 空字符串=不更新
 	WordGoal           *int   `json:"word_goal"`    // nil=不更新（指针区分 0 和未传）

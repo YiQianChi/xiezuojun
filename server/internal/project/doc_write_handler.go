@@ -20,7 +20,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		Title     string `json:"title" binding:"required"`
 		SortOrder int    `json:"sort_order"`
 		Content   string `json:"content"`
-		TabScope  string `json:"tab_scope"`
+
 		Icon      string `json:"icon"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -32,21 +32,11 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		return
 	}
 
-	// ponytail: 旧数据无 tab_scope 时按 type 推导默认值
-	tabScope := req.TabScope
-	if tabScope == "" {
-		if req.Type == "volume" || req.Type == "chapter" {
-			tabScope = "chapter"
-		} else {
-			tabScope = "setting"
-		}
-	}
-
 	doc := model.Document{
 		ProjectID: req.ProjectID, BranchID: req.BranchID, ParentID: req.ParentID,
 		Type: req.Type, Title: req.Title, SortOrder: req.SortOrder,
 		WordCount: countWords(req.Content), SearchText: req.Content, Status: 1,
-		TabScope: tabScope, Icon: req.Icon,
+		Icon: req.Icon,
 	}
 
 	// 文件夹层级限制：最多 3 层
@@ -133,11 +123,6 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	}
 	if req.AIInclude != nil {
 		updates["ai_include"] = *req.AIInclude
-	}
-	if req.TabScope != "" {
-		updates["tab_scope"] = req.TabScope
-		// ponytail: 级联更新子文档的 tab_scope，否则文件夹改 tab 后旧子文件还留在旧 tab
-		h.db.Model(&model.Document{}).Where("parent_id = ?", id).Update("tab_scope", req.TabScope)
 	}
 	if req.Icon != "" {
 		updates["icon"] = req.Icon

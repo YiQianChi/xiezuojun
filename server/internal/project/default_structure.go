@@ -28,38 +28,48 @@ func defaultDocContent(docType, title string) string {
 }
 
 func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uint) error {
-	// ponytail: tab_scope 按类型固定，与前端 createDoc 一致
 	type defaultDocX struct {
 		Title    string
 		Type     string
-		TabScope string
 		Content  string
 		ParentID *uint
 	}
-	defs := []defaultDocX{
-		{Title: "大纲", Type: "outline", TabScope: "setting", Content: ""},
-		{Title: "人物设定", Type: "characters", TabScope: "setting", Content: ""},
-		{Title: "世界观", Type: "worldbuilding", TabScope: "setting", Content: ""},
-		{Title: "故事主线", Type: "storyline", TabScope: "setting", Content: ""},
-		{Title: "章节大纲", Type: "chapter_outline", TabScope: "setting", Content: ""},
-		{Title: articleRootTitle, Type: "volume", TabScope: "chapter", Content: ""},
+
+	settingRootTitle := "设定"
+	settingRoot := model.Document{
+		ProjectID:  proj.ID,
+		Type:       "note",
+		Title:      settingRootTitle,
+		SortOrder:  0,
+		WordCount:  0,
+		SearchText: "",
+		Status:     1,
+	}
+	if err := h.db.Create(&settingRoot).Error; err != nil {
+		return err
+	}
+	if err := h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, settingRoot, ""); err != nil {
+		return err
 	}
 
-	var articleRootID uint
-	for i, def := range defs {
+	settingDefs := []defaultDocX{
+		{Title: "大纲", Type: "outline", Content: "", ParentID: &settingRoot.ID},
+		{Title: "人物设定", Type: "characters", Content: "", ParentID: &settingRoot.ID},
+		{Title: "世界观", Type: "worldbuilding", Content: "", ParentID: &settingRoot.ID},
+		{Title: "故事主线", Type: "storyline", Content: "", ParentID: &settingRoot.ID},
+		{Title: "章节大纲", Type: "chapter_outline", Content: "", ParentID: &settingRoot.ID},
+	}
+
+	for i, def := range settingDefs {
 		doc := model.Document{
 			ProjectID:  proj.ID,
 			ParentID:   def.ParentID,
 			Type:       def.Type,
 			Title:      def.Title,
 			SortOrder:  i,
-			TabScope:   def.TabScope,
 			WordCount:  countWords(def.Content),
 			SearchText: def.Content,
 			Status:     1,
-		}
-		if def.Title == articleRootTitle && def.Type == "volume" {
-			doc.BranchID = &branchID
 		}
 		if err := h.db.Create(&doc).Error; err != nil {
 			return err
@@ -67,19 +77,32 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 		if err := h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, doc, def.Content); err != nil {
 			return err
 		}
-		if def.Title == articleRootTitle && def.Type == "volume" {
-			articleRootID = doc.ID
-		}
+	}
+
+	articleDoc := model.Document{
+		ProjectID:  proj.ID,
+		BranchID:   &branchID,
+		Type:       "volume",
+		Title:      articleRootTitle,
+		SortOrder:  1,
+		WordCount:  0,
+		SearchText: "",
+		Status:     1,
+	}
+	if err := h.db.Create(&articleDoc).Error; err != nil {
+		return err
+	}
+	if err := h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, articleDoc, ""); err != nil {
+		return err
 	}
 
 	chapter := model.Document{
 		ProjectID:  proj.ID,
 		BranchID:   &branchID,
-		ParentID:   &articleRootID,
+		ParentID:   &articleDoc.ID,
 		Type:       "chapter",
 		Title:      "第一章",
-		SortOrder:  len(defs),
-		TabScope:   "chapter",
+		SortOrder:  len(settingDefs) + 2,
 		WordCount:  countWords(defaultDocContent("chapter", "第一章")),
 		SearchText: defaultDocContent("chapter", "第一章"),
 		Status:     1,
