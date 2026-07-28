@@ -1084,10 +1084,15 @@ async function loadDocs() {
   try {
     const res = await documentApi.list(String(projectId), activeBranchId.value)
     const fresh = res.data?.data || res.data || []
-    // ponytail: 保留用户手动设置的折叠状态，避免 loadDocs 后树全部弹开
+    // ponytail: 首次加载只展开"文章"文件夹，其他折叠；后续保留用户手动设置的状态
     const prev = new Map(documents.value.map(d => [d.id, d._expanded]))
+    const isFirstLoad = documents.value.length === 0
     for (const d of fresh) {
-      if (prev.has(d.id)) d._expanded = prev.get(d.id)
+      if (prev.has(d.id)) {
+        d._expanded = prev.get(d.id)
+      } else if (isFirstLoad) {
+        d._expanded = d.type === 'volume' || d.title === '文章'
+      }
     }
     documents.value = fresh
   } catch (e) {
