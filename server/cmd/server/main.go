@@ -169,6 +169,7 @@ func main() {
 	authd.GET("/projects/:id/export", projectHandler.ExportProject)
 	authd.GET("/projects/:id/export/epub", projectHandler.ExportEPUB)
 	authd.GET("/projects/:id/export/txt", projectHandler.ExportTXT)
+	authd.GET("/projects/:id/export/docx", projectHandler.ExportDOCX)
 
 	authd.GET("/documents", projectHandler.ListDocuments)
 	authd.POST("/documents", projectHandler.CreateDocument)
@@ -330,6 +331,7 @@ func main() {
 	aiGroup := authd.Group("")
 	aiGroup.Use(gw.RateLimitMiddleware())
 	aiGroup.POST("/ai/generate", gw.HandleGenerate)
+	aiGroup.POST("/ai/chat", gw.HandleChat)
 	aiGroup.GET("/ai/models", gw.HandleGetModels)
 
 	// TTS 朗读路由
@@ -337,6 +339,7 @@ func main() {
 	authd.POST("/tts", tts.HandleTTS)
 
 	// 伏笔/钩子追踪
+	authd.GET("/projects/:id/stats", projectHandler.WritingStats)
 	authd.GET("/projects/:id/threads", projectHandler.ListThreads)
 	authd.POST("/projects/:id/threads", projectHandler.CreateThread)
 	authd.PATCH("/threads/:id", projectHandler.UpdateThread)

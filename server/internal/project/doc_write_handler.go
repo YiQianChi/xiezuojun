@@ -142,9 +142,30 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	if req.Icon != "" {
 		updates["icon"] = req.Icon
 	}
+	if req.DocStatus != "" {
+		updates["doc_status"] = req.DocStatus
+	}
+	if req.WordGoal != nil {
+		updates["word_goal"] = *req.WordGoal
+	}
 	if err := h.db.Model(&model.Document{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// ponytail: 写字数日志——只有 delta!=0 才记，避免噪音
+	if req.HasContent {
+		newWords := countWords(req.Content)
+		delta := newWords - doc.WordCount
+		if delta != 0 {
+			h.db.Create(&model.WordCountLog{
+				UserID:    userID,
+				ProjectID: doc.ProjectID,
+				DocID:     doc.ID,
+				Delta:     delta,
+				Total:     newWords,
+			})
+		}
 	}
 
 	proj, err := h.getProject(doc.ProjectID)

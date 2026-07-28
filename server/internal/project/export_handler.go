@@ -136,6 +136,76 @@ func (h *Handler) ExportEPUB(c *gin.Context) {
 	c.Data(http.StatusOK, "application/epub+zip", buf.Bytes())
 }
 
+// ExportDOCX 导出 Word 文档（最小 DOCX 实现，纯标准库）
+// DOCX = ZIP 包含 [Content_Types].xml + _rels/.rels + word/document.xml
+func (h *Handler) ExportDOCX(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	if !h.requireProjectOwner(c, uint(id)) {
+		return
+	}
+	docs, proj, ok := h.collectExportDocs(c, uint(id))
+	if !ok {
+		return
+	}
+
+	var chapters []exportChapter
+	for _, dc := range docs {
+		if dc["type"] == "chapter" || dc["type"] == "volume" {
+			chapters = append(chapters, exportChapter{
+				Title:   getString(dc, "title"),
+				Content: getString(dc, "content"),
+			})
+		}
+	}
+	if len(chapters) == 0 {
+		chapters = append(chapters, exportChapter{Title: proj.Name, Content: "（空）"})
+	}
+
+	// 构建 word/document.xml 主体
+	var body strings.Builder
+	for _, ch := range chapters {
+		// 标题样式
+		body.WriteString(fmt.Sprintf(`<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">%s</w:t></w:r></w:p>`, escapeXML(ch.Title)))
+		// 正文段落
+		plain := stripMarkdown(ch.Content)
+		for _, line := range strings.Split(plain, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			body.WriteString(fmt.Sprintf(`<w:p><w:r><w:t xml:space="preserve">%s</w:t></w:r></w:p>`, escapeXML(line)))
+		}
+	}
+
+	documentXML := `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>` + body.String() + `</w:body>
+</w:document>`
+
+	buf := new(bytes.Buffer)
+	w := zip.NewWriter(buf)
+
+	// [Content_Types].xml
+	writeFile(w, "[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`)
+
+	// _rels/.rels
+	writeFile(w, "_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`)
+
+	// word/document.xml
+	writeFile(w, "word/document.xml", documentXML)
+
+	if err := w.Close(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "docx close failed"})
+		return
+	}
+
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.docx"`, sanitizeFilename(proj.Name)))
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buf.Bytes())
+}
+
 // exportChapter 导出用章节结构
 type exportChapter struct {
 	Title   string
