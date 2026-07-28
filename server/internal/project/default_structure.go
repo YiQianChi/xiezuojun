@@ -38,7 +38,7 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 	settingRootTitle := "设定"
 	settingRoot := model.Document{
 		ProjectID:  proj.ID,
-		Type:       "note",
+		Type:       "folder",
 		Title:      settingRootTitle,
 		SortOrder:  0,
 		WordCount:  0,

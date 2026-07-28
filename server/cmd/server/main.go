@@ -374,7 +374,7 @@ func migrateSettingFolder(db *gorm.DB) {
 		// 创建"设定"文件夹
 		folder := model.Document{
 			ProjectID: pid,
-			Type:      "note",
+			Type:      "folder",
 			Title:     "设定",
 			SortOrder: 0,
 			Status:    1,
