@@ -87,10 +87,10 @@ const children = computed(() => {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 })
 
-// ponytail: volume + 设定五大类都是文件夹容器
+// ponytail: volume + folder + 设定五大类都是文件夹容器
 const isFolder = computed(() => {
   const t = props.node.type
-  return t === 'volume' || t === 'note' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
+  return t === 'volume' || t === 'folder' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
 })
 
 const nodeIcon = computed(() => {
@@ -98,6 +98,7 @@ const nodeIcon = computed(() => {
   if (props.node.icon) return props.node.icon
   const map: Record<string, string> = {
     volume: '📁',
+    folder: '📝',
     outline: '📋',
     characters: '👥',
     worldbuilding: '🌍',

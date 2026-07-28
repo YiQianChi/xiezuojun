@@ -1313,10 +1313,10 @@ function newDocUnder(type: 'volume' | 'chapter') {
   closeDocContextMenu()
 }
 
-// ponytail: 判断是否文件夹容器——note=设定文件夹, volume=文章文件夹, 其他设定类型也可展开
+// ponytail: 判断是否文件夹容器——folder=设定文件夹, volume=文章文件夹, 其他设定类型也可展开
 function isFolderNode(doc: any): boolean {
   const t = doc.type
-  return t === 'volume' || t === 'note' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
+  return t === 'volume' || t === 'folder' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
 }
 
 // 右键文件夹 → 属性
