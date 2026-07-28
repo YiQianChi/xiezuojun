@@ -1084,12 +1084,19 @@ async function loadDocs() {
   try {
     const res = await documentApi.list(String(projectId), activeBranchId.value)
     const fresh = res.data?.data || res.data || []
-    // ponytail: 首次加载只展开"文章"文件夹，其他折叠；后续保留用户手动设置的状态
-    const prev = new Map(documents.value.map(d => [d.id, d._expanded]))
+    // ponytail: 展开状态持久化到 localStorage，按项目独立
+    const expandKey = `tree-expand-${projectId}`
     const isFirstLoad = documents.value.length === 0
+    let savedExpand: Set<number> | null = null
+    if (isFirstLoad) {
+      try { savedExpand = new Set(JSON.parse(localStorage.getItem(expandKey) || '[]')) } catch {}
+    }
+    const prev = new Map(documents.value.map(d => [d.id, d._expanded]))
     for (const d of fresh) {
       if (prev.has(d.id)) {
         d._expanded = prev.get(d.id)
+      } else if (isFirstLoad && savedExpand) {
+        d._expanded = savedExpand.has(d.id)
       } else if (isFirstLoad) {
         d._expanded = d.type === 'volume' || d.title === '文章'
       }
@@ -1102,6 +1109,16 @@ async function loadDocs() {
     loadingDocs.value = false
   }
 }
+
+// ponytail: 展开状态持久化——监听 _expanded 变化，防抖写 localStorage
+let expandSaveTimer: ReturnType<typeof setTimeout> | null = null
+watch(documents, () => {
+  if (expandSaveTimer) clearTimeout(expandSaveTimer)
+  expandSaveTimer = setTimeout(() => {
+    const ids = documents.value.filter(d => d._expanded).map(d => d.id)
+    localStorage.setItem(`tree-expand-${projectId}`, JSON.stringify(ids))
+  }, 500)
+}, { deep: true })
 
 async function initDefaultStructure() {
   const defaults = [
