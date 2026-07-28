@@ -11,6 +11,15 @@
         <button class="run-btn" @click="runReview" :disabled="running">
           {{ running ? '检查中...' : '开始体检' }}
         </button>
+        <button v-if="history.length > 0" class="clear-btn" @click="clearHistory" title="清空历史报告">🗑</button>
+      </div>
+
+      <div v-if="history.length > 0" class="review-history">
+        <select @change="selectReport(Number(($event.target as HTMLSelectElement).value))" :value="activeReportTs ?? ''">
+          <option v-for="r in history" :key="r.timestamp" :value="r.timestamp">
+            {{ new Date(r.timestamp).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }} · {{ r.issues.length }}个问题
+          </option>
+        </select>
       </div>
 
       <div v-if="issues.length === 0 && !running && !error" class="empty-state">
@@ -71,7 +80,7 @@
         </div>
 
         <div class="action-row">
-          <button class="btn" @click="activeIssue && emit('jump-to-source', { locus: activeIssue.locus, desc: activeIssue.desc })">跳到原文</button>
+          <button class="btn" @click="activeIssue && emit('jump-to-source', activeIssue)">跳到原文</button>
           <button class="btn primary" @click="activeIssue && emit('ai-fix', activeIssue)">让 AI 帮我改</button>
           <button class="btn" @click="ignoreAndNext">忽略</button>
         </div>
@@ -81,11 +90,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { aiApi, documentApi } from '../core/api'
 
 const emit = defineEmits<{
-  (e: 'jump-to-source', payload: { locus: string; desc: string }): void
+  (e: 'jump-to-source', issue: ReviewIssue): void
   (e: 'ai-fix', issue: ReviewIssue): void
 }>()
 
@@ -100,7 +109,14 @@ interface ReviewIssue {
   desc: string
   severity: 'high' | 'med' | 'low'
   locus: string
+  chapter_title?: string
   suggestion?: string
+}
+
+interface ReviewReport {
+  timestamp: number
+  scope: string
+  issues: ReviewIssue[]
 }
 
 const scope = ref<'book' | 'volume' | 'chapter'>('book')
@@ -109,6 +125,42 @@ const error = ref('')
 const ignoredIds = ref(new Set<string>())
 const activeId = ref<string | null>(null)
 const issues = ref<ReviewIssue[]>([])
+const history = ref<ReviewReport[]>([])
+const activeReportTs = ref<number | null>(null)
+
+const historyKey = computed(() => `review-${props.projectId}`)
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(historyKey.value)
+    if (!raw) return
+    const arr = JSON.parse(raw) as ReviewReport[]
+    history.value = Array.isArray(arr) ? arr.sort((a, b) => b.timestamp - a.timestamp) : []
+  } catch { /* ponytail: corrupt localStorage, ignore */ }
+}
+
+function saveHistory() {
+  try {
+    localStorage.setItem(historyKey.value, JSON.stringify(history.value))
+  } catch { /* ponytail: quota exceeded, ignore */ }
+}
+
+function selectReport(ts: number) {
+  const report = history.value.find(r => r.timestamp === ts)
+  if (!report) return
+  activeReportTs.value = ts
+  issues.value = report.issues
+  ignoredIds.value = new Set()
+  activeId.value = report.issues[0]?.id ?? null
+}
+
+function clearHistory() {
+  history.value = []
+  activeReportTs.value = null
+  issues.value = []
+  activeId.value = null
+  localStorage.removeItem(historyKey.value)
+}
 
 const categories = ['人设一致性', '情节漏洞', '伏笔追踪', '节奏']
 
@@ -172,7 +224,7 @@ async function runReview() {
     const res = await aiApi.generate({
       project_id: String(props.projectId),
       mode: 'review',
-      content: `请审阅以下小说正文，检查人设一致性、情节漏洞、伏笔追踪和节奏问题：\n\n${chapterText}`,
+      content: `请审阅以下小说正文，检查人设一致性、情节漏洞、伏笔追踪和节奏问题。\n每个 issue 必须包含 chapter_title 字段，值为该问题所在章节的精确标题。\n\n${chapterText}`,
       stream: false,
     })
 
@@ -201,18 +253,36 @@ async function runReview() {
       desc: item.desc || item.description || '',
       severity: ['high', 'med', 'low'].includes(item.severity) ? item.severity : 'med',
       locus: item.locus || item.location || '未知位置',
+      chapter_title: item.chapter_title || undefined,
       suggestion: item.suggestion || undefined,
     }))
 
     if (issues.value.length > 0) {
       activeId.value = issues.value[0].id
     }
+
+    // save report to history
+    const report: ReviewReport = {
+      timestamp: Date.now(),
+      scope: scope.value,
+      issues: [...issues.value],
+    }
+    history.value.unshift(report)
+    activeReportTs.value = report.timestamp
+    saveHistory()
   } catch (e: any) {
     error.value = e.response?.data?.error || e.message || 'AI 审阅失败，请重试'
   } finally {
     running.value = false
   }
 }
+
+onMounted(() => {
+  loadHistory()
+  if (history.value.length > 0) {
+    selectReport(history.value[0].timestamp)
+  }
+})
 </script>
 
 <style scoped>
@@ -264,6 +334,28 @@ async function runReview() {
   font-weight: 500;
 }
 .review-scope .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.review-scope .clear-btn {
+  background: none;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+.review-history {
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.review-history select {
+  width: 100%;
+  background: var(--bg-primary, #f5f5f7);
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
 
 .empty-state {
   padding: 40px 24px;

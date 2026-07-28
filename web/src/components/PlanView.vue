@@ -428,9 +428,9 @@ async function confirmWrite() {
 .step-card {
   background: var(--bg-secondary, #ffffff);
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--border);
   padding: 18px 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-sm);
   transition: box-shadow 0.15s ease;
 }
 .step-card.is-doing {
@@ -466,7 +466,7 @@ async function confirmWrite() {
   border-radius: 999px;
 }
 .step-status.done { background: rgba(52, 199, 89, 0.12); color: #34c759; }
-.step-status.pending { background: rgba(0, 0, 0, 0.05); color: var(--text-secondary); }
+.step-status.pending { background: var(--segment-bg); color: var(--text-secondary); }
 .step-status.doing { background: rgba(0, 122, 255, 0.12); color: var(--accent, #007aff); }
 
 .step-body {
@@ -480,7 +480,7 @@ async function confirmWrite() {
   margin-bottom: 10px;
 }
 .step-preview {
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--hover-bg);
   border-radius: 8px;
   padding: 12px 14px;
   font-family: var(--font-serif);
@@ -566,7 +566,7 @@ async function confirmWrite() {
 /* 文件夹选择弹窗 */
 .folder-picker-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: var(--overlay-bg);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000;
 }
@@ -575,7 +575,7 @@ async function confirmWrite() {
   background: var(--bg-secondary, #fff);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-lg);
 }
 .fp-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -609,7 +609,7 @@ async function confirmWrite() {
   border: 1px solid transparent;
   transition: all 0.12s;
 }
-.fp-folder-item:hover { background: rgba(0,0,0,0.03); }
+.fp-folder-item:hover { background: var(--hover-bg); }
 .fp-folder-item.active {
   background: rgba(175,82,222,0.08);
   border-color: rgba(175,82,222,0.2);

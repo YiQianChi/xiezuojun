@@ -587,9 +587,9 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   position: absolute;
   top: 32px;
   right: 0;
-  background: #fff;
+  background: var(--bg-secondary);
   border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   z-index: 100;
   min-width: 130px;
@@ -602,7 +602,7 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   background: transparent;
   padding: 8px 14px;
   font-size: 13px;
-  color: #1d1d1f;
+  color: var(--text-primary);
   cursor: pointer;
 }
 .export-menu button:hover { background: rgba(0,122,255,0.06); color: var(--accent, #007aff); }
@@ -660,7 +660,7 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;

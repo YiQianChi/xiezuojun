@@ -831,6 +831,30 @@
 .context-menu .hl-color-dot:hover {
   transform: scale(1.2);
 }
+.context-menu .hl-color-dot.hl-clear {
+  background: transparent !important;
+  border: 2px dashed var(--text-tertiary);
+}
+.context-menu .ctx-strike-row {
+  display: flex;
+  gap: 4px;
+  padding: 4px 16px;
+}
+.context-menu .ctx-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.12s ease;
+}
+.context-menu .ctx-icon-btn:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
 .context-menu .ctx-sep {
   height: 1px;
   background: var(--border-subtle);

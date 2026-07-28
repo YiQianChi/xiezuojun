@@ -37,6 +37,13 @@
 
       <!-- 编辑器 -->
       <div class="editor-main" :class="{ 'ai-panel-open': contextPanelOpen }" v-show="mode === 'write'">
+        <div v-if="draftBanner && draftBanner.docId === activeDocId" class="draft-banner" style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#fef3cd;border-bottom:1px solid #f0d57a;font-size:14px;color:#856404;">
+          <span>📝 检测到未保存的本地草稿，是否恢复？</span>
+          <div class="draft-actions" style="display:flex;gap:8px;">
+            <button class="btn primary" @click="restoreDraft">恢复</button>
+            <button class="btn" @click="discardDraft">丢弃</button>
+          </div>
+        </div>
         <div v-if="compareActive" class="compare-view">
           <div class="compare-topbar">
             <div>
@@ -203,14 +210,24 @@
             v-for="c in highlightColors"
             :key="c"
             class="hl-color-dot"
-          :style="{ background: c }"
-          @click="contextAction('highlight', c)"
+            :style="{ background: c }"
+            @click="contextAction('highlight', c)"
           ></span>
+          <span class="hl-color-dot hl-clear" @click="contextAction('clearHighlight')"></span>
         </div>
         <div class="ctx-sep"></div>
         <div @click="contextAction('copy')">复制</div>
         <div @click="contextAction('cut')">剪切</div>
         <div @click="contextAction('paste')">粘贴</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-strike-row">
+          <span class="ctx-icon-btn" @click="contextAction('strike')" title="删除线">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/></svg>
+          </span>
+          <span class="ctx-icon-btn" @click="contextAction('unstrike')" title="取消删除线">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </span>
+        </div>
       </div>
 
       <!-- 文档树右键菜单 -->
@@ -389,6 +406,7 @@ const projectName = ref('')
 const loadingDocs = ref(false)
 const wordCount = ref(0)
 const saveStatus = ref('')
+const draftBanner = ref<{ docId: number; text: string } | null>(null)
 const isSpeaking = ref(false)
 const ttsLoading = ref(false)
 let currentAudio: HTMLAudioElement | null = null
@@ -605,43 +623,44 @@ async function jumpToSetting(docId: number) {
   }
 }
 
-// ponytail: locus text search is fuzzy — matches by doc title substring, good enough for chapter names
-function findDocByLocus(locus: string) {
+// ponytail: chapter_title exact match first, then fuzzy title match
+function findDocByLocus(locus: string, chapterTitle?: string) {
+  if (chapterTitle) {
+    const exact = documents.value.find(d => d.title === chapterTitle)
+    if (exact) return exact
+  }
   return documents.value.find(d =>
     d.title === locus || locus.includes(d.title) || d.title.includes(locus)
   )
 }
 
-async function handleReviewJump({ locus, desc }: { locus: string; desc: string }) {
-  const doc = findDocByLocus(locus)
+async function handleReviewJump(issue: { locus: string; desc: string; chapter_title?: string }) {
+  const doc = findDocByLocus(issue.locus, issue.chapter_title)
   if (!doc) return
   switchMode('write')
   await openDoc(doc)
-  // highlight and scroll to the problematic text
   await nextTick()
   if (!editor.value) return
-  const snippet = desc.length > 30 ? desc.slice(0, 30) : desc
+  const snippet = issue.desc?.length > 30 ? issue.desc.slice(0, 30) : (issue.desc || '')
   const fullText = editor.value.state.doc.textBetween(0, editor.value.state.doc.content.size, '\n')
   const pos = fullText.indexOf(snippet)
-  if (pos < 0) return
+  if (pos < 0) return  // jumped to correct chapter, skip highlight if snippet not found
   editor.value.chain()
     .setTextSelection({ from: pos, to: pos + snippet.length })
     .run()
-  // scroll selection into view
   const coords = editor.value.view.coordsAtPos(pos)
   const selEl = document.elementFromPoint(coords.left, coords.top)?.parentElement
   if (selEl) selEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 async function handleReviewAiFix(issue: any) {
-  const doc = findDocByLocus(issue.locus)
+  const doc = findDocByLocus(issue.locus, issue.chapter_title)
   if (!doc) return
   switchMode('write')
   await openDoc(doc)
   await nextTick()
   if (!editor.value) return
-  // select the problematic text snippet in editor
-  const snippet = issue.desc?.length > 30 ? issue.desc.slice(0, 30) : issue.desc || ''
+  const snippet = issue.desc?.length > 30 ? issue.desc.slice(0, 30) : (issue.desc || '')
   const fullText = editor.value.state.doc.textBetween(0, editor.value.state.doc.content.size, '\n')
   const pos = fullText.indexOf(snippet)
   if (pos >= 0) {
@@ -761,6 +780,11 @@ function initEditor() {
       const plainText = getEditorText(ed)
       wordCount.value = plainText.length
       saveStatus.value = '编辑中...'
+      // ponytail: write localStorage draft on every keystroke window so
+      // browser crash / tab close in the 1.5s debounce gap doesn't lose data.
+      if (activeDocId.value) {
+        localStorage.setItem('draft-' + activeDocId.value, getEditorHTML(ed))
+      }
       if (saveTimer) clearTimeout(saveTimer)
       saveTimer = setTimeout(() => autoSave(), 1500)
     }
@@ -1025,6 +1049,15 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
       wordCount.value = getEditorText().length
       saveStatus.value = '已保存'
       setTimeout(() => { isSettingContent.value = false }, 100)
+
+      // ponytail: check for unsaved local draft (browser crashed during 1.5s debounce)
+      const draftKey = 'draft-' + doc.id
+      const draftHTML = localStorage.getItem(draftKey)
+      if (draftHTML && draftHTML !== getEditorHTML()) {
+        draftBanner.value = { docId: doc.id, text: draftHTML }
+      } else {
+        draftBanner.value = null
+      }
     }
   } catch (e) {
     console.error('加载文档内容失败', e)
@@ -1042,6 +1075,10 @@ async function autoSave() {
     })
     saveStatus.value = '已保存'
     saveRetryCount = 0
+    // ponytail: server has it now, clear the local draft backup
+    if (activeDocId.value) {
+      localStorage.removeItem('draft-' + activeDocId.value)
+    }
   } catch (e) {
     if (saveRetryCount < 3) {
       saveRetryCount++
@@ -1052,6 +1089,27 @@ async function autoSave() {
       saveRetryCount = 0
     }
   }
+}
+
+function restoreDraft() {
+  if (!draftBanner.value || !editor.value) return
+  isSettingContent.value = true
+  editor.value.commands.setContent(draftBanner.value.text, { emitUpdate: false })
+  wordCount.value = getEditorText().length
+  saveStatus.value = '编辑中...'
+  setTimeout(() => {
+    isSettingContent.value = false
+    // Trigger a save so the restored content hits the server
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => autoSave(), 1500)
+  }, 100)
+  draftBanner.value = null
+}
+
+function discardDraft() {
+  if (!draftBanner.value) return
+  localStorage.removeItem('draft-' + draftBanner.value.docId)
+  draftBanner.value = null
 }
 
 function openCreateDocModal(parentId: number | null = null, type: string = 'chapter') {
@@ -1277,6 +1335,9 @@ function contextAction(action: string, color?: string) {
     case 'highlight':
       editor.value.chain().setTextSelection({ from: sel.start, to: sel.end }).toggleHighlight({ color }).run()
       break
+    case 'clearHighlight':
+      editor.value.chain().setTextSelection({ from: sel.start, to: sel.end }).unsetHighlight().run()
+      break
     case 'copy':
       navigator.clipboard.writeText(sel.text)
       break
@@ -1289,6 +1350,12 @@ function contextAction(action: string, color?: string) {
         editor.value?.commands.insertContentAt(sel.start, text)
       })
       break
+    case 'strike':
+      editor.value.chain().setTextSelection({ from: sel.start, to: sel.end }).setStrike().run()
+      break
+    case 'unstrike':
+      editor.value.chain().setTextSelection({ from: sel.start, to: sel.end }).unsetStrike().run()
+      break
   }
   contextMenu.value.visible = false
 }
@@ -1296,6 +1363,8 @@ function contextAction(action: string, color?: string) {
 function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
+    // ponytail: cancel pending debounce so Ctrl+S saves immediately, not twice
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
     autoSave()
     return
   }

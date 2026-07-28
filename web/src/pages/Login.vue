@@ -235,14 +235,14 @@ async function handleReset() {
 </script>
 
 <style scoped>
-.auth-page { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#f5f5f7 0%,#e8e8ed 100%); }
+.auth-page { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg-primary); }
 .auth-card { background:var(--bg-secondary); padding:48px 40px; border-radius:var(--radius-lg); box-shadow:var(--shadow-xl); width:420px; max-width:90vw; }
 .auth-header { text-align:center; margin-bottom:24px; }
 .logo { font-family:var(--font-serif); font-size:36px; font-weight:700; color:var(--text-primary); margin-bottom:8px; letter-spacing:2px; }
 .subtitle { color:var(--text-secondary); font-size:14px; }
 .login-tabs { display:flex; gap:8px; background:var(--bg-tertiary,#f5f5f7); padding:4px; border-radius:10px; margin-bottom:22px; }
 .login-tabs button { flex:1; border:0; background:transparent; padding:8px; border-radius:8px; cursor:pointer; color:var(--text-secondary); }
-.login-tabs button.active { background:#fff; color:var(--accent,#007aff); box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.login-tabs button.active { background:var(--bg-secondary); color:var(--accent,#007aff); box-shadow:0 1px 4px var(--shadow-color); }
 .form-group { margin-bottom:16px; }
 .form-group label { display:block; font-size:13px; font-weight:500; color:var(--text-secondary); margin-bottom:6px; }
 .input.invalid { border-color:#ff3b30; background:rgba(255,59,48,.04); }

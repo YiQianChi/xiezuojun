@@ -212,7 +212,7 @@ onMounted(() => {
   max-height: calc(100vh - 140px);
   background: var(--bg-secondary, #ffffff);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--border);
   z-index: 450;
   display: flex;
   flex-direction: column;
@@ -230,7 +230,7 @@ onMounted(() => {
 
 .scope-tabs {
   display: inline-flex;
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--segment-bg);
   border-radius: 8px;
   padding: 2px;
   margin-right: 4px;
@@ -251,7 +251,7 @@ onMounted(() => {
 .scope-tab.active {
   background: var(--bg-secondary, #ffffff);
   color: var(--accent, #007aff);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px var(--shadow-color);
   font-weight: 500;
 }
 
@@ -340,7 +340,7 @@ onMounted(() => {
   min-width: 0;
 }
 .doc-count {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--segment-bg);
   padding: 1px 6px;
   border-radius: 999px;
   font-size: 10px;

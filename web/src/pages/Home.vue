@@ -127,15 +127,15 @@ const isLoggedIn = ref(!!localStorage.getItem('access_token'))
   background: var(--bg-secondary);
   padding: 24px 22px;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.04));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
   text-align: center;
   transition: all var(--transition-normal);
 }
 
 .feature:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.08), var(--shadow-sm);
   border-color: rgba(0, 122, 255, 0.15);
 }
 
