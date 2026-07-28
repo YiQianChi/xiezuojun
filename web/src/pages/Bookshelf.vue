@@ -45,6 +45,7 @@
               <button @click="exportBook(project, 'md')">Markdown</button>
               <button @click="exportBook(project, 'txt')">TXT 纯文本</button>
               <button @click="exportBook(project, 'epub')">EPUB 电子书</button>
+              <button @click="exportBook(project, 'docx')">DOCX 文档</button>
             </div>
           </div>
           <button class="card-btn delete" @click.stop="deleteBook(project)" title="删除">×</button>
@@ -309,7 +310,7 @@ function toggleExportMenu(id: number) {
 // 点击外部关闭导出菜单
 function closeExportMenu() { exportMenuId.value = null }
 
-async function exportBook(project: any, format: 'md' | 'txt' | 'epub') {
+async function exportBook(project: any, format: 'md' | 'txt' | 'epub' | 'docx') {
   exportMenuId.value = null
   const pid = project.id || project.project_id
   const name = project.name || '未命名'
@@ -329,6 +330,9 @@ async function exportBook(project: any, format: 'md' | 'txt' | 'epub') {
     } else if (format === 'epub') {
       const res = await projectApi.exportEPUB(pid)
       downloadBlob(new Blob([res.data], { type: 'application/epub+zip' }), `${name}.epub`)
+    } else if (format === 'docx') {
+      const res = await projectApi.exportDOCX(pid)
+      downloadBlob(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), `${name}.docx`)
     } else {
       const res = await projectApi.exportTXT(pid)
       downloadBlob(new Blob([res.data], { type: 'text/plain;charset=utf-8' }), `${name}.txt`)

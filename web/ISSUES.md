@@ -1,79 +1,41 @@
 # 写作菌功能完善清单
 
-> 2026-07-28 基于前后端全量代码审计。后端 100eb76 / 前端 e9ee8e5 + 未提交的右键菜单改动。
+> 2026-07-28 更新。P0全部完成 ✅，P1待做。
 
-## A. 现有功能问题（Bug）
+## ✅ A. 已修复的 Bug
 
-### A1. 审阅跳转基本废了 🔴
-- 文件: `Editor.vue:619` `findDocByLocus` + `handleReviewJump`
-- 问题: 拿 AI 返回的 locus 字符串模糊匹配文档标题，再拿 desc 前30字去正文 indexOf。AI 返回格式不可控，跳转十有八九跳不对。
-- 修复: review mode 的 system prompt 要求 AI 返回 `chapter_title` 字段；前端用 chapter_title 精确匹配文档标题，再用 desc 全文搜索定位段落。如果匹配不到，至少跳到正确章节。
+- ✅ A1. 审阅跳转不准 → chapter_title 精确匹配
+- ✅ A2. 审阅报告不持久 → localStorage 历史
+- ✅ A3. Ctrl+S 强制保存
+- ✅ A4. Ctrl+F 搜索（确认已有）
+- ✅ B1. 本地草稿备份
+- ✅ B2. 深色模式
 
-### A2. 审阅报告不持久 🟡
-- 文件: `ReviewView.vue`
-- 问题: 每次「开始体检」覆盖上次结果，无法对比。
-- 修复: 审阅结果存 localStorage（按 project_id），列表显示历史报告时间，可切换查看。
+## ✅ B. 功能迭代
 
-### A3. 没有 Ctrl+S 强制保存 🟡
-- 文件: `Editor.vue` 全局 keydown handler
-- 问题: 按 Ctrl+S 浏览器弹保存对话框，写作的人本能会按。
-- 修复: 拦截 Ctrl+S preventDefault + 触发 autoSave + toast 反馈。
+- ✅ B3. 章节状态标记 — 彩色圆点(draft灰/revising橙/final绿)，点击循环+右键菜单
+- ✅ B4. Ctrl+P 循环切 Plan→Write→Review 模式
+- ✅ B5. 分屏参考面板 — 右侧浮动面板，下拉选文档只读查看
+- ✅ B6. 每章目标字数 + 迷你进度条 — 绿<100%/蓝=100%/红>100%
 
-### A4. 没有 Ctrl+F 直接触发搜索 🟡
-- 文件: `Editor.vue` 全局 keydown handler
-- 问题: 现在要手动点放大镜图标。
-- 修复: 拦截 Ctrl+F preventDefault + 打开 SearchPanel。
+## ✅ C. P0 三件套（2026-07-28）
 
-## B. 缺失功能（按写作者痛感排序）
+- ✅ C1. 写作统计面板 — 后端 stats API + 前端 WritingStatsPanel（今日/本周/本月/连续天数/14天柱状图）
+- ✅ C2. 章节大纲卡片视图 — StoryboardView 组件，拖拽重排，状态栏🎴入口
+- ✅ C3. 审阅问题标记已解决/忽略 — ReviewView 加 resolved/ignored + localStorage 持久化 + 过滤栏
 
-### B1. 本地草稿备份 🔴
-- 文件: `Editor.vue` onUpdate callback
-- 问题: autoSave 1.5s debounce 写服务器。浏览器崩了/网断了，1.5s 窗口内的字丢失。
-- 修复: onUpdate 时写 `localStorage.setItem('draft-{docId}', text)`，autoSave 成功后 `localStorage.removeItem`。打开文档时检查是否有残留草稿，提示恢复。
+## ✅ D. P1（2026-07-28）
 
-### B2. 深色模式 🟡
-- 文件: `src/style.css` + 各组件 CSS
-- 问题: 写小说的人主力时间是晚上，全亮色刺眼。
-- 修复: CSS 变量已全站化，加 `:root.dark` 一套暗色变量 + header toggle 按钮 + localStorage 记住偏好。
+- ✅ D1. DOCX 导出 — 纯标准库 ZIP+XML 生成 Word 文档
+- ✅ D2. AI 对话 — POST /api/ai/chat SSE 流式多轮对话，复用 gateway 上下文注入
+- ✅ D3. 记忆面板空间不足 — 所有状态栏 popup 从 340×420 放大到 480×70vh(max640)
+- ✅ D4. 写作计时器 — 底部状态栏开始/暂停/停止+字数统计
+- ✅ D5. 参考面板保留格式 — v-html 渲染富文本(标题/列表/引用/高亮/删除线等)
 
-### B3. 章节状态标记 🟡
-- 文件: `DocTreeNode.vue` + 后端 documents 表
-- 问题: 几十章看不清哪些写完没写完。
-- 修复: document 加 `status` 字段（draft/revising/final），文档树节点显示彩色圆点标记。右键菜单切换状态。后端 PATCH /documents/:id 已支持扩展字段。
+## ✅ E. P2（2026-07-28，部分）
 
-### B4. 快捷键体系 🟢
-- 文件: `Editor.vue` handleGlobalKeydown
-- 缺: Ctrl+S 保存、Ctrl+F 搜索、Ctrl+P 切模式
-- 已有: Ctrl+Shift+Z 切专注
-
-### B5. 分屏参考面板 🟢
-- 文件: 新组件 `ReferencePanel.vue`
-- 问题: 写作时查设定要切 tab，写作流断了。
-- 修复: 编辑器右侧可开一个浮动面板，显示设定文档/角色卡/某章节原文。复用 AIContextPanel 的定位模式。
-
-### B6. 每章目标字数 + 进度 🟢
-- 文件: `DocTreeNode.vue` + 后端
-- 问题: 只有当前字数，没有目标对比。
-- 修复: document 加 `word_goal` 字段，文档树显示进度条。
-
-## C. 部署
-
-### 已有未提交改动
-- `Editor.vue` + `editor-page.css`: 右键菜单加了删除线 + 清除高亮
-- 需要在本次一起 build + 部署
-
-### 部署流程
-- 后端: `go build -o xzj-server-prod ./cmd/server/` → scp → 重启
-- 前端: `npm run build` → rsync dist
-- 测试服: 10.10.30.180 (systemd=xiezuojun-server)
-- 生产: 124.222.138.209 (xiezuojun.com)
-
-## 执行计划
-
-3 个 agent 并行：
-
-1. **Agent A**: 审阅修复（A1 跳转 + A2 持久化）→ ReviewView.vue + Editor.vue(review部分)
-2. **Agent B**: 编辑器增强（B1 草稿 + A3/A4 快捷键）→ Editor.vue(save/keyboard部分)
-3. **Agent C**: 深色模式（B2）→ style.css + 各CSS
-
-Agent A 和 B 都改 Editor.vue 但改不同区域，patch 精确指定不会冲突。
+- ✅ E1. 场景分隔/导航 - 识别 ✧/---/*** 分隔符，Alt+↑↓ 或状态栏⬆️⬇️跳转
+- ✅ E2. TTS 语音选择 - 状态栏下拉选音色，复用 /tts/voices API
+- ⬜ E3. 角色出场追踪 - 点角色名看出场章节统计
+- ⬜ E4. 内联 AI 问答 - 写到一半直接侧边栏问 AI
+- ✅ E5. 快捷键面板 - ⌨️ 按钮或 Ctrl+/ 弹出帮助，列出所有快捷键

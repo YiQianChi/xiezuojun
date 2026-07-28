@@ -41,6 +41,13 @@
       </button>
       <button
         v-if="mode === 'write'"
+        @click="$emit('toggle-reference')"
+        class="btn icon-btn"
+        :class="{ active: referenceOpen }"
+        title="分屏参考文档"
+      >📖</button>
+      <button
+        v-if="mode === 'write'"
         @click="$emit('toggle-focus')"
         class="btn icon-btn"
         :class="{ active: focusMode }"
@@ -79,6 +86,7 @@ defineProps<{
   activeDocId: number | null
   savingVersion: boolean
   focusMode: boolean
+  referenceOpen: boolean
 }>()
 
 defineEmits<{
@@ -87,6 +95,7 @@ defineEmits<{
   'save-version': []
   'open-history': []
   'toggle-focus': []
+  'toggle-reference': []
 }>()
 
 const isDark = ref(document.documentElement.classList.contains('dark'))

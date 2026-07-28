@@ -8,11 +8,13 @@
       :active-doc-id="activeDocId"
       :saving-version="savingVersion"
       :focus-mode="focusMode"
+      :reference-open="referencePanelOpen"
       @back="goBack"
       @switch-mode="switchMode"
       @save-version="openSaveVersionModal"
       @open-history="openVersionModal"
       @toggle-focus="focusMode = !focusMode"
+      @toggle-reference="referencePanelOpen = !referencePanelOpen"
     />
 
     <div class="editor-body">
@@ -33,6 +35,7 @@
         @drop-node="handleDropNode"
         @add-doc-root="createDocAtRoot"
         @add-doc-in="createDocInFolder"
+        @cycle-status="handleCycleStatus"
       />
 
       <!-- 编辑器 -->
@@ -115,6 +118,14 @@
           :used-settings="usedSettings"
           @update:open="contextPanelOpen = $event"
           @jump="jumpToSetting"
+        />
+
+        <!-- B5: 分屏参考面板 -->
+        <ReferencePanel
+          v-show="referencePanelOpen"
+          :documents="documents"
+          :project-id="projectId"
+          @close="referencePanelOpen = false"
         />
       </div>
 
@@ -239,6 +250,15 @@
         <template v-if="docContextMenu.doc">
           <div @click="renameDoc">重命名</div>
           <div v-if="isFolderNode(docContextMenu.doc)" @click="openFolderProps">属性</div>
+          <div v-if="!isFolderNode(docContextMenu.doc)" class="submenu-trigger">
+            标记为 ▸
+            <div class="context-submenu">
+              <div @click="handleDocStatusChange(docContextMenu.doc, 'draft')"><span class="status-dot-mini" style="background:#8e8e93"></span> 草稿</div>
+              <div @click="handleDocStatusChange(docContextMenu.doc, 'revising')"><span class="status-dot-mini" style="background:#f5a623"></span> 修改中</div>
+              <div @click="handleDocStatusChange(docContextMenu.doc, 'final')"><span class="status-dot-mini" style="background:#34c759"></span> 定稿</div>
+            </div>
+          </div>
+          <div v-if="!isFolderNode(docContextMenu.doc)" @click="setWordGoal">设置目标字数</div>
           <div @click="deleteDoc" class="danger">删除</div>
         </template>
         <template v-else>
@@ -251,10 +271,19 @@
     <!-- 底部状态栏 -->
     <div class="status-bar">
       <span class="status-item">{{ wordCount }} 字</span>
+      <WritingTimer :current-word-count="wordCount" />
       <span class="status-item">{{ saveStatus }}</span>
       <button class="status-item speech-btn" :class="{ speaking: isSpeaking }" @click="toggleSpeech" :disabled="ttsLoading" :title="isSpeaking ? '停止朗读' : '朗读（选区优先）'">
         {{ ttsLoading ? '⏳ 生成中...' : isSpeaking ? '⏹ 朗读中' : '🔊 朗读' }}
       </button>
+      <!-- E2: TTS 音色选择 -->
+      <select v-model="selectedVoice" class="status-item voice-select" title="朗读音色">
+        <option value="zh-CN">默认女声</option>
+        <option v-for="v in voiceList" :key="v.voice" :value="v.voice">{{ v.name }}</option>
+      </select>
+      <!-- E1: 场景导航 -->
+      <button class="status-item scene-nav-btn" @click="jumpScene(-1)" title="上一个场景 (Alt+↑)">⬆️</button>
+      <button class="status-item scene-nav-btn" @click="jumpScene(1)" title="下一个场景 (Alt+↓)">⬇️</button>
       <div class="memory-trigger" :class="{ open: memoryOpen }">
         <button class="memory-btn" @click="memoryOpen = !memoryOpen" :title="memoryOpen ? '收起记忆' : '记忆'">
           <span v-if="!memoryOpen">🧠</span>
@@ -282,6 +311,63 @@
           <TrashPanel ref="trashPanelRef" :project-id="String(projectId)" @restored="onTrashRestored" />
         </div>
       </div>
+      <div class="memory-trigger" :class="{ open: statsOpen }">
+        <button class="memory-btn" @click="statsOpen = !statsOpen" :title="statsOpen ? '收起统计' : '写作统计'">
+          <span v-if="!statsOpen">📊</span>
+          <span v-else>✕</span>
+        </button>
+        <div class="memory-popup" v-show="statsOpen" @click.stop style="bottom: 52px; right: 0; position: absolute;">
+          <WritingStatsPanel :project-id="projectId" />
+        </div>
+      </div>
+      <button class="status-item" @click="storyboardOpen = !storyboardOpen" :class="{ active: storyboardOpen }" title="章节大纲卡片">
+        🎴
+      </button>
+      <div class="memory-trigger" :class="{ open: chatOpen }">
+        <button class="memory-btn" @click="chatOpen = !chatOpen" :title="chatOpen ? '收起对话' : 'AI 对话'">
+          <span v-if="!chatOpen">💬</span>
+          <span v-else>✕</span>
+        </button>
+        <div class="memory-popup chat-popup" v-show="chatOpen" @click.stop>
+          <AIChatPanel :project-id="projectId" />
+        </div>
+      </div>
+      <!-- E5: 快捷键帮助 -->
+      <button class="status-item" @click="helpOpen = true" title="快捷键 (Ctrl+/)">⌨️</button>
+    </div>
+
+    <!-- E5: 快捷键帮助弹窗 -->
+    <Teleport to="body">
+      <div v-if="helpOpen" class="help-overlay" @click="helpOpen = false">
+        <div class="help-modal" @click.stop>
+          <div class="help-head">
+            <span>⌨️ 快捷键</span>
+            <button @click="helpOpen = false" class="help-close">✕</button>
+          </div>
+          <div class="help-body">
+            <div class="help-row"><kbd>Ctrl+S</kbd><span>保存</span></div>
+            <div class="help-row"><kbd>Ctrl+F</kbd><span>搜索（本章）</span></div>
+            <div class="help-row"><kbd>Ctrl+Shift+F</kbd><span>搜索（全项目）</span></div>
+            <div class="help-row"><kbd>Ctrl+P</kbd><span>切换模式（构思→写作→审阅）</span></div>
+            <div class="help-row"><kbd>Ctrl+Shift+Z</kbd><span>专注模式</span></div>
+            <div class="help-row"><kbd>Alt+↑</kbd><span>上一个场景</span></div>
+            <div class="help-row"><kbd>Alt+↓</kbd><span>下一个场景</span></div>
+            <div class="help-row"><kbd>Ctrl+/</kbd><span>本帮助</span></div>
+            <div class="help-row"><kbd>Esc</kbd><span>关闭弹窗/退出专注</span></div>
+          </div>
+          <div class="help-tip">场景分隔符：在段落开头输入 ✧ 或 --- 即可创建场景分隔</div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 章节大纲卡片视图（写作模式底部浮层） -->
+    <div v-if="storyboardOpen && mode === 'write'" class="storyboard-drawer">
+      <StoryboardView
+        :documents="documents"
+        :active-doc-id="activeDocId"
+        @select-doc="openDoc"
+        @reorder="handleStoryboardReorder"
+      />
     </div>
 
     <!-- 新建文档弹窗 -->
@@ -378,10 +464,15 @@ import ReviewView from '../components/ReviewView.vue'
 import EditorHeader from '../components/editor/EditorHeader.vue'
 import EditorSidebar from '../components/editor/EditorSidebar.vue'
 import AIContextPanel from '../components/editor/AIContextPanel.vue'
+import AIChatPanel from '../components/editor/AIChatPanel.vue'
+import ReferencePanel from '../components/editor/ReferencePanel.vue'
 import MemoryPanel from '../components/editor/MemoryPanel.vue'
 import RelationshipGraph from '../components/editor/RelationshipGraph.vue'
 import ThreadPanel from '../components/editor/ThreadPanel.vue'
 import TrashPanel from '../components/editor/TrashPanel.vue'
+import StoryboardView from '../components/editor/StoryboardView.vue'
+import WritingStatsPanel from '../components/editor/WritingStatsPanel.vue'
+import WritingTimer from '../components/editor/WritingTimer.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
 import FolderPropsModal from '../components/editor/FolderPropsModal.vue'
 import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
@@ -431,7 +522,7 @@ async function toggleSpeech() {
   }
   ttsLoading.value = true
   try {
-    const res = await ttsApi.synthesize(text, 'zh-CN')
+    const res = await ttsApi.synthesize(text, selectedVoice.value)
     const blob = new Blob([res.data], { type: 'audio/mpeg' })
     const url = URL.createObjectURL(blob)
     currentAudio = new Audio(url)
@@ -445,6 +536,45 @@ async function toggleSpeech() {
   } finally {
     ttsLoading.value = false
   }
+}
+
+// E2: 加载 TTS 音色列表
+const voiceList = ref<any[]>([])
+async function loadVoices() {
+  try {
+    const res = await ttsApi.voices()
+    voiceList.value = res.data?.data || []
+  } catch { /* ponytail: 语音列表加载失败不影响朗读 */ }
+}
+
+// E1: 场景分隔导航 — 查找 ✧/---/*** 开头的段落位置
+const SCENE_SEP = /^(✧{1,}|={3,}|\*{3,}|-{3,}|※{1,}|◇{1,})/
+function findScenePositions(): number[] {
+  if (!editor.value) return []
+  const positions: number[] = []
+  editor.value.state.doc.descendants((node: any, pos: number) => {
+    if (node.isText) {
+      const text = node.text || ''
+      if (SCENE_SEP.test(text.trim())) positions.push(pos)
+    }
+    return true
+  })
+  return positions
+}
+function jumpScene(dir: 1 | -1) {
+  if (!editor.value) return
+  const positions = findScenePositions()
+  if (positions.length === 0) { toast.info('未找到场景分隔符（✧ 或 ---）'); return }
+  const sel = editor.value.state.selection.from
+  const target = dir === 1
+    ? positions.find(p => p > sel + 1)
+    : [...positions].reverse().find(p => p < sel - 1)
+  if (target === undefined) { toast.info(dir === 1 ? '已是最后一个场景' : '已是第一个场景'); return }
+  editor.value.chain().setTextSelection(target).run()
+  editor.value.view.coordsAtPos(target)
+  const coords = editor.value.view.coordsAtPos(target)
+  const el = document.elementFromPoint(coords.left, coords.top)?.parentElement
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 const contextMenu = ref({ visible: false, x: 0, y: 0 })
@@ -574,7 +704,13 @@ interface UsedSetting {
 }
 const usedSettings = ref<UsedSetting[]>([])
 const contextPanelOpen = ref(false) // 右侧参考面板默认收起，AI 操作时自动弹出
+const referencePanelOpen = ref(false) // B5: 分屏参考面板
 const focusMode = ref(false) // 专注模式：隐藏侧栏+顶栏，编辑器全屏
+const storyboardOpen = ref(false) // 章节大纲卡片视图
+const statsOpen = ref(false) // 写作统计面板
+const chatOpen = ref(false) // AI 对话面板
+const helpOpen = ref(false) // E5: 快捷键帮助弹窗
+const selectedVoice = ref('zh-CN') // E2: TTS 音色选择
 
 // AI 工具栏 & 交互 —— composable
 const {
@@ -720,6 +856,7 @@ onMounted(async () => {
   initEditor()
   window.addEventListener('keydown', handleGlobalKeydown)
   loadProjectName()
+  loadVoices() // E2: 非关键，不 await
   await loadBranches()
   await loadDocs()
 })
@@ -1229,6 +1366,47 @@ async function onFolderPropsSave(data: { tab_scope: string; icon: string }) {
   }
 }
 
+// B3: 状态切换（圆点点击循环 draft→revising→final→draft）
+async function handleCycleStatus(doc: any) {
+  const order = ['draft', 'revising', 'final']
+  const cur = doc.doc_status || 'draft'
+  const next = order[(order.indexOf(cur) + 1) % order.length]
+  await handleDocStatusChange(doc, next)
+}
+
+// B3: 右键菜单设置状态
+async function handleDocStatusChange(doc: any, newStatus: string) {
+  closeDocContextMenu()
+  try {
+    await documentApi.update(doc.id, { doc_status: newStatus })
+    const d = documents.value.find(x => x.id === doc.id)
+    if (d) d.doc_status = newStatus
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '更新状态失败')
+  }
+}
+
+// B6: 右键菜单设置目标字数
+async function setWordGoal() {
+  const doc = docContextMenu.value.doc
+  if (!doc) return
+  closeDocContextMenu()
+  const input = window.prompt('设置目标字数（输入 0 取消）', String(doc.word_goal || ''))
+  if (input === null) return
+  const num = parseInt(input, 10)
+  if (isNaN(num) || num < 0) {
+    toast.error('请输入有效的数字')
+    return
+  }
+  try {
+    await documentApi.update(doc.id, { word_goal: num })
+    const d = documents.value.find(x => x.id === doc.id)
+    if (d) d.word_goal = num
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '设置目标字数失败')
+  }
+}
+
 async function renameDoc() {
   const doc = docContextMenu.value.doc
   if (!doc) return
@@ -1315,6 +1493,11 @@ async function handleDropNode(srcId: number, dstId: number, position: 'before' |
   }
 }
 
+// ponytail: 复用 handleDropNode 的 move 逻辑，storyboard 拖拽只有 before/after
+async function handleStoryboardReorder(payload: { fromId: number; toId: number; position: 'before' | 'after' }) {
+  await handleDropNode(payload.fromId, payload.toId, payload.position)
+}
+
 function openContextMenu(e: MouseEvent) {
   // ponytail: 右键前缓存当前选区，右键动作后编辑器已失焦
   cachedSelection = getSelection()
@@ -1368,6 +1551,14 @@ function handleGlobalKeydown(e: KeyboardEvent) {
     autoSave()
     return
   }
+  // B4: Ctrl+P 循环切换工作模式
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+    e.preventDefault()
+    const modes: EditorMode[] = ['plan', 'write', 'review']
+    const idx = modes.indexOf(mode.value)
+    switchMode(modes[(idx + 1) % modes.length])
+    return
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
     e.preventDefault()
     openSearch(e.shiftKey ? 'project' : 'chapter')
@@ -1393,6 +1584,18 @@ function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
     e.preventDefault()
     focusMode.value = !focusMode.value
+    return
+  }
+  // E5: Ctrl+/ 打开快捷键帮助
+  if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+    e.preventDefault()
+    helpOpen.value = !helpOpen.value
+    return
+  }
+  // E1: Alt+↑/↓ 场景导航
+  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault()
+    jumpScene(e.key === 'ArrowDown' ? 1 : -1)
     return
   }
 }

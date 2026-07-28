@@ -51,6 +51,7 @@
         @context-menu="(e, node) => $emit('context-menu', e, node)"
         @drop-node="(src, dst, pos) => $emit('drop-node', src, dst, pos)"
         @add-child="(folder) => $emit('add-doc-in', folder)"
+        @cycle-status="(n) => $emit('cycle-status', n)"
       />
       <!-- ponytail: 底部按钮固定根目录新建文件夹，两个 Tab 都显示 -->
       <button
@@ -84,6 +85,7 @@ defineEmits<{
   'drop-node': [srcId: number, dstId: number, position: 'before' | 'after' | 'inside']
   'add-doc-root': []
   'add-doc-in': [folder: any]
+  'cycle-status': [node: any]
 }>()</script>
 
 <style scoped>

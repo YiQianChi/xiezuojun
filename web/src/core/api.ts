@@ -146,6 +146,9 @@ export const projectApi = {
   delete(id: string) {
     return api.delete(`/projects/${id}`)
   },
+  stats(id: string | number) {
+    return api.get(`/projects/${id}/stats`)
+  },
   exportProject(id: string | number) {
     return api.get(`/projects/${id}/export`)
   },
@@ -154,6 +157,9 @@ export const projectApi = {
   },
   exportTXT(id: string | number) {
     return api.get(`/projects/${id}/export/txt`, { responseType: 'blob' })
+  },
+  exportDOCX(id: string | number) {
+    return api.get(`/projects/${id}/export/docx`, { responseType: 'blob' })
   },
 }
 
@@ -182,7 +188,7 @@ export const documentApi = {
   get(id: string | number) {
     return api.get(`/documents/${id}`)
   },
-  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string; ai_include?: boolean; tab_scope?: string; icon?: string }) {
+  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string; ai_include?: boolean; tab_scope?: string; icon?: string; doc_status?: string; word_goal?: number }) {
     return api.patch(`/documents/${id}`, data)
   },
   listVersions(id: string | number) {
@@ -206,6 +212,9 @@ export const documentApi = {
 export const aiApi = {
   generate(data: { project_id: string; document_id?: string; mode: string; content: string; stream?: boolean }) {
     return api.post('/ai/generate', data, { timeout: 120000 })
+  },
+  chat(data: { project_id: string; messages: { role: string; content: string }[]; stream?: boolean }) {
+    return api.post('/ai/chat', data, { timeout: 120000 })
   },
 }
 

@@ -19,7 +19,20 @@
 
       <span class="node-index">{{ index }}</span>
       <span class="node-icon">{{ nodeIcon }}</span>
+      <span
+        v-if="!isFolder"
+        class="status-dot"
+        :style="{ background: statusColor }"
+        :title="statusLabel"
+        @click.stop="emit('cycle-status', node)"
+      ></span>
       <span class="node-title">{{ displayTitle }}</span>
+      <div v-if="!isFolder && node.word_goal > 0" class="mini-progress-wrap" @click.stop>
+        <div class="mini-progress-bar">
+          <div class="mini-progress-fill" :style="{ width: progressPct + '%', background: progressColor }"></div>
+        </div>
+        <span class="mini-progress-text">{{ node.word_count || 0 }}/{{ node.word_goal }}</span>
+      </div>
     </div>
 
     <div v-if="isFolder && expanded" class="tree-children">
@@ -35,6 +48,7 @@
         @context-menu="(e, n) => $emit('context-menu', e, n)"
         @drop-node="(srcId, dstId, pos) => $emit('drop-node', srcId, dstId, pos)"
         @add-child="(folder) => $emit('add-child', folder)"
+        @cycle-status="(n) => $emit('cycle-status', n)"
       />
       <div class="add-child-btn" @click.stop="$emit('add-child', node)">+ 在「{{ displayTitle }}」下新建{{ childLabel }}</div>
     </div>
@@ -57,6 +71,7 @@ const emit = defineEmits<{
   'context-menu': [e: MouseEvent, node: any]
   'drop-node': [srcId: number, dstId: number, position: 'before' | 'after' | 'inside']
   'add-child': [node: any]
+  'cycle-status': [node: any]
 }>()
 
 const dropPos = ref<'before' | 'after' | 'inside' | null>(null)
@@ -151,6 +166,35 @@ function onDrop(e: DragEvent) {
     emit('drop-node', srcId, props.node.id, pos)
   }
 }
+
+// B3: 状态圆点
+const statusColorMap: Record<string, string> = {
+  draft: '#8e8e93',
+  revising: '#f5a623',
+  final: '#34c759',
+}
+const statusLabelMap: Record<string, string> = {
+  draft: '草稿',
+  revising: '修改中',
+  final: '定稿',
+}
+const statusColor = computed(() => statusColorMap[props.node.doc_status || 'draft'] || '#999')
+const statusLabel = computed(() => statusLabelMap[props.node.doc_status || 'draft'] || '草稿')
+
+// B6: 迷你进度条
+const progressPct = computed(() => {
+  const goal = props.node.word_goal || 0
+  if (!goal) return 0
+  return Math.min(100, Math.round(((props.node.word_count || 0) / goal) * 100))
+})
+const progressColor = computed(() => {
+  const goal = props.node.word_goal || 0
+  if (!goal) return '#4caf50'
+  const ratio = (props.node.word_count || 0) / goal
+  if (ratio > 1) return '#e53935'
+  if (ratio >= 1) return '#007AFF'
+  return '#4caf50'
+})
 </script>
 
 <style scoped>
@@ -241,6 +285,45 @@ function onDrop(e: DragEvent) {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* B3: 状态圆点 */
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+  transition: transform 0.15s ease;
+}
+.status-dot:hover {
+  transform: scale(1.3);
+}
+
+/* B6: 迷你进度条 */
+.mini-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.mini-progress-bar {
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.mini-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.mini-progress-text {
+  font-size: 10px;
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 

@@ -22,6 +22,12 @@
         </select>
       </div>
 
+      <div v-if="issues.length > 0" class="review-filter">
+        <button v-for="f in filters" :key="f.key" class="filter-btn" :class="{ active: issueFilter === f.key }" @click="issueFilter = f.key">
+          {{ f.label }} <span class="filter-count">{{ countFor(f.key) }}</span>
+        </button>
+      </div>
+
       <div v-if="issues.length === 0 && !running && !error" class="empty-state">
         <div class="empty-icon">🔍</div>
         <div class="empty-title">还没有体检报告</div>
@@ -47,12 +53,14 @@
             v-for="issue in issuesByCategory(cat)"
             :key="issue.id"
             class="review-item"
-            :class="{ active: activeId === issue.id }"
+            :class="{ active: activeId === issue.id, resolved: issue.resolved === 'resolved', ignored: issue.resolved === 'ignored' }"
             @click="activeId = issue.id"
           >
             <div class="title">
               {{ issue.title }}
               <span class="severity" :class="issue.severity">{{ severityLabel(issue.severity) }}</span>
+              <span v-if="issue.resolved === 'resolved'" class="status-tag resolved">✓ 已解决</span>
+              <span v-else-if="issue.resolved === 'ignored'" class="status-tag ignored">− 已忽略</span>
             </div>
             <div class="desc">{{ issue.desc }}</div>
             <div class="locus">📄 {{ issue.locus }}</div>
@@ -82,7 +90,8 @@
         <div class="action-row">
           <button class="btn" @click="activeIssue && emit('jump-to-source', activeIssue)">跳到原文</button>
           <button class="btn primary" @click="activeIssue && emit('ai-fix', activeIssue)">让 AI 帮我改</button>
-          <button class="btn" @click="ignoreAndNext">忽略</button>
+          <button class="btn" :class="{ toggle: activeIssue?.resolved === 'resolved' }" @click="activeIssue && setIssueStatus(activeIssue.id, 'resolved')">✓ 已解决</button>
+          <button class="btn" :class="{ toggle: activeIssue?.resolved === 'ignored' }" @click="activeIssue && setIssueStatus(activeIssue.id, 'ignored')">忽略</button>
         </div>
       </template>
     </div>
@@ -111,6 +120,7 @@ interface ReviewIssue {
   locus: string
   chapter_title?: string
   suggestion?: string
+  resolved?: 'resolved' | 'ignored'  // undefined=未处理
 }
 
 interface ReviewReport {
@@ -122,11 +132,12 @@ interface ReviewReport {
 const scope = ref<'book' | 'volume' | 'chapter'>('book')
 const running = ref(false)
 const error = ref('')
-const ignoredIds = ref(new Set<string>())
 const activeId = ref<string | null>(null)
 const issues = ref<ReviewIssue[]>([])
 const history = ref<ReviewReport[]>([])
 const activeReportTs = ref<number | null>(null)
+type FilterKey = 'all' | 'unresolved' | 'resolved' | 'ignored'
+const issueFilter = ref<FilterKey>('unresolved')
 
 const historyKey = computed(() => `review-${props.projectId}`)
 
@@ -150,7 +161,6 @@ function selectReport(ts: number) {
   if (!report) return
   activeReportTs.value = ts
   issues.value = report.issues
-  ignoredIds.value = new Set()
   activeId.value = report.issues[0]?.id ?? null
 }
 
@@ -164,19 +174,55 @@ function clearHistory() {
 
 const categories = ['人设一致性', '情节漏洞', '伏笔追踪', '节奏']
 
+const filters: { key: FilterKey; label: string }[] = [
+  { key: 'all', label: '全部' },
+  { key: 'unresolved', label: '未处理' },
+  { key: 'resolved', label: '已解决' },
+  { key: 'ignored', label: '已忽略' },
+]
+
+function countFor(key: FilterKey): number { return filterCounts.value[key] }
+
 function issuesByCategory(cat: string) {
-  return issues.value.filter(i => i.category === cat && !ignoredIds.value.has(i.id))
+  return issues.value.filter(i => i.category === cat && matchFilter(i))
 }
 
-const visibleIssues = computed(() => issues.value.filter(i => !ignoredIds.value.has(i.id)))
-const activeIssue = computed(() => visibleIssues.value.find(i => i.id === activeId.value) || null)
-
-function ignoreAndNext() {
-  if (!activeIssue.value) return
-  ignoredIds.value.add(activeIssue.value.id)
-  const next = visibleIssues.value.find(i => i.id !== activeIssue.value!.id)
-  activeId.value = next?.id ?? null
+// ponytail: resolved status lives on the issue object itself, so saveHistory() persists it for free
+function setIssueStatus(id: string, status: 'resolved' | 'ignored' | undefined) {
+  const issue = issues.value.find(i => i.id === id)
+  if (!issue) return
+  issue.resolved = issue.resolved === status ? undefined : status  // toggle off on re-click
+  // persist into history
+  const report = history.value.find(r => r.timestamp === activeReportTs.value)
+  if (report) {
+    const ri = report.issues.find(i => i.id === id)
+    if (ri) ri.resolved = issue.resolved
+    saveHistory()
+  }
 }
+
+function matchFilterRaw(i: ReviewIssue, key: FilterKey): boolean {
+  switch (key) {
+    case 'unresolved': return !i.resolved
+    case 'resolved':   return i.resolved === 'resolved'
+    case 'ignored':    return i.resolved === 'ignored'
+    default:           return true  // 'all'
+  }
+}
+function matchFilter(i: ReviewIssue): boolean { return matchFilterRaw(i, issueFilter.value) }
+
+const filterCounts = computed(() => {
+  const c: Record<FilterKey, number> = { all: 0, unresolved: 0, resolved: 0, ignored: 0 }
+  for (const i of issues.value) {
+    c.all++
+    if (!i.resolved) c.unresolved++
+    else if (i.resolved === 'resolved') c.resolved++
+    else c.ignored++
+  }
+  return c
+})
+
+const activeIssue = computed(() => issues.value.find(i => i.id === activeId.value) || null)
 
 function severityLabel(s: string) {
   return s === 'high' ? '高' : s === 'med' ? '中' : '低'
@@ -186,22 +232,35 @@ function severityLabel(s: string) {
 async function collectChapterText(): Promise<string> {
   const res = await documentApi.list(String(props.projectId))
   const docs = res.data?.data || res.data || []
-  const chapters = docs.filter((d: any) => d.type === 'chapter' && d.search_text)
+  const chapters = docs.filter((d: any) => d.type === 'chapter')
+
+  // search_text is json:"-" in the API, fetch content per chapter
+  async function fetchContent(ch: any): Promise<string> {
+    if (ch.search_text) return ch.search_text
+    try {
+      const r = await documentApi.get(ch.id)
+      const d = r.data?.data || r.data
+      return d?.content || ''
+    } catch { return '' }
+  }
 
   if (scope.value === 'chapter') {
     const ch = chapters[0]
-    return ch ? `【${ch.title}】\n${ch.search_text?.slice(0, 12000) || ''}` : ''
+    if (!ch) return ''
+    const text = await fetchContent(ch)
+    return text ? `【${ch.title}】\n${text.slice(0, 12000)}` : ''
   }
 
   // book / volume: 拼接所有章节正文
   const parts: string[] = []
   let total = 0
   for (const ch of chapters) {
+    const text = await fetchContent(ch)
+    if (!text) continue
     if (total > 24000) {
       parts.push('（剩余章节因篇幅限制省略...）')
       break
     }
-    const text = ch.search_text || ''
     parts.push(`【${ch.title}】\n${text}`)
     total += text.length
   }
@@ -499,4 +558,51 @@ onMounted(() => {
   color: white;
   border-color: #ff9500;
 }
+.action-row .btn.toggle {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: var(--accent, #007aff);
+  color: var(--accent, #007aff);
+  font-weight: 500;
+}
+
+.review-filter {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  flex-wrap: wrap;
+}
+.filter-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 999px;
+  background: var(--bg-secondary, #ffffff);
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.filter-btn.active {
+  background: var(--accent, #007aff);
+  color: white;
+  border-color: var(--accent, #007aff);
+}
+.filter-count {
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+.status-tag {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.status-tag.resolved { background: rgba(52, 199, 89, 0.15); color: #34c759; }
+.status-tag.ignored  { background: rgba(142, 142, 147, 0.15); color: var(--text-tertiary); }
+
+.review-item.resolved,
+.review-item.ignored {
+  opacity: 0.5;
+}
+.review-item.resolved .title { text-decoration: line-through; }
 </style>
