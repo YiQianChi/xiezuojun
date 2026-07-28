@@ -792,7 +792,7 @@
   min-width: 140px;
 }
 
-.context-menu div {
+.context-menu > div, .context-submenu > div {
   padding: 8px 16px;
   cursor: pointer;
   font-size: 13px;
@@ -800,16 +800,22 @@
   transition: background var(--transition-fast);
 }
 
-.context-menu div:hover {
+/* ponytail: 只给一级菜单项 hover 效果，子菜单项用专属 hover */
+.context-menu > div:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+/* 子菜单项 hover */
+.context-submenu > div:hover {
   background: var(--accent-light);
   color: var(--accent);
 }
 
-.context-menu div.danger {
+.context-menu > div.danger {
   color: #ff3b30;
 }
 
-.context-menu div.danger:hover {
+.context-menu > div.danger:hover {
   background: rgba(255, 59, 48, 0.1);
   color: #ff3b30;
 }
