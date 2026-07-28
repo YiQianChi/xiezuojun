@@ -1,17 +1,5 @@
 <template>
   <aside class="doc-tree">
-    <div class="side-tabs">
-      <button
-        class="side-tab"
-        :class="{ active: sideTab === 'chapter' }"
-        @click="$emit('update:sideTab', 'chapter')"
-      >章节</button>
-      <button
-        class="side-tab"
-        :class="{ active: sideTab === 'setting' }"
-        @click="$emit('update:sideTab', 'setting')"
-      >设定</button>
-    </div>
 
     <div class="branch-switcher">
       <label>故事线</label>
@@ -29,14 +17,8 @@
     <div class="tree-list" @contextmenu.prevent="$emit('context-menu', $event, null)">
       <div v-if="loadingDocs" class="tree-loading">加载中...</div>
       <div v-else-if="filteredRootNodes.length === 0" class="tree-empty">
-        <template v-if="sideTab === 'chapter'">
-          还没有章节<br>
-          <button @click="$emit('init-default')" class="btn small">初始化默认结构</button>
-        </template>
-        <template v-else>
-          还没有设定<br>
-          <span class="tree-empty-hint">大纲 / 人物 / 世界观 会显示在这里</span>
-        </template>
+        还没有文档<br>
+        <button @click="$emit('init-default')" class="btn small">初始化默认结构</button>
       </div>
       <DocTreeNode
         v-else
@@ -53,7 +35,6 @@
         @add-child="(folder) => $emit('add-doc-in', folder)"
         @cycle-status="(n) => $emit('cycle-status', n)"
       />
-      <!-- ponytail: 底部按钮固定根目录新建文件夹，两个 Tab 都显示 -->
       <button
         v-if="!loadingDocs"
         class="add-item-btn"
@@ -67,7 +48,6 @@
 import DocTreeNode from '../DocTreeNode.vue'
 
 const props = defineProps<{
-  sideTab: 'chapter' | 'setting'
   branches: any[]
   activeBranchId: number | null
   documents: any[]
@@ -77,7 +57,6 @@ const props = defineProps<{
 }>()
 
 defineEmits<{
-  'update:sideTab': [tab: 'chapter' | 'setting']
   'switch-branch': [id: number]
   'init-default': []
   'select-doc': [node: any]
@@ -97,33 +76,6 @@ defineEmits<{
   min-height: 0;
   background: var(--bg-secondary);
   flex-shrink: 0;
-}
-
-.side-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  margin: 10px 12px 6px;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 8px;
-}
-.side-tab {
-  flex: 1;
-  border: none;
-  background: transparent;
-  padding: 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.side-tab:hover:not(.active) { color: var(--text-primary); }
-.side-tab.active {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  font-weight: 500;
 }
 
 .branch-switcher {
@@ -162,12 +114,6 @@ defineEmits<{
   text-align: center;
   padding: 20px 12px;
   line-height: 1.7;
-}
-.tree-empty-hint {
-  display: block;
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--text-tertiary);
 }
 
 .btn.small {

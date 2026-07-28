@@ -1,10 +1,10 @@
 <template>
   <div v-if="modelValue" class="modal-overlay" @click="close">
     <div class="modal" @click.stop>
-      <h3>{{ isFolder ? '新建文件夹' : (props.sideTab === 'setting' ? '新建设定' : '新建章节') }}</h3>
+      <h3>{{ isFolder ? '新建文件夹' : '新建文档' }}</h3>
       <input
         v-model="name"
-        :placeholder="isFolder ? '文件夹名' : (props.sideTab === 'setting' ? '设定名' : '章节名')"
+        :placeholder="isFolder ? '文件夹名' : '文档名'"
         class="input"
         @keyup.enter="confirm"
         autofocus
@@ -35,7 +35,6 @@ import { ref, computed, watch } from 'vue'
 const props = defineProps<{
   modelValue: boolean
   docType: string
-  sideTab?: 'chapter' | 'setting'
   folderTypeOptions?: { value: string; label: string }[]
 }>()
 

@@ -90,7 +90,7 @@ const children = computed(() => {
 // ponytail: volume + 设定五大类都是文件夹容器
 const isFolder = computed(() => {
   const t = props.node.type
-  return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
+  return t === 'volume' || t === 'note' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
 })
 
 const nodeIcon = computed(() => {
@@ -112,11 +112,11 @@ const nodeIcon = computed(() => {
 // ponytail: 作者自己决定章节标题，不做自动编号
 const displayTitle = computed(() => props.node.title)
 
-// ponytail: 按文件夹 tab_scope 显示「章节」或「设定」
+// ponytail: 文件夹标签按 type 推导
 const childLabel = computed(() => {
-  const ts = props.node.tab_scope
-  if (ts && ts.includes('setting') && !ts.includes('chapter')) return '设定'
-  return '章节'
+  const t = props.node.type
+  if (t === 'volume') return '章节'
+  return '设定'
 })
 
 function toggleExpand() {

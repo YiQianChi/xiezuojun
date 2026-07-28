@@ -182,13 +182,13 @@ export const documentApi = {
   list(projectId: string, branchId?: number | string | null) {
     return api.get('/documents', { params: { project_id: projectId, branch_id: branchId || undefined } })
   },
-  create(data: { project_id: number; branch_id?: number; title: string; type: string; parent_id?: number; sort_order?: number; content?: string; tab_scope?: string; icon?: string }) {
+  create(data: { project_id: number; branch_id?: number; title: string; type: string; parent_id?: number; sort_order?: number; content?: string; icon?: string }) {
     return api.post('/documents', data)
   },
   get(id: string | number) {
     return api.get(`/documents/${id}`)
   },
-  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string; ai_include?: boolean; tab_scope?: string; icon?: string; doc_status?: string; word_goal?: number }) {
+  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string; ai_include?: boolean; icon?: string; doc_status?: string; word_goal?: number }) {
     return api.patch(`/documents/${id}`, data)
   },
   listVersions(id: string | number) {

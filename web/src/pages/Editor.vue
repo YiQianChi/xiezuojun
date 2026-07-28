@@ -20,14 +20,12 @@
     <div class="editor-body">
       <!-- 左侧文档树 -->
       <EditorSidebar
-        :side-tab="sideTab"
         :branches="branches"
         :active-branch-id="activeBranchId"
         :documents="documents"
         :filtered-root-nodes="filteredRootNodes"
         :active-doc-id="activeDocId"
         :loading-docs="loadingDocs"
-        @update:side-tab="sideTab = $event"
         @switch-branch="switchBranch"
         @init-default="initDefaultStructure"
         @select-doc="openDoc"
@@ -387,7 +385,6 @@
     <CreateDocModal
       v-model="showCreateDocModal"
       :doc-type="createDocType"
-      :side-tab="sideTab"
       :folder-type-options="createDocFolderTypeOptions"
       @create="onCreateDocConfirm"
     />
@@ -677,6 +674,10 @@ const rootNodes = computed(() => {
 
 // 关系图时间轴：正文目录下的章节文档（type=volume/chapter），按 sort_order 展平为线性列表
 const CHAPTER_TYPES = ['volume', 'chapter']
+
+function isChapterType(type: string): boolean {
+  return CHAPTER_TYPES.includes(type)
+}
 const chapterList = computed(() => {
   return documents.value
     .filter(d => CHAPTER_TYPES.includes(d.type))
@@ -688,8 +689,6 @@ const currentChapterIndex = computed(() => {
   return idx >= 0 ? idx + 1 : 0
 })
 
-// 左侧栏 Tab：章节 / 设定
-const sideTab = ref<'chapter' | 'setting'>('chapter')
 const memoryOpen = ref(false)
 const graphOpen = ref(false)
 const threadOpen = ref(false)
@@ -766,7 +765,6 @@ async function jumpToSetting(docId: number) {
     doc = documents.value.find(d => d.id === docId)
   }
   if (doc) {
-    sideTab.value = 'setting'
     mode.value = 'write'
     await openDoc(doc, { keepSearch: true })
   }
@@ -829,9 +827,6 @@ function closeToolboxOnClickOutside() {
 function switchMode(next: EditorMode) {
   if (mode.value === next) return
   mode.value = next
-  // 模式联动侧栏：计划 → 设定；写作/审核 → 章节
-  if (next === 'plan') sideTab.value = 'setting'
-  else sideTab.value = 'chapter'
   // 关闭浮层，避免残留
   if (aiPhase.value === 'generating') stopAIGeneration()
   aiToolbar.value.visible = false
@@ -841,35 +836,7 @@ function switchMode(next: EditorMode) {
   if (searchVisible.value) closeSearch()
 }
 
-// ponytail: 旧数据无 tab_scope 时按 type 推导
-function docTabScope(doc: any): string[] {
-  if (doc.tab_scope) return doc.tab_scope.split(',').map((s: string) => s.trim()).filter(Boolean)
-  // 兼容旧数据：按 type 推导
-  const t = doc.type
-  if (t === 'volume' || t === 'chapter') return ['chapter']
-  if (['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline', 'note'].includes(t)) return ['setting']
-  return ['chapter']
-}
-
-const filteredRootNodes = computed(() => {
-  const tab = sideTab.value
-  return rootNodes.value.filter(n => docTabScope(n).includes(tab))
-})
-
-// 沿 parent_id 向上找到根节点
-function findRootDoc(doc: any): any | null {
-  if (!doc) return null
-  let cur = doc
-  const seen = new Set<number>()
-  while (cur && cur.parent_id) {
-    if (seen.has(cur.id)) break
-    seen.add(cur.id)
-    const parent = documents.value.find(d => d.id === cur.parent_id)
-    if (!parent) break
-    cur = parent
-  }
-  return cur
-}
+const filteredRootNodes = computed(() => rootNodes.value)
 
 onMounted(async () => {
   initEditor()
@@ -1133,12 +1100,12 @@ async function loadDocs() {
 
 async function initDefaultStructure() {
   const defaults = [
-    { type: 'outline', title: '大纲', sort_order: 1, tab_scope: 'setting' },
-    { type: 'characters', title: '人物设定', sort_order: 2, tab_scope: 'setting' },
-    { type: 'worldbuilding', title: '世界观', sort_order: 3, tab_scope: 'setting' },
-    { type: 'storyline', title: '故事主线', sort_order: 4, tab_scope: 'setting' },
-    { type: 'chapter_outline', title: '章节大纲', sort_order: 5, tab_scope: 'setting' },
-    { type: 'volume', title: '文章', sort_order: 6, tab_scope: 'chapter' },
+    { type: 'outline', title: '大纲', sort_order: 1 },
+    { type: 'characters', title: '人物设定', sort_order: 2 },
+    { type: 'worldbuilding', title: '世界观', sort_order: 3 },
+    { type: 'storyline', title: '故事主线', sort_order: 4 },
+    { type: 'chapter_outline', title: '章节大纲', sort_order: 5 },
+    { type: 'volume', title: '文章', sort_order: 6 },
   ]
   for (const d of defaults) {
     try {
@@ -1147,7 +1114,6 @@ async function initDefaultStructure() {
         title: d.title,
         type: d.type,
         sort_order: d.sort_order,
-        tab_scope: d.tab_scope,
       })
     } catch (e) {
       console.error('创建默认结构失败', d, e)
@@ -1172,14 +1138,6 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   activeDocId.value = doc.id
   currentDocName.value = doc.title
   aiToolbar.value.visible = false
-  // 打开文档时自动跟随其所属分组切 Tab
-  const rootDoc = findRootDoc(doc)
-  const scopes = rootDoc ? docTabScope(rootDoc) : []
-  if (scopes.includes(sideTab.value)) {
-    // 当前 Tab 已匹配，不切
-  } else if (scopes.length > 0) {
-    sideTab.value = scopes[0] as 'chapter' | 'setting'
-  }
   // 切换章节时清空搜索状态与高亮（全项目跳转除外）
   if (!opts?.keepSearch && (searchQuery.value || searchTotal.value)) {
     searchQuery.value = ''
@@ -1292,11 +1250,8 @@ async function createDoc(folderType?: string) {
     )
     const maxSort = siblings.reduce((m, d) => Math.max(m, d.sort_order || 0), 0)
 
-    // ponytail: 根级文件夹跟随当前 Tab；子文档按 type 推导
+    // ponytail: type 由调用方决定，Tab 归属纯由 type 推导
     const actualType = folderType || createDocType.value
-    const tabScope = createDocParent.value === null
-      ? sideTab.value
-      : (actualType === 'volume' || actualType === 'chapter') ? 'chapter' : 'setting'
 
     const res = await documentApi.create({
       project_id: projectId,
@@ -1305,7 +1260,6 @@ async function createDoc(folderType?: string) {
       type: actualType,
       parent_id: createDocParent.value || undefined,
       sort_order: maxSort + 1,
-      tab_scope: tabScope,
     })
     showCreateDocModal.value = false
     newDocName.value = ''
@@ -1338,32 +1292,31 @@ function createDocAtRoot() {
   openCreateDocModal(null, 'volume')
 }
 
-// ponytail: 文件夹内+按钮，根据当前 Tab 决定类型
+// ponytail: 文件夹内+按钮，根据文件夹类型决定子文档类型
 function createDocInFolder(folder: any) {
-  const type = sideTab.value === 'setting' ? 'note' : 'chapter'
+  const type = isChapterType(folder.type) ? 'chapter' : 'note'
   openCreateDocModal(folder.id, type)
 }
 
 function newDocUnder(type: 'volume' | 'chapter') {
   const doc = docContextMenu.value.doc
-  // ponytail: 设定 tab 新建文件用 note 类型，章节 tab 用 chapter
-  const isSetting = sideTab.value === 'setting'
-  const actualType = isSetting && type === 'chapter' ? 'note' : type
   // 空白区域右键 → 根级创建；右键文件夹 → 在其下创建；右键文件 → 同级创建
   if (!doc) {
-    openCreateDocModal(null, actualType)
+    openCreateDocModal(null, type)
   } else {
     const isFolder = isFolderNode(doc)
     const parentId = isFolder ? doc.id : (doc.parent_id || null)
+    // 子文档类型跟随文件夹：章节文件夹→chapter，设定文件夹→note
+    const actualType = isFolder && !isChapterType(doc.type) && type === 'chapter' ? 'note' : type
     openCreateDocModal(parentId, actualType)
   }
   closeDocContextMenu()
 }
 
-// ponytail: 判断是否文件夹容器（含 tab_scope 多选归属的）
+// ponytail: 判断是否文件夹容器——note=设定文件夹, volume=文章文件夹, 其他设定类型也可展开
 function isFolderNode(doc: any): boolean {
   const t = doc.type
-  return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
+  return t === 'volume' || t === 'note' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
 }
 
 // 右键文件夹 → 属性
@@ -1375,12 +1328,11 @@ function openFolderProps() {
   closeDocContextMenu()
 }
 
-async function onFolderPropsSave(data: { tab_scope?: string; icon?: string; doc_status?: string; word_goal?: number }) {
+async function onFolderPropsSave(data: { icon?: string; doc_status?: string; word_goal?: number }) {
   const doc = folderPropsDoc.value
   if (!doc) return
   try {
     const update: any = {}
-    if (data.tab_scope !== undefined) update.tab_scope = data.tab_scope
     if (data.icon !== undefined) update.icon = data.icon
     if (data.doc_status !== undefined) update.doc_status = data.doc_status
     if (data.word_goal !== undefined) update.word_goal = data.word_goal

@@ -7,22 +7,6 @@
       </div>
 
       <div class="modal-body">
-        <!-- 显示位置（文件和文件夹都有） -->
-        <div class="prop-row">
-          <label class="prop-label">显示在</label>
-          <div class="tab-checks">
-            <label class="tab-check" :class="{ active: scopes.includes('chapter') }">
-              <input type="checkbox" :checked="scopes.includes('chapter')" @change="toggleScope('chapter')" />
-              <span>章节</span>
-            </label>
-            <label class="tab-check" :class="{ active: scopes.includes('setting') }">
-              <input type="checkbox" :checked="scopes.includes('setting')" @change="toggleScope('setting')" />
-              <span>设定</span>
-            </label>
-          </div>
-          <p class="prop-hint">勾选显示在哪个标签页下，可多选</p>
-        </div>
-
         <!-- 图标（文件和文件夹都有） -->
         <div class="prop-row">
           <label class="prop-label">图标</label>
@@ -94,7 +78,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [v: boolean]
-  save: [data: { tab_scope?: string; icon?: string; doc_status?: string; word_goal?: number }]
+  save: [data: { icon?: string; doc_status?: string; word_goal?: number }]
 }>()
 
 const isFolder = computed(() => {
@@ -103,7 +87,6 @@ const isFolder = computed(() => {
   return t === 'volume' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
 })
 
-const scopes = ref<string[]>([])
 const selectedIcon = ref('')
 const selectedStatus = ref('draft')
 const wordGoal = ref(0)
@@ -123,34 +106,18 @@ const iconChoices = [
 
 watch(() => props.modelValue, (v) => {
   if (v && props.doc) {
-    const ts = props.doc.tab_scope
-    if (ts) {
-      scopes.value = ts.split(',').map((s: string) => s.trim()).filter(Boolean)
-    } else {
-      const t = props.doc.type
-      if (t === 'volume' || t === 'chapter') scopes.value = ['chapter']
-      else scopes.value = ['setting']
-    }
     selectedIcon.value = props.doc.icon || ''
     selectedStatus.value = props.doc.doc_status || 'draft'
     wordGoal.value = props.doc.word_goal || 0
   }
 })
 
-function toggleScope(scope: string) {
-  const i = scopes.value.indexOf(scope)
-  if (i >= 0) scopes.value.splice(i, 1)
-  else scopes.value.push(scope)
-}
-
 function close() {
   emit('update:modelValue', false)
 }
 
 function save() {
-  if (scopes.value.length === 0) scopes.value = ['chapter']
   const data: any = {
-    tab_scope: scopes.value.join(','),
     icon: selectedIcon.value,
   }
   if (!isFolder.value) {
@@ -234,42 +201,6 @@ function save() {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-.prop-hint {
-  margin: 4px 0 0 0;
-  font-size: 11px;
-  color: var(--text-tertiary, #aeaeb2);
-  line-height: 1.4;
-}
-
-/* tab checks */
-.tab-checks {
-  display: flex;
-  gap: 8px;
-}
-.tab-check {
-  padding: 6px 16px;
-  border: 1px solid var(--border, #e5e5ea);
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--text-primary, #1d1d1f);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.15s;
-}
-.tab-check.active {
-  border-color: var(--accent, #007aff);
-  background: rgba(0, 122, 255, 0.08);
-  color: var(--accent, #007aff);
-}
-.tab-check input {
-  margin: 0;
-  width: 14px;
-  height: 14px;
-  accent-color: var(--accent, #007aff);
-}
-
 /* icon picker */
 .icon-picker {
   display: grid;

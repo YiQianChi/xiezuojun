@@ -131,8 +131,9 @@ async function loadSettings() {
     // ponytail: group by parent folder's title - dynamic, not hardcoded
     const titleById = new Map<number, string>()
     allDocs.forEach((d: any) => { if (d.id) titleById.set(d.id, d.title) })
+    const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline', 'note']
     settingDocs.value = allDocs
-      .filter((d: any) => d.type === 'note' && d.tab_scope === 'setting')
+      .filter((d: any) => SETTING_TYPES.includes(d.type))
       .map((d: any) => {
         const groupLabel = d.parent_id ? (titleById.get(d.parent_id) || '其他') : '其他'
         return { id: d.id, title: d.title, type: groupLabel, ai_include: d.ai_include }
