@@ -33,6 +33,8 @@
         @context-menu="openDocContextMenu"
         @drop-node="handleDropNode"
         @add-doc-root="createDocAtRoot"
+        @add-setting="createSettingAtRoot"
+        @add-article="createDocAtRoot"
         @add-doc-in="createDocInFolder"
         @cycle-status="handleCycleStatus"
       />
@@ -1319,6 +1321,11 @@ function closeDocContextMenu() {
 // ponytail: 底部按钮固定根目录新建
 function createDocAtRoot() {
   openCreateDocModal(null, 'volume')
+}
+
+// ponytail: 设定区＋号——根目录建设定类(folder)
+function createSettingAtRoot() {
+  openCreateDocModal(null, 'folder')
 }
 
 // ponytail: 文件夹内+按钮，根据文件夹类型决定子文档类型

@@ -26,7 +26,7 @@
           <div class="zone-title">
             <span class="zone-icon">📝</span>
             <span>设定</span>
-            <span class="zone-add" @click.stop="$emit('add-doc-root')">＋</span>
+          <span class="zone-add" @click.stop="$emit('add-setting')">＋</span>
           </div>
           <DocTreeNode
             v-for="(node, i) in settingRootNodes"
@@ -53,6 +53,7 @@
           <div class="zone-title article">
             <span class="zone-icon">📁</span>
             <span>文章</span>
+            <span class="zone-add" @click.stop="$emit('add-article')">＋</span>
           </div>
           <DocTreeNode
             v-for="(node, i) in articleRootNodes"
@@ -70,12 +71,6 @@
           />
         </div>
 
-        <!-- 兜底：两侧都空时显示新建 -->
-        <button
-          v-if="!loadingDocs && settingRootNodes.length === 0 && articleRootNodes.length === 0"
-          class="add-item-btn"
-          @click="$emit('add-doc-root')"
-        >+ 新建文件夹</button>
       </template>
     </div>
   </aside>
@@ -101,6 +96,8 @@ defineEmits<{
   'context-menu': [e: MouseEvent, node: any]
   'drop-node': [srcId: number, dstId: number, position: 'before' | 'after' | 'inside']
   'add-doc-root': []
+  'add-setting': []
+  'add-article': []
   'add-doc-in': [folder: any]
   'cycle-status': [node: any]
 }>()</script>
