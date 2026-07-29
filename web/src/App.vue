@@ -4,7 +4,7 @@
       <router-link to="/" class="logo">写作菌</router-link>
     </div>
     <div class="nav-right">
-      <a class="nav-link qq-feedback" href="https://qm.qq.com/q/1091462449" target="_blank" rel="noopener">QQ问题反馈群</a>
+      <button class="nav-link" @click="showQQModal = true">QQ问题反馈群</button>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
       <button v-if="isLoggedIn" @click="logout" class="nav-link logout">退出</button>
       <router-link v-else to="/login" class="nav-link">登录</router-link>
@@ -21,6 +21,22 @@
       </div>
     </Transition-group>
   </div>
+  <!-- QQ群弹窗 -->
+  <Teleport to="body">
+    <div v-if="showQQModal" class="qq-overlay" @click="showQQModal = false">
+      <div class="qq-modal" @click.stop>
+        <div class="qq-head">
+          <span>💬 问题反馈群</span>
+          <button @click="showQQModal = false" class="qq-close">✕</button>
+        </div>
+        <div class="qq-body">
+          <p class="qq-desc">遇到问题或建议？加入QQ群反馈：</p>
+          <div class="qq-number">1091462449</div>
+          <button class="qq-copy-btn" @click="copyQQ">复制群号</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -33,6 +49,13 @@ const router = useRouter()
 const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
+const showQQModal = ref(false)
+
+function copyQQ() {
+  navigator.clipboard?.writeText('1091462449').then(() => {
+    // ponytail: 简单提示，复用 toast
+  }).catch(() => {})
+}
 
 // 全局禁用浏览器原生右键菜单（应用内有自定义右键交互）
 onMounted(() => {
@@ -151,4 +174,68 @@ function logout() {
   opacity: 0;
   transform: translateY(-12px);
 }
+
+/* QQ群弹窗 */
+.qq-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.qq-modal {
+  background: var(--bg-secondary);
+  border-radius: 14px;
+  width: 320px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.qq-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.qq-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.qq-body {
+  padding: 24px 20px;
+  text-align: center;
+}
+.qq-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+.qq-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent, #007aff);
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+  font-family: var(--font-sans);
+}
+.qq-copy-btn {
+  padding: 8px 24px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent, #007aff);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity .15s ease;
+}
+.qq-copy-btn:hover { opacity: .85; }
 </style>
