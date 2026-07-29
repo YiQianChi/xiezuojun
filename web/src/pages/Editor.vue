@@ -935,17 +935,17 @@ function initEditor() {
 
 function getSelection() {
   if (!editor.value) return { text: '', start: 0, end: 0 }
-  let { from, to } = editor.value.state.selection
-  const text = editor.value.state.doc.textBetween(from, to, '\n')
-  // ponytail: ProseMirror selection can miss the leading char at text-node boundaries.
-  // Cross-check with native selection length; if off by one at the start, correct it.
+  // ponytail: editor.state.selection lags DOM on first selection (selectionchange fires
+  // before ProseMirror syncs). Use view.posAtDOM() — always reads live DOM, never stale.
   const native = window.getSelection()
-  if (native && native.rangeCount > 0 && native.toString().length > text.length) {
-    const before = from > 0 ? editor.value.state.doc.textBetween(from - 1, from, '\n') : ''
-    if (before) from = from - 1
-  }
-  const correctedText = editor.value.state.doc.textBetween(from, to, '\n')
-  return { text: correctedText, start: from, end: to }
+  if (!native || native.rangeCount === 0) return { text: '', start: 0, end: 0 }
+  const text = native.toString()
+  if (!text) return { text: '', start: 0, end: 0 }
+  const view = editor.value.view
+  const range = native.getRangeAt(0)
+  const start = view.posAtDOM(range.startContainer, range.startOffset)
+  const end = view.posAtDOM(range.endContainer, range.endOffset)
+  return { text, start: Math.min(start, end), end: Math.max(start, end) }
 }
 
 // ponytail: parse Markdown table blocks (| col | col |) into ProseMirror table nodes
