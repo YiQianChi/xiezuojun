@@ -4,6 +4,7 @@
       <router-link to="/" class="logo">写作菌</router-link>
     </div>
     <div class="nav-right">
+      <a class="nav-link qq-feedback" href="https://qm.qq.com/q/1091462449" target="_blank" rel="noopener">QQ问题反馈群</a>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
       <button v-if="isLoggedIn" @click="logout" class="nav-link logout">退出</button>
       <router-link v-else to="/login" class="nav-link">登录</router-link>

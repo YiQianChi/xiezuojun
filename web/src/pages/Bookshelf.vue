@@ -6,7 +6,6 @@
         <p class="subtitle">{{ projects.length }} 本书</p>
       </div>
       <div class="header-actions">
-        <a class="btn ghost qq-group" href="https://qm.qq.com/q/1091462449" target="_blank" rel="noopener">QQ群 1091462449</a>
         <button class="btn ghost" @click="showTrash = true">回收站</button>
         <button class="btn ghost" @click="showUserCenter = true">用户中心</button>
         <button class="btn primary" @click="showCreateModal = true">
