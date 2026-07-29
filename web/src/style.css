@@ -49,6 +49,16 @@
   --hover-bg-strong: rgba(0, 0, 0, 0.06);
   --segment-bg: rgba(0, 0, 0, 0.05);
   --shadow-color: rgba(0, 0, 0, 0.1);
+
+  /* 设定区配色 */
+  --setting-bg: #f7f4f1;
+  --setting-card-bg: #fdfbf9;
+  --setting-border: #ece6df;
+  --setting-children-border: #e0d8cf;
+  --setting-text: #8a7d6e;
+  --setting-title: #a89888;
+  --setting-hover: rgba(150,130,100,0.06);
+  --setting-hover-border: rgba(180,160,140,0.3);
 }
 
 :root.dark {
@@ -78,6 +88,16 @@
   --hover-bg-strong: rgba(255, 255, 255, 0.1);
   --segment-bg: rgba(255, 255, 255, 0.08);
   --shadow-color: rgba(0, 0, 0, 0.3);
+
+  /* 设定区配色 — 深色 */
+  --setting-bg: #2a2622;
+  --setting-card-bg: #322e29;
+  --setting-border: #3a3530;
+  --setting-children-border: #3d3833;
+  --setting-text: #b0a898;
+  --setting-title: #8a8070;
+  --setting-hover: rgba(180,160,130,0.08);
+  --setting-hover-border: rgba(180,160,130,0.25);
 }
 
 *, *::before, *::after {

@@ -23,7 +23,8 @@
         :branches="branches"
         :active-branch-id="activeBranchId"
         :documents="documents"
-        :filtered-root-nodes="filteredRootNodes"
+        :setting-root-nodes="settingRootNodes"
+        :article-root-nodes="articleRootNodes"
         :active-doc-id="activeDocId"
         :loading-docs="loadingDocs"
         @switch-branch="switchBranch"
@@ -836,7 +837,13 @@ function switchMode(next: EditorMode) {
   if (searchVisible.value) closeSearch()
 }
 
-const filteredRootNodes = computed(() => rootNodes.value)
+// ponytail: 设定/文章分区——volume/chapter=文章侧，其余=设定侧
+const settingRootNodes = computed(() =>
+  rootNodes.value.filter(n => !isChapterType(n.type))
+)
+const articleRootNodes = computed(() =>
+  rootNodes.value.filter(n => isChapterType(n.type))
+)
 
 onMounted(async () => {
   initEditor()

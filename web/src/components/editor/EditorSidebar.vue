@@ -16,30 +16,67 @@
 
     <div class="tree-list" @contextmenu.prevent="$emit('context-menu', $event, null)">
       <div v-if="loadingDocs" class="tree-loading">加载中...</div>
-      <div v-else-if="filteredRootNodes.length === 0" class="tree-empty">
+      <div v-else-if="settingRootNodes.length === 0 && articleRootNodes.length === 0" class="tree-empty">
         还没有文档<br>
         <button @click="$emit('init-default')" class="btn small">初始化默认结构</button>
       </div>
-      <DocTreeNode
-        v-else
-        v-for="(node, i) in filteredRootNodes"
-        :key="node.id"
-        :node="node"
-        :all-docs="documents"
-        :active-id="activeDocId"
-        :depth="0"
-        :index="i + 1"
-        @select="$emit('select-doc', $event)"
-        @context-menu="(e, node) => $emit('context-menu', e, node)"
-        @drop-node="(src, dst, pos) => $emit('drop-node', src, dst, pos)"
-        @add-child="(folder) => $emit('add-doc-in', folder)"
-        @cycle-status="(n) => $emit('cycle-status', n)"
-      />
-      <button
-        v-if="!loadingDocs"
-        class="add-item-btn"
-        @click="$emit('add-doc-root')"
-      >+ 新建文件夹</button>
+      <template v-else>
+        <!-- 设定区 -->
+        <div v-if="settingRootNodes.length > 0" class="setting-zone">
+          <div class="zone-title">
+            <span class="zone-icon">📝</span>
+            <span>设定</span>
+            <span class="zone-add" @click.stop="$emit('add-doc-root')">＋</span>
+          </div>
+          <DocTreeNode
+            v-for="(node, i) in settingRootNodes"
+            :key="node.id"
+            :node="node"
+            :all-docs="documents"
+            :active-id="activeDocId"
+            :depth="0"
+            :index="i + 1"
+            compact
+            @select="$emit('select-doc', $event)"
+            @context-menu="(e, node) => $emit('context-menu', e, node)"
+            @drop-node="(src, dst, pos) => $emit('drop-node', src, dst, pos)"
+            @add-child="(folder) => $emit('add-doc-in', folder)"
+            @cycle-status="(n) => $emit('cycle-status', n)"
+          />
+        </div>
+
+        <!-- 分隔线 -->
+        <div v-if="settingRootNodes.length > 0 && articleRootNodes.length > 0" class="zone-divider"></div>
+
+        <!-- 文章区 -->
+        <div v-if="articleRootNodes.length > 0" class="article-zone">
+          <div class="zone-title article">
+            <span class="zone-icon">📁</span>
+            <span>文章</span>
+          </div>
+          <DocTreeNode
+            v-for="(node, i) in articleRootNodes"
+            :key="node.id"
+            :node="node"
+            :all-docs="documents"
+            :active-id="activeDocId"
+            :depth="0"
+            :index="i + 1"
+            @select="$emit('select-doc', $event)"
+            @context-menu="(e, node) => $emit('context-menu', e, node)"
+            @drop-node="(src, dst, pos) => $emit('drop-node', src, dst, pos)"
+            @add-child="(folder) => $emit('add-doc-in', folder)"
+            @cycle-status="(n) => $emit('cycle-status', n)"
+          />
+        </div>
+
+        <!-- 兜底：两侧都空时显示新建 -->
+        <button
+          v-if="!loadingDocs && settingRootNodes.length === 0 && articleRootNodes.length === 0"
+          class="add-item-btn"
+          @click="$emit('add-doc-root')"
+        >+ 新建文件夹</button>
+      </template>
     </div>
   </aside>
 </template>
@@ -51,7 +88,8 @@ const props = defineProps<{
   branches: any[]
   activeBranchId: number | null
   documents: any[]
-  filteredRootNodes: any[]
+  settingRootNodes: any[]
+  articleRootNodes: any[]
   activeDocId: number | null
   loadingDocs: boolean
 }>()
@@ -145,5 +183,48 @@ defineEmits<{
   color: var(--accent, #007aff);
   border-color: var(--accent, #007aff);
   background: rgba(0, 122, 255, 0.04);
+}
+
+/* ===== 设定/文章分区 ===== */
+.setting-zone {
+  background: var(--setting-bg);
+  border-radius: 8px;
+  padding: 6px 4px;
+  margin-bottom: 4px;
+  border: 1px solid var(--setting-border);
+}
+.zone-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--setting-title);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.zone-title .zone-icon { font-size: 12px; }
+.zone-title .zone-add {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--setting-title);
+  cursor: pointer;
+  line-height: 1;
+}
+.zone-title .zone-add:hover { color: var(--accent, #007aff); }
+
+/* 文章区标题 */
+.zone-title.article {
+  color: var(--text-tertiary);
+}
+
+.zone-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+.article-zone {
+  padding-top: 2px;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="doc-tree-node" :class="{ folder: isFolder }">
+  <div class="doc-tree-node" :class="{ folder: isFolder, compact: compact }">
     <div
       class="tree-row"
       :class="{ active: node.id === activeId, 'drop-before': dropPos === 'before', 'drop-after': dropPos === 'after', 'drop-inside': dropPos === 'inside' }"
@@ -44,6 +44,7 @@
         :active-id="activeId"
         :depth="depth + 1"
         :index="i + 1"
+        :compact="compact"
         @select="$emit('select', $event)"
         @context-menu="(e, n) => $emit('context-menu', e, n)"
         @drop-node="(srcId, dstId, pos) => $emit('drop-node', srcId, dstId, pos)"
@@ -64,6 +65,7 @@ const props = defineProps<{
   activeId: number | string | null
   depth: number
   index: number
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -347,5 +349,56 @@ const progressColor = computed(() => {
   color: var(--accent, #007aff);
   border-color: var(--accent, #007aff);
   background: rgba(0, 122, 255, 0.04);
+}
+
+/* ===== compact 模式：设定区紧凑暖灰样式 ===== */
+.compact > .tree-row {
+  font-size: 11.5px;
+  padding: 3px 6px;
+  margin: 1px 2px;
+  color: var(--setting-text);
+  background: var(--setting-card-bg);
+  border: 1px solid var(--setting-border);
+  box-shadow: none;
+  gap: 3px;
+}
+.compact > .tree-row:hover {
+  background: var(--setting-hover);
+  border-color: var(--setting-hover-border);
+  transform: none;
+}
+.compact > .tree-row.active {
+  background: rgba(0,122,255,0.08);
+  color: var(--accent, #007aff);
+  font-weight: 500;
+  border-color: rgba(0,122,255,0.3);
+  box-shadow: none;
+}
+.compact > .tree-row .node-icon {
+  font-size: 11px;
+}
+.compact > .tree-row .node-index {
+  font-size: 9px;
+}
+.compact > .tree-row .status-dot {
+  width: 8px;
+  height: 8px;
+  box-shadow: none;
+}
+.compact > .tree-row .toggle-icon {
+  font-size: 6px;
+  width: 8px;
+}
+.compact > .tree-children {
+  margin-left: 2px;
+  padding-left: 4px;
+  border-left-color: var(--setting-children-border);
+}
+.compact > .tree-children .add-child-btn {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.compact > .tree-row .mini-progress-wrap {
+  display: none;
 }
 </style>
