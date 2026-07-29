@@ -23,11 +23,6 @@
       <template v-else>
         <!-- 设定区 -->
         <div v-if="settingRootNodes.length > 0" class="setting-zone">
-          <div class="zone-title">
-            <span class="zone-icon">📝</span>
-            <span>设定</span>
-          <span class="zone-add" @click.stop="$emit('add-setting')">＋</span>
-          </div>
           <DocTreeNode
             v-for="(node, i) in settingRootNodes"
             :key="node.id"
@@ -43,6 +38,7 @@
             @add-child="(folder) => $emit('add-doc-in', folder)"
             @cycle-status="(n) => $emit('cycle-status', n)"
           />
+          <div class="zone-add-link" @click.stop="$emit('add-setting')">＋ 新建设定</div>
         </div>
 
         <!-- 分隔线 -->
@@ -50,11 +46,6 @@
 
         <!-- 文章区 -->
         <div v-if="articleRootNodes.length > 0" class="article-zone">
-          <div class="zone-title article">
-            <span class="zone-icon">📁</span>
-            <span>文章</span>
-            <span class="zone-add" @click.stop="$emit('add-article')">＋</span>
-          </div>
           <DocTreeNode
             v-for="(node, i) in articleRootNodes"
             :key="node.id"
@@ -69,8 +60,8 @@
             @add-child="(folder) => $emit('add-doc-in', folder)"
             @cycle-status="(n) => $emit('cycle-status', n)"
           />
+          <div class="zone-add-link article" @click.stop="$emit('add-article')">＋ 新建文章</div>
         </div>
-
       </template>
     </div>
   </aside>
@@ -186,34 +177,27 @@ defineEmits<{
 .setting-zone {
   background: var(--setting-bg);
   border-radius: 8px;
-  padding: 6px 4px;
+  padding: 6px 4px 2px;
   margin-bottom: 4px;
   border: 1px solid var(--setting-border);
 }
-.zone-title {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px 4px;
+
+.zone-add-link {
+  padding: 3px 8px;
+  margin: 2px 4px 0;
   font-size: 10px;
-  font-weight: 700;
-  color: var(--setting-title);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.zone-title .zone-icon { font-size: 12px; }
-.zone-title .zone-add {
-  margin-left: auto;
-  font-size: 14px;
   color: var(--setting-title);
   cursor: pointer;
-  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.15s ease;
 }
-.zone-title .zone-add:hover { color: var(--accent, #007aff); }
-
-/* 文章区标题 */
-.zone-title.article {
+.zone-add-link:hover {
+  color: var(--accent, #007aff);
+  background: rgba(0,122,255,0.06);
+}
+.zone-add-link.article {
   color: var(--text-tertiary);
+  margin-top: 4px;
 }
 
 .zone-divider {
