@@ -137,9 +137,13 @@ async function handleRegister() {
   if (!validateRegister(true)) return
   loading.value = true
   try {
-    await userApi.register({ email: email.value.trim(), password: password.value, code: code.value })
-    successMsg.value = '注册成功，正在跳转登录...'
-    setTimeout(() => router.push('/login'), 600)
+    const res = await userApi.register({ email: email.value.trim(), password: password.value, code: code.value })
+    const data = res.data.data || res.data
+    if (data.access_token) localStorage.setItem('access_token', data.access_token)
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    localStorage.setItem('xiezuojun_onboarded', '0') // 标记需要引导
+    successMsg.value = '注册成功，正在跳转...'
+    setTimeout(() => router.push('/bookshelf'), 600)
   } catch (err: any) {
     errorMsg.value = normalizeError(err)
   } finally {

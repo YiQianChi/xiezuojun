@@ -37,12 +37,14 @@
       </div>
     </div>
   </Teleport>
+  <OnboardingTour ref="onboardingRef" />
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toasts } from './composables/useToast'
+import OnboardingTour from './components/OnboardingTour.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -50,6 +52,7 @@ const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login'
 
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
 const showQQModal = ref(false)
+const onboardingRef = ref<{ start: () => void; forceStart: () => void } | null>(null)
 
 function copyQQ() {
   navigator.clipboard?.writeText('1091462449').then(() => {
@@ -57,9 +60,12 @@ function copyQQ() {
   }).catch(() => {})
 }
 
-// 全局禁用浏览器原生右键菜单（应用内有自定义右键交互）
+function onReplayOnboarding() {
+  onboardingRef.value?.forceStart()
+}
 onMounted(() => {
   document.addEventListener('contextmenu', (e) => e.preventDefault())
+  window.addEventListener('replay-onboarding', onReplayOnboarding)
 })
 
 function logout() {

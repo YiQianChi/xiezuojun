@@ -323,6 +323,10 @@
               <span class="tool-icon">⌨️</span>
               <span class="tool-label">快捷键</span>
             </button>
+            <button class="tool-btn" @click="replayOnboarding">
+              <span class="tool-icon">🎓</span>
+              <span class="tool-label">新手引导</span>
+            </button>
           </div>
         </div>
       </div>
@@ -726,6 +730,11 @@ const chatOpen = ref(false) // AI 对话面板
 const helpOpen = ref(false) // E5: 快捷键帮助弹窗
 const toolboxOpen = ref(false) // 工具箱弹出菜单
 const selectedVoice = ref('zh-CN') // E2: TTS 音色选择
+
+function replayOnboarding() {
+  toolboxOpen.value = false
+  window.dispatchEvent(new Event('replay-onboarding'))
+}
 
 // AI 工具栏 & 交互 —— composable
 const {
