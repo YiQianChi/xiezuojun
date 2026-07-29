@@ -100,14 +100,14 @@ const nodeIcon = computed(() => {
   if (props.node.icon) return props.node.icon
   const map: Record<string, string> = {
     volume: '📁',
-    folder: '📝',
+    folder: '📂',
     outline: '📋',
     characters: '👥',
     worldbuilding: '🌍',
     storyline: '📖',
     chapter_outline: '📑',
     chapter: '📄',
-    note: '📝',
+    note: '📄',
   }
   return map[props.node.type] || '📄'
 })
