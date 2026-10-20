@@ -1,11 +1,25 @@
 package buddy
 
 import (
-	"sync"
+	"context"
+	"encoding/json"
+	"os"
+	"strconv"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
-// Session 一个正在写作的用户会话（纯内存，进程重启即清——MVP 够用）
+// Redis 实现：会话/配对/加油全部落 Redis，多实例安全、重启存活。
+//
+// 键设计（计时靠 started_at 时间戳，前端按墙钟计算）：
+//   xzj:buddy:sess:{uid}    → Session JSON，TTL=beatTimeout（心跳续期；过期即离线）
+//   xzj:buddy:matched:{uid} → 搭子 uid，TTL=beatTimeout（双方心跳都会续）
+//   xzj:buddy:queue         → LIST 等待匹配队列
+//   xzj:buddy:cheer:{uid}   → 收到的加油计数，TTL=5min
+//   xzj:buddy:online        → ZSET，score=最后心跳时间戳（统计在线数）
+
+// Session 一个正在写作的用户会话
 type Session struct {
 	UserID     string    `json:"user_id"`
 	Nickname   string    `json:"nickname"`
@@ -16,233 +30,198 @@ type Session struct {
 	Matched    string    `json:"matched,omitempty"` // 配对的搭子 userID；空=未配对
 }
 
-// Pair 一对匹配的搭子
-type Pair struct {
-	A, B     string // userID
-	CheersA  int    // A 收到的加油次数
-	CheersB  int
-	CreatedAt time.Time
-}
+const beatTimeout = 40 * time.Second // 心跳超时：会话过期即离线
 
-var (
-	mu       sync.RWMutex
-	sessions = map[string]*Session{} // userID → session
-	pairs    = map[string]*Pair{}    // userID → pair（两边都有入口）
-	// 匹配等待队列（FIFO）
-	waitQueue []string
-)
+var rdb *redis.Client
+var rctx = context.Background()
 
 const (
-	beatTimeout = 40 * time.Second // 心跳超时：会话视为结束
-	matchWait   = 5 * time.Minute  // 排队超时：放弃
+	keySess    = "xzj:buddy:sess:"
+	keyMatched = "xzj:buddy:matched:"
+	keyQueue   = "xzj:buddy:queue"
+	keyCheer   = "xzj:buddy:cheer:"
+	keyOnline  = "xzj:buddy:online"
 )
 
-// Heartbeat 上报/刷新会话。返回当前会话（含配对信息）
-func Heartbeat(userID, nickname string, projectID uint, wordsDelta int) *Session {
-	mu.Lock()
-	defer mu.Unlock()
-	now := time.Now()
-	s, ok := sessions[userID]
-	if !ok || now.Sub(s.LastBeat) > beatTimeout {
-		// 新会话：旧的（若有）先清理
-		cleanupUser(userID)
-		s = &Session{UserID: userID, Nickname: nickname, ProjectID: projectID, StartedAt: now, WordsDelta: wordsDelta}
-		sessions[userID] = s
+func init() {
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "127.0.0.1:6379"
 	}
-	s.LastBeat = now
-	s.WordsDelta = wordsDelta
+	rdb = redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       envInt("REDIS_DB", 0),
+	})
+}
+
+func envInt(k string, def int) int {
+	if v := os.Getenv(k); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return def
+}
+
+func sessKey(uid string) string    { return keySess + uid }
+func matchedKey(uid string) string { return keyMatched + uid }
+func cheerKey(uid string) string   { return keyCheer + uid }
+
+// Heartbeat 上报/刷新会话
+func Heartbeat(userID, nickname string, projectID uint, wordsDelta int) *Session {
+	now := time.Now()
+	s := readSession(userID)
+	if s == nil {
+		s = &Session{UserID: userID, StartedAt: now}
+	}
 	s.Nickname = nickname
+	s.ProjectID = projectID
+	s.WordsDelta = wordsDelta
+	s.LastBeat = now
+	writeSession(s)
+	// 在线表登记 + 配对键双向续期
+	rdb.ZAdd(rctx, keyOnline, redis.Z{Score: float64(now.Unix()), Member: userID})
+	if peer, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
+		rdb.Expire(rctx, matchedKey(userID), beatTimeout)
+		rdb.Expire(rctx, matchedKey(peer), beatTimeout)
+		s.Matched = peer
+	} else {
+		s.Matched = ""
+	}
 	return s
 }
 
-// StopWriting 主动结束：清理会话与配对
+// StopWriting 主动结束
 func StopWriting(userID string) {
-	mu.Lock()
-	defer mu.Unlock()
-	cleanupUser(userID)
-	delete(sessions, userID)
+	if peer, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
+		rdb.Del(rctx, matchedKey(peer))
+	}
+	rdb.Del(rctx, sessKey(userID), matchedKey(userID), cheerKey(userID))
+	rdb.ZRem(rctx, keyOnline, userID)
+	rdb.LRem(rctx, keyQueue, 1, userID)
 }
 
-// cleanupUser 从等待队列和配对中摘除（需持锁）
-func cleanupUser(userID string) {
-	// 出队列
-	for i, q := range waitQueue {
-		if q == userID {
-			waitQueue = append(waitQueue[:i], waitQueue[i+1:]...)
-			break
-		}
+func readSession(uid string) *Session {
+	raw, err := rdb.Get(rctx, sessKey(uid)).Bytes()
+	if err != nil {
+		return nil
 	}
-	// 解除配对
-	if p, ok := pairs[userID]; ok {
-		other := p.A
-		if p.A == userID {
-			other = p.B
-		}
-		delete(pairs, other)
-		delete(pairs, userID)
+	var s Session
+	if json.Unmarshal(raw, &s) != nil {
+		return nil
 	}
+	return &s
 }
 
-// MatchRequested 加入匹配队列，返回配对结果：matched=true 时 peer 为搭子
+func writeSession(s *Session) {
+	b, _ := json.Marshal(s)
+	rdb.Set(rctx, sessKey(s.UserID), b, beatTimeout)
+}
+
+// MatchRequested 请求配对
 func MatchRequested(userID string) (matched bool, peer *Session) {
-	mu.Lock()
-	defer mu.Unlock()
-	// 已有配对直接返回
-	if p, ok := pairs[userID]; ok {
-		other := p.A
-		if p.A == userID {
-			other = p.B
-		}
-		if s, ok2 := sessions[other]; ok2 {
+	// 已配对：直接返回
+	if peerID, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
+		if s := readSession(peerID); s != nil {
 			return true, s
 		}
+		rdb.Del(rctx, matchedKey(userID))
 	}
-	// 已在队列：还在等
-	for _, q := range waitQueue {
-		if q == userID {
-			return false, nil
+	// 从队列头弹候选人（不能是自己、必须活着）
+	for {
+		cand, err := rdb.LPop(rctx, keyQueue).Result()
+		if err != nil {
+			break // 队列空
 		}
-	}
-	// 尝试从队列头取一个等待者（不能是自己）
-	for i, cand := range waitQueue {
-		if cand != userID {
-			if s, ok := sessions[cand]; ok && time.Since(s.LastBeat) < beatTimeout {
-				// 配对成功
-				waitQueue = append(waitQueue[:i], waitQueue[i+1:]...)
-				p := &Pair{A: cand, B: userID, CreatedAt: time.Now()}
-				pairs[cand] = p
-				pairs[userID] = p
-				sessions[cand].Matched = userID
-				if cur, ok2 := sessions[userID]; ok2 {
-					cur.Matched = cand
-				}
-				return true, s
+		if cand == userID {
+			rdb.RPush(rctx, keyQueue, userID) // 自己放回队尾
+			break
+		}
+		if s := readSession(cand); s != nil {
+			// 配对成功：双向写 matched
+			rdb.Set(rctx, matchedKey(cand), userID, beatTimeout)
+			rdb.Set(rctx, matchedKey(userID), cand, beatTimeout)
+			if cur := readSession(userID); cur != nil {
+				cur.Matched = cand
+				writeSession(cur)
 			}
-			// 候选已死，踢出队列
-			waitQueue = append(waitQueue[:i], waitQueue[i+1:]...)
-			// 不 break，继续找下一个
+			s.Matched = userID
+			writeSession(s)
+			return true, s
 		}
+		// 死候选人：丢弃，继续弹
 	}
-	// 没人可配：入队等待
-	waitQueue = append(waitQueue, userID)
+	// 没配上：入队等待
+	rdb.RPush(rctx, keyQueue, userID)
 	return false, nil
 }
 
-// LeaveMatch 退出匹配（排队中或已配对均可退）
+// LeaveMatch 退出匹配
 func LeaveMatch(userID string) {
-	mu.Lock()
-	defer mu.Unlock()
-	// 排队中：出队
-	for i, q := range waitQueue {
-		if q == userID {
-			waitQueue = append(waitQueue[:i], waitQueue[i+1:]...)
-			break
-		}
-	}
-	// 已配对：解除（搭子会自动回到未配对态，前端轮询感知）
-	if p, ok := pairs[userID]; ok {
-		other := p.A
-		if p.A == userID {
-			other = p.B
-		}
-		delete(pairs, other)
-		delete(pairs, userID)
-		if s, ok2 := sessions[other]; ok2 {
-			s.Matched = ""
-		}
-		if s, ok2 := sessions[userID]; ok2 {
-			s.Matched = ""
-		}
+	rdb.LRem(rctx, keyQueue, 1, userID)
+	if peer, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
+		rdb.Del(rctx, matchedKey(peer), matchedKey(userID))
 	}
 }
 
-// Cheer 给搭子送加油
+// Cheer 送加油
 func Cheer(fromUserID string) {
-	mu.Lock()
-	defer mu.Unlock()
-	p, ok := pairs[fromUserID]
-	if !ok {
+	peer, err := rdb.Get(rctx, matchedKey(fromUserID)).Result()
+	if err != nil {
 		return
 	}
-	if p.A == fromUserID {
-		p.CheersB++ // 加油送给对方
-	} else {
-		p.CheersA++
-	}
+	rdb.Incr(rctx, cheerKey(peer))
+	rdb.Expire(rctx, cheerKey(peer), 5*time.Minute)
 }
 
 // BuddyState 搭子状态视图（轮询返回）
 type BuddyState struct {
 	You       *Session `json:"you"`
 	Peer      *Session `json:"peer,omitempty"`
-	PeerCheer int      `json:"peer_cheer,omitempty"` // 对方给你送的加油数（读后清零语义由前端处理）
+	PeerCheer int      `json:"peer_cheer,omitempty"` // 对方给你送的加油数（读后清零）
 	Waiting   bool     `json:"waiting"`              // 是否在匹配队列中
 	QueueLen  int      `json:"queue_len"`            // 当前排队人数（含自己）
 	Online    int      `json:"online"`               // 正在写作的总人数
 }
 
-// GetState 查询某人视角的搭子状态
+// GetState 状态视图
 func GetState(userID string) BuddyState {
-	mu.Lock()
-	// 顺手清扫过期会话（防止 online 虚高、等待队列里挂死候选人）
-	now := time.Now()
-	for uid, s := range sessions {
-		if now.Sub(s.LastBeat) > beatTimeout {
-			cleanupUser(uid)
-			delete(sessions, uid)
-		}
-	}
-	mu.Unlock()
+	// 清扫在线表过期成员
+	cutoff := float64(time.Now().Add(-beatTimeout).Unix())
+	rdb.ZRemRangeByScore(rctx, keyOnline, "-inf", strconv.FormatFloat(cutoff, 'f', 0, 64))
+	online, _ := rdb.ZCard(rctx, keyOnline).Result()
 
-	mu.RLock()
-	defer mu.RUnlock()
-	st := BuddyState{Online: len(sessions)}
-	if s, ok := sessions[userID]; ok && time.Since(s.LastBeat) < beatTimeout {
-		st.You = cloneSession(s)
-	}
-	if p, ok := pairs[userID]; ok {
-		other := p.A
-		if p.A == userID {
-			other = p.B
+	st := BuddyState{Online: int(online)}
+	if s := readSession(userID); s != nil {
+		if peer, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
+			s.Matched = peer
 		}
-		if s, ok2 := sessions[other]; ok2 && time.Since(s.LastBeat) < beatTimeout {
-			st.Peer = cloneSession(s)
-			if p.A == userID {
-				st.PeerCheer = p.CheersA
-			} else {
-				st.PeerCheer = p.CheersB
+		st.You = s
+		if peerID, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
+			if p := readSession(peerID); p != nil {
+				p.Matched = userID
+				st.Peer = p
 			}
 		}
 	}
-	for _, q := range waitQueue {
-		if q == userID {
-			st.Waiting = true
+	if q, err := rdb.LRange(rctx, keyQueue, 0, -1).Result(); err == nil {
+		st.QueueLen = len(q)
+		for _, uid := range q {
+			if uid == userID {
+				st.Waiting = true
+				break
+			}
 		}
 	}
-	st.QueueLen = len(waitQueue)
 	return st
 }
 
-// ConsumeCheer 读取并清零收到的加油（前端拿到后展示一次）
+// ConsumeCheer 读走加油数（GetDel 原子清零）
 func ConsumeCheer(userID string) int {
-	mu.Lock()
-	defer mu.Unlock()
-	p, ok := pairs[userID]
-	if !ok {
+	n, err := rdb.GetDel(rctx, cheerKey(userID)).Int()
+	if err != nil {
 		return 0
 	}
-	var n int
-	if p.A == userID {
-		n = p.CheersA
-		p.CheersA = 0
-	} else {
-		n = p.CheersB
-		p.CheersB = 0
-	}
 	return n
-}
-
-func cloneSession(s *Session) *Session {
-	c := *s
-	return &c
 }
