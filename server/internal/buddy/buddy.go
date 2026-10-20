@@ -183,6 +183,17 @@ type BuddyState struct {
 
 // GetState 查询某人视角的搭子状态
 func GetState(userID string) BuddyState {
+	mu.Lock()
+	// 顺手清扫过期会话（防止 online 虚高、等待队列里挂死候选人）
+	now := time.Now()
+	for uid, s := range sessions {
+		if now.Sub(s.LastBeat) > beatTimeout {
+			cleanupUser(uid)
+			delete(sessions, uid)
+		}
+	}
+	mu.Unlock()
+
 	mu.RLock()
 	defer mu.RUnlock()
 	st := BuddyState{Online: len(sessions)}
