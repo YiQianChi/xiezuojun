@@ -15,6 +15,7 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/buddy/leave-match", handleLeaveMatch)
 	rg.POST("/buddy/cheer", handleCheer)
 	rg.GET("/buddy/state", handleState)
+	rg.GET("/buddy/events", handleEvents) // SSE 实时推送
 }
 
 func handleHeartbeat(c *gin.Context) {

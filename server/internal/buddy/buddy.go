@@ -96,6 +96,7 @@ func Heartbeat(userID, nickname string, projectID uint, wordsDelta int) *Session
 func StopWriting(userID string) {
 	if peer, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
 		rdb.Del(rctx, matchedKey(peer))
+		publishEvent(peer, Event{Type: "peer_left"})
 	}
 	rdb.Del(rctx, sessKey(userID), matchedKey(userID), cheerKey(userID))
 	rdb.ZRem(rctx, keyOnline, userID)
@@ -145,6 +146,8 @@ func MatchRequested(userID string) (matched bool, peer *Session) {
 			if cur := readSession(userID); cur != nil {
 				cur.Matched = cand
 				writeSession(cur)
+				// 实时通知等待方（对方可能正在 3s 轮询之外）
+				publishEvent(cand, Event{Type: "matched", Peer: cur})
 			}
 			s.Matched = userID
 			writeSession(s)
@@ -162,6 +165,7 @@ func LeaveMatch(userID string) {
 	rdb.LRem(rctx, keyQueue, 1, userID)
 	if peer, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
 		rdb.Del(rctx, matchedKey(peer), matchedKey(userID))
+		publishEvent(peer, Event{Type: "peer_left"})
 	}
 }
 
@@ -173,6 +177,7 @@ func Cheer(fromUserID string) {
 	}
 	rdb.Incr(rctx, cheerKey(peer))
 	rdb.Expire(rctx, cheerKey(peer), 5*time.Minute)
+	publishEvent(peer, Event{Type: "cheer"})
 }
 
 // BuddyState 搭子状态视图（轮询返回）

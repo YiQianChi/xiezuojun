@@ -311,7 +311,7 @@ export const threadApi = {
 
 // 搭子（结伴写作）
 export const buddyApi = {
-  heartbeat(data: { project_id: number; words_delta: number }) {
+  heartbeat(data: { nickname?: string; project_id: number; words_delta: number }) {
     return api.post('/buddy/heartbeat', data)
   },
   stop() {

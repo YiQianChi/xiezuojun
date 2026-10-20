@@ -44,7 +44,6 @@
               <button class="bw-cheer" @click="cheer" :class="{ sent: cheerJustSent }">👏 加油</button>
             </div>
             <div v-if="peerCheerFlash" class="bw-cheer-flash">💛 搭子给你加了油！</div>
-            <div class="bw-online">当前 {{ online }} 人在写</div>
           </template>
           <template v-else-if="waiting">
             <div class="bw-waiting">
@@ -54,7 +53,6 @@
           </template>
           <template v-else>
             <button class="bw-match-btn" @click="match">🔍 找个搭子</button>
-            <div class="bw-online">当前 {{ online }} 人在写</div>
           </template>
         </div>
 
@@ -70,8 +68,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, shallowRef } from 'vue'
-import { buddyApi } from '../../core/api'
+import { ref, computed, watch, onMounted, onBeforeUnmount, shallowRef } from 'vue'
+import { buddyApi, userApi } from '../../core/api'
 
 const props = defineProps<{ currentWordCount: number }>()
 
@@ -95,7 +93,6 @@ const now = ref(Date.now())
 interface PeerSession { user_id: string; nickname: string; started_at: string; words_delta: number }
 const peer = ref<PeerSession | null>(null)
 const waiting = ref(false)
-const online = ref(0)
 const peerCheerFlash = ref(false)
 const cheerJustSent = ref(false)
 
@@ -127,6 +124,9 @@ const elapsedMs = computed(() => {
 })
 const displayTime = computed(() => formatTime(elapsedMs.value))
 const wordsDelta = computed(() => lastWordCount.value - startWordCount.value)
+
+// 字数跟随编辑器实时更新（没有它 words_delta 永远上报 0）
+watch(() => props.currentWordCount, (n) => { lastWordCount.value = n })
 const peerTime = computed(() => {
   if (!peer.value) return ''
   const ms = Date.now() - new Date(peer.value.started_at).getTime()
@@ -139,10 +139,19 @@ function tick() {
 }
 
 // ---- 后端交互 ----
+const myNickname = ref('') // 心跳携带，供对方卡片显示昵称
+let beatMs = 0 // 当前心跳间隔；0=未启动
+function scheduleBeat(ms: number) {
+  if (beatRef.value && beatMs === ms) return
+  if (beatRef.value) clearInterval(beatRef.value)
+  beatRef.value = setInterval(heartbeat, ms)
+  beatMs = ms
+}
 async function heartbeat() {
   if (state.value !== 'running' && state.value !== 'paused') return
   try {
     const res = await buddyApi.heartbeat({
+      nickname: myNickname.value,
       project_id: Number(localStorage.getItem('xzj-active-project') || 0),
       words_delta: wordsDelta.value,
     })
@@ -153,9 +162,12 @@ async function heartbeat() {
 function applyState(d: any) {
   if (!d) return
   const s = d.state || {}
-  online.value = s.online || 0
   waiting.value = !!s.waiting
   peer.value = s.peer || null
+  // 排队等待时加快轮询（3s），配上/取消后回到 15s
+  if (state.value === 'running' || state.value === 'paused') {
+    scheduleBeat(waiting.value ? 3000 : 15000)
+  }
   if (s.peer_cheer > 0) {
     peerCheerFlash.value = true
     setTimeout(() => { peerCheerFlash.value = false }, 4000)
@@ -184,6 +196,57 @@ async function cheer() {
     cheerJustSent.value = true
     setTimeout(() => { cheerJustSent.value = false }, 2000)
   } catch { }
+}
+
+// ---- SSE 实时事件（配对成功/对方离开/加油即时到达，不等心跳）----
+let esAbort: AbortController | null = null
+async function openEvents() {
+  closeEvents()
+  const ac = new AbortController()
+  esAbort = ac
+  try {
+    const res = await fetch('/api/buddy/events', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
+      signal: ac.signal,
+    })
+    if (!res.ok || !res.body) throw new Error('sse bad response')
+    const reader = res.body.getReader()
+    const dec = new TextDecoder()
+    let buf = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += dec.decode(value, { stream: true })
+      let i: number
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const chunk = buf.slice(0, i)
+        buf = buf.slice(i + 2)
+        const line = chunk.split('\n').find((l) => l.startsWith('data: '))
+        if (line) { try { handleEvent(JSON.parse(line.slice(6))) } catch { } }
+      }
+    }
+  } catch { /* 主动关闭或网络错误都走这里 */ }
+  // 非主动关闭且仍在计时 → 3s 后重连
+  if (esAbort === ac && !ac.signal.aborted &&
+    (state.value === 'running' || state.value === 'paused')) {
+    setTimeout(() => { if (esAbort === ac) openEvents() }, 3000)
+  }
+}
+function closeEvents() {
+  if (esAbort) { const ac = esAbort; esAbort = null; ac.abort() }
+}
+function handleEvent(ev: any) {
+  if (!ev || !ev.type) return
+  if (ev.type === 'matched') {
+    waiting.value = false
+    if (ev.peer) peer.value = ev.peer
+    scheduleBeat(15000)
+  } else if (ev.type === 'peer_left') {
+    peer.value = null
+  } else if (ev.type === 'cheer') {
+    peerCheerFlash.value = true
+    setTimeout(() => { peerCheerFlash.value = false }, 4000)
+  }
 }
 
 // ---- 计时器逻辑（同 WritingTimer，含持久化） ----
@@ -224,6 +287,12 @@ function restoreSnapshot() {
     lastWordCount.value = s.lastWordCount
     summaryMs.value = s.summaryMs
     summaryWords.value = s.summaryWords
+    // 恢复运行/暂停态后必须重启心跳，否则配对状态永远不同步、服务端 40s 后判离线
+    if (state.value === 'running' || state.value === 'paused') {
+      scheduleBeat(15000)
+      heartbeat()
+      openEvents()
+    }
   } catch { }
 }
 function clearSnapshot() { try { localStorage.removeItem(STORAGE_KEY) } catch { } }
@@ -238,8 +307,9 @@ function start() {
   state.value = 'running'
   if (intervalRef.value) clearInterval(intervalRef.value)
   intervalRef.value = setInterval(tick, 1000)
-  if (!beatRef.value) beatRef.value = setInterval(heartbeat, 15000)
+  scheduleBeat(15000)
   heartbeat()
+  openEvents()
   saveSnapshot()
 }
 function pause() {
@@ -260,7 +330,8 @@ function stop() {
   summaryWords.value = props.currentWordCount - startWordCount.value
   state.value = 'summary'
   leaveMatch()
-  if (beatRef.value) { clearInterval(beatRef.value); beatRef.value = null }
+  if (beatRef.value) { clearInterval(beatRef.value); beatRef.value = null; beatMs = 0 }
+  closeEvents()
   buddyApi.stop().catch(() => { })
   saveSnapshot()
 }
@@ -288,6 +359,10 @@ onMounted(() => {
   restoreSnapshot()
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup', onDragEnd)
+  // 拉一次昵称供心跳携带（对方卡片显示用）
+  userApi.me().then((res) => {
+    myNickname.value = (res.data?.data || res.data)?.nickname || ''
+  }).catch(() => { })
 })
 onBeforeUnmount(() => {
   saveSnapshot()
@@ -295,6 +370,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', onDragEnd)
   if (intervalRef.value) clearInterval(intervalRef.value)
   if (beatRef.value) clearInterval(beatRef.value)
+  closeEvents()
 })
 </script>
 
