@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /bookshelf
+Disallow: /editor/
+
+Sitemap: https://xiezuojun.com/sitemap.xml

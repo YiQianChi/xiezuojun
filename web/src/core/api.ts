@@ -1,0 +1,310 @@
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: '/api',
+  timeout: 10000,
+})
+
+// 请求拦截器：自动带 token
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('access_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// Token 刷新状态
+let isRefreshing = false
+let pendingQueue: Array<{ resolve: (v: string) => void; reject: (e: unknown) => void }> = []
+
+function onRefreshed(token: string) {
+  pendingQueue.forEach(p => p.resolve(token))
+  pendingQueue = []
+}
+
+function onRefreshFailed(err: unknown) {
+  pendingQueue.forEach(p => p.reject(err))
+  pendingQueue = []
+}
+
+// 响应拦截器：401 自动刷新 token，失败才跳登录
+api.interceptors.response.use(
+  res => res,
+  async err => {
+    const originalRequest = err.config
+
+    // 非 401 或已重试过，直接 reject
+    if (!err.response || err.response.status !== 401 || originalRequest._retried) {
+      return Promise.reject(err)
+    }
+
+    // /auth/refresh 自身 401 = refresh token 也过期了，跳登录
+    if (originalRequest.url === '/auth/refresh') {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+      return Promise.reject(err)
+    }
+
+    // 正在刷新：排队等待
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        pendingQueue.push({
+          resolve: (token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            originalRequest._retried = true
+            resolve(api(originalRequest))
+          },
+          reject,
+        })
+      })
+    }
+
+    // 开始刷新
+    isRefreshing = true
+    originalRequest._retried = true
+    const refreshToken = localStorage.getItem('refresh_token')
+
+    if (!refreshToken) {
+      isRefreshing = false
+      localStorage.removeItem('access_token')
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+      return Promise.reject(err)
+    }
+
+    try {
+      const res = await axios.post('/api/auth/refresh', { refresh_token: refreshToken })
+      const newToken = res.data.data?.access_token || res.data.access_token
+      const newRefresh = res.data.data?.refresh_token || res.data.refresh_token
+      localStorage.setItem('access_token', newToken)
+      if (newRefresh) localStorage.setItem('refresh_token', newRefresh)
+
+      onRefreshed(newToken)
+      isRefreshing = false
+
+      originalRequest.headers.Authorization = `Bearer ${newToken}`
+      return api(originalRequest)
+    } catch (refreshErr) {
+      onRefreshFailed(refreshErr)
+      isRefreshing = false
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+      return Promise.reject(refreshErr)
+    }
+  }
+)
+
+export default api
+
+// 用户相关
+export const userApi = {
+  sendEmailCode(data: { email: string; scene: 'register' | 'login' | 'reset_password' }) {
+    return api.post('/auth/email-code', data)
+  },
+  register(data: { email: string; password: string; code: string }) {
+    return api.post('/auth/register', data)
+  },
+  login(data: { email: string; password?: string; code?: string }) {
+    return api.post('/auth/login', data)
+  },
+  me() {
+    return api.get('/user/me')
+  },
+  updateProfile(data: { nickname?: string; avatar?: string }) {
+    return api.patch('/user/me', data)
+  },
+  usage() {
+    return api.get('/user/usage')
+  },
+  resetPassword(data: { email: string; code: string; password: string }) {
+    return api.post('/auth/reset-password', data)
+  },
+}
+
+// 项目相关
+export const projectApi = {
+  list() {
+    return api.get('/projects')
+  },
+  get(id: string | number) {
+    return api.get(`/projects/${id}`)
+  },
+  create(data: { name: string; description?: string }) {
+    return api.post('/projects', data)
+  },
+  update(id: string | number, data: { name?: string; description?: string }) {
+    return api.patch(`/projects/${id}`, data)
+  },
+  delete(id: string) {
+    return api.delete(`/projects/${id}`)
+  },
+  stats(id: string | number) {
+    return api.get(`/projects/${id}/stats`)
+  },
+  exportProject(id: string | number) {
+    return api.get(`/projects/${id}/export`)
+  },
+  exportEPUB(id: string | number) {
+    return api.get(`/projects/${id}/export/epub`, { responseType: 'blob' })
+  },
+  exportTXT(id: string | number) {
+    return api.get(`/projects/${id}/export/txt`, { responseType: 'blob' })
+  },
+  exportDOCX(id: string | number) {
+    return api.get(`/projects/${id}/export/docx`, { responseType: 'blob' })
+  },
+}
+
+// 故事线相关
+export const branchApi = {
+  list(projectId: string | number) {
+    return api.get(`/projects/${projectId}/branches`)
+  },
+}
+
+// 项目内搜索
+export const searchApi = {
+  documents(projectId: string | number, q: string, limit = 200) {
+    return api.get(`/projects/${projectId}/search`, { params: { q, limit } })
+  },
+}
+
+// 文档相关
+export const documentApi = {
+  list(projectId: string, branchId?: number | string | null) {
+    return api.get('/documents', { params: { project_id: projectId, branch_id: branchId || undefined } })
+  },
+  create(data: { project_id: number; branch_id?: number; title: string; type: string; parent_id?: number; sort_order?: number; content?: string; icon?: string }) {
+    return api.post('/documents', data)
+  },
+  get(id: string | number) {
+    return api.get(`/documents/${id}`)
+  },
+  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string; ai_include?: boolean; icon?: string; doc_status?: string; word_goal?: number }) {
+    return api.patch(`/documents/${id}`, data)
+  },
+  listVersions(id: string | number) {
+    return api.get(`/documents/${id}/versions`)
+  },
+  getVersion(versionId: string | number) {
+    return api.get(`/document-versions/${versionId}`)
+  },
+  restoreVersion(versionId: string | number) {
+    return api.post(`/document-versions/${versionId}/restore`)
+  },
+  move(id: string | number, data: { parent_id?: string | null; sort_order?: number }) {
+    return api.patch(`/documents/${id}/move`, data)
+  },
+  delete(id: string | number) {
+    return api.delete(`/documents/${id}`)
+  },
+}
+
+// AI 相关
+export const aiApi = {
+  generate(data: { project_id: string; document_id?: string; mode: string; content: string; stream?: boolean }) {
+    return api.post('/ai/generate', data, { timeout: 120000 })
+  },
+  chat(data: { project_id: string; messages: { role: string; content: string }[]; stream?: boolean }) {
+    return api.post('/ai/chat', data, { timeout: 120000 })
+  },
+}
+
+// TTS 朗读
+export const ttsApi = {
+  voices() {
+    return api.get('/tts/voices')
+  },
+  synthesize(text: string, voice: string) {
+    return api.post('/tts', { text, voice }, { responseType: 'blob', timeout: 30000 })
+  },
+}
+
+// 记忆系统
+export const memoryApi = {
+  listCharacters(projectId: string) {
+    return api.get('/memory/characters', { params: { project_id: projectId } })
+  },
+  getCharacter(projectId: string, name: string) {
+    return api.get(`/memory/characters/${encodeURIComponent(name)}`, { params: { project_id: projectId } })
+  },
+  writeCharacter(projectId: string, name: string, content: string) {
+    return api.put(`/memory/characters/${encodeURIComponent(name)}`, { content }, { params: { project_id: projectId } })
+  },
+  deleteCharacter(projectId: string, name: string) {
+    return api.delete(`/memory/characters/${encodeURIComponent(name)}`, { params: { project_id: projectId } })
+  },
+  listSummaries(projectId: string) {
+    return api.get('/memory/summaries', { params: { project_id: projectId } })
+  },
+  getSummary(projectId: string, chapterId: string) {
+    return api.get(`/memory/summaries/${chapterId}`, { params: { project_id: projectId } })
+  },
+  getFile(projectId: string, path: string) {
+    return api.get('/memory/file', { params: { project_id: projectId, path } })
+  },
+  writeFile(projectId: string, path: string, content: string) {
+    return api.put('/memory/file', { content }, { params: { project_id: projectId, path } })
+  },
+  getRelationships(projectId: string) {
+    return api.get('/memory/relationships', { params: { project_id: projectId } })
+  },
+  saveRelationships(projectId: string, data: any) {
+    return api.put('/memory/relationships', data, { params: { project_id: projectId } })
+  },
+}
+
+// 回收站
+export const trashApi = {
+  list(projectId?: string | number) {
+    const params = projectId ? { project_id: projectId } : {}
+    return api.get('/trash', { params })
+  },
+  restore(data: { project_id: number; doc_id: number }) {
+    return api.post('/trash/restore', data)
+  },
+  empty(projectId?: string | number) {
+    const params = projectId ? { project_id: projectId } : {}
+    return api.delete('/trash', { params })
+  },
+  destroy(data: { project_id: number; doc_id: number }) {
+    return api.post('/trash/destroy', data)
+  },
+}
+
+// 伏笔/钩子追踪
+export interface StoryThread {
+  id?: number
+  project_id: number
+  type: 'foreshadowing' | 'hook' | 'promise' | 'suspense'
+  title: string
+  description?: string
+  status: 'open' | 'resolved' | 'abandoned'
+  planted_chapter?: number | null
+  resolved_chapter?: number | null
+  urgency?: number
+  sort_order?: number
+}
+
+export const threadApi = {
+  list(projectId: string | number) {
+    return api.get(`/projects/${projectId}/threads`)
+  },
+  create(projectId: string | number, data: Partial<StoryThread>) {
+    return api.post(`/projects/${projectId}/threads`, { ...data, project_id: Number(projectId) })
+  },
+  update(id: string | number, data: Partial<StoryThread>) {
+    return api.patch(`/threads/${id}`, data)
+  },
+  delete(id: string | number) {
+    return api.delete(`/threads/${id}`)
+  },
+}
