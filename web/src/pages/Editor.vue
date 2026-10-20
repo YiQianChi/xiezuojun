@@ -271,7 +271,6 @@
     <!-- 底部状态栏 -->
     <div class="status-bar">
       <span class="status-item">{{ wordCount }} 字</span>
-      <WritingTimer :current-word-count="wordCount" />
       <span class="status-item">{{ saveStatus }}</span>
       <button class="status-item speech-btn" :class="{ speaking: isSpeaking }" @click="toggleSpeech" :disabled="ttsLoading" :title="isSpeaking ? '停止朗读' : '朗读（选区优先）'">
         {{ ttsLoading ? '⏳' : isSpeaking ? '⏹' : '🔊' }}
@@ -331,6 +330,8 @@
         </div>
       </div>
     </div>
+
+    <BuddyWindow :current-word-count="wordCount" />
 
     <!-- 工具箱面板：记忆/伏笔/回收站/统计/AI对话（从状态栏触发，弹窗位置统一） -->
     <div v-if="memoryOpen" class="panel-popup memory-popup" @click.stop>
@@ -489,7 +490,7 @@ import ThreadPanel from '../components/editor/ThreadPanel.vue'
 import TrashPanel from '../components/editor/TrashPanel.vue'
 import StoryboardView from '../components/editor/StoryboardView.vue'
 import WritingStatsPanel from '../components/editor/WritingStatsPanel.vue'
-import WritingTimer from '../components/editor/WritingTimer.vue'
+import BuddyWindow from '../components/editor/BuddyWindow.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
 import FolderPropsModal from '../components/editor/FolderPropsModal.vue'
 import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
@@ -503,6 +504,7 @@ const route = useRoute()
 const router = useRouter()
 
 const projectId = Number(route.params.projectId)
+try { localStorage.setItem('xzj-active-project', String(projectId)) } catch {}
 
 const editor = shallowRef<any>(null)
 const documents = ref<any[]>([])

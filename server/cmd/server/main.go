@@ -19,6 +19,7 @@ import (
 
 	"xiezuojun-server/internal/ai"
 	"xiezuojun-server/internal/auth"
+	"xiezuojun-server/internal/buddy"
 	"xiezuojun-server/internal/gateway"
 	"xiezuojun-server/internal/memory"
 	"xiezuojun-server/internal/middleware"
@@ -336,6 +337,9 @@ func main() {
 	// TTS 朗读路由
 	authd.GET("/tts/voices", tts.HandleVoices)
 	authd.POST("/tts", tts.HandleTTS)
+
+	// 搭子（结伴写作）路由
+	buddy.RegisterRoutes(authd)
 
 	// 伏笔/钩子追踪
 	authd.GET("/projects/:id/stats", projectHandler.WritingStats)

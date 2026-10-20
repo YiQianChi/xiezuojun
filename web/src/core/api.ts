@@ -308,3 +308,25 @@ export const threadApi = {
     return api.delete(`/threads/${id}`)
   },
 }
+
+// 搭子（结伴写作）
+export const buddyApi = {
+  heartbeat(data: { project_id: number; words_delta: number }) {
+    return api.post('/buddy/heartbeat', data)
+  },
+  stop() {
+    return api.post('/buddy/stop')
+  },
+  match() {
+    return api.post('/buddy/match')
+  },
+  leaveMatch() {
+    return api.post('/buddy/leave-match')
+  },
+  cheer() {
+    return api.post('/buddy/cheer')
+  },
+  state() {
+    return api.get('/buddy/state', { params: { consume_cheer: 1 } })
+  },
+}
