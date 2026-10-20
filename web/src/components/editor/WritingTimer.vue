@@ -56,13 +56,79 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount, shallowRef } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, shallowRef } from 'vue'
 
 const props = defineProps<{
   currentWordCount: number
 }>()
 
 type TimerState = 'idle' | 'running' | 'paused' | 'summary'
+
+// ---- 刷新持久化：快照存 localStorage，挂载时恢复 ----
+const STORAGE_KEY = 'xzj-writing-timer'
+// 刷新缺口超过该值不再计入（视为离开过，恢复为暂停），防止隔夜虚增
+const MAX_RESUME_GAP_MS = 60 * 60 * 1000
+
+interface TimerSnapshot {
+  state: TimerState
+  accumulatedMs: number
+  sessionStart: number
+  startWordCount: number
+  lastWordCount: number
+  summaryMs: number
+  summaryWords: number
+  savedAt: number
+}
+
+function saveSnapshot() {
+  const snap: TimerSnapshot = {
+    state: state.value,
+    accumulatedMs: accumulatedMs.value,
+    sessionStart: sessionStart.value,
+    startWordCount: startWordCount.value,
+    lastWordCount: lastWordCount.value,
+    summaryMs: summaryMs.value,
+    summaryWords: summaryWords.value,
+    savedAt: Date.now(),
+  }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snap)) } catch { /* 私密模式等场景忽略 */ }
+}
+
+function restoreSnapshot() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    const s = JSON.parse(raw) as TimerSnapshot
+    if (s.state === 'running') {
+      const gap = Date.now() - s.sessionStart
+      if (gap > MAX_RESUME_GAP_MS) {
+        // 离开太久：不计缺口，恢复为暂停
+        accumulatedMs.value = s.accumulatedMs
+        state.value = 'paused'
+      } else {
+        accumulatedMs.value = s.accumulatedMs + gap
+        sessionStart.value = Date.now()
+        state.value = 'running'
+        now.value = Date.now()
+        if (intervalRef.value) clearInterval(intervalRef.value)
+        intervalRef.value = setInterval(tick, 1000)
+      }
+    } else if (s.state === 'paused' || s.state === 'summary') {
+      state.value = s.state
+      accumulatedMs.value = s.accumulatedMs
+    } else {
+      return // idle 不恢复
+    }
+    startWordCount.value = s.startWordCount
+    lastWordCount.value = s.lastWordCount
+    summaryMs.value = s.summaryMs
+    summaryWords.value = s.summaryWords
+  } catch { /* 快照损坏则当无历史 */ }
+}
+
+function clearSnapshot() {
+  try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+}
 
 const state = ref<TimerState>('idle')
 const intervalRef = shallowRef<ReturnType<typeof setInterval> | null>(null)
@@ -92,6 +158,7 @@ const wordsDelta = computed(() => lastWordCount.value - startWordCount.value)
 // ponytail: tick updates `now` so the display recomputes; 1s granularity is fine for MM:SS
 function tick() {
   now.value = Date.now()
+  saveSnapshot() // 每秒落一次快照，刷新可续
 }
 
 function start() {
@@ -113,6 +180,7 @@ function pause() {
   sessionStart.value = 0
   state.value = 'paused'
   if (intervalRef.value) { clearInterval(intervalRef.value); intervalRef.value = null }
+  saveSnapshot()
 }
 
 function stop() {
@@ -124,6 +192,7 @@ function stop() {
   summaryMs.value = accumulatedMs.value
   summaryWords.value = props.currentWordCount - startWordCount.value
   state.value = 'summary'
+  saveSnapshot()
 }
 
 function reset() {
@@ -133,12 +202,14 @@ function reset() {
   lastWordCount.value = 0
   summaryMs.value = 0
   summaryWords.value = 0
+  clearSnapshot()
 }
 
 // Live word count tracking while running
 watch(() => props.currentWordCount, (v) => {
   if (state.value === 'running' || state.value === 'paused') {
     lastWordCount.value = v
+    saveSnapshot()
   }
 })
 
@@ -151,7 +222,12 @@ function formatTime(ms: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
+onMounted(() => {
+  restoreSnapshot()
+})
+
 onBeforeUnmount(() => {
+  saveSnapshot() // 关闭/切换文档前最后落一次
   if (intervalRef.value) clearInterval(intervalRef.value)
 })
 </script>
