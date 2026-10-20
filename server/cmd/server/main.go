@@ -48,7 +48,6 @@ func main() {
 		&model.User{},
 		&model.RefreshToken{},
 		&model.AuthIdentity{},
-		&model.VerificationCode{},
 		&model.Project{},
 		&model.StoryBranch{},
 		&model.Document{},

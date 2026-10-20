@@ -57,22 +57,3 @@ type AuthIdentity struct {
 func (AuthIdentity) TableName() string {
 	return "user_auth_identities"
 }
-
-// VerificationCode 通用验证码表：邮箱/手机验证码都复用
-// TargetType: email / phone
-// Scene: register / login / bind / reset_password
-type VerificationCode struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	TargetType string    `gorm:"size:30;index" json:"target_type"`
-	Target     string    `gorm:"size:255;index" json:"target"`
-	Scene      string    `gorm:"size:30;index" json:"scene"`
-	CodeHash   string    `gorm:"size:255" json:"-"`
-	IP         string    `gorm:"size:45" json:"ip"`
-	Used       bool      `gorm:"default:false;index" json:"used"`
-	ExpiresAt  time.Time `gorm:"index" json:"expires_at"`
-	CreatedAt  time.Time `json:"created_at"`
-}
-
-func (VerificationCode) TableName() string {
-	return "verification_codes"
-}

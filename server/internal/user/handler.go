@@ -62,32 +62,30 @@ func (h *Handler) SendEmailCode(c *gin.Context) {
 		return
 	}
 
-	// 60 秒内同一邮箱同一场景只能发一次
-	var recent model.VerificationCode
-	if err := h.db.Where("target_type = ? AND target = ? AND scene = ? AND created_at > ?", "email", req.Email, req.Scene, time.Now().Add(-60*time.Second)).
-		Order("id DESC").First(&recent).Error; err == nil {
+	// 60 秒内同一邮箱同一场景只能发一次（Redis SET NX EX）
+	ok, err := acquireSendSlot(req.Scene, req.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "service unavailable"})
+		return
+	}
+	if !ok {
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "send too frequently"})
 		return
 	}
 
 	code, err := generateEmailCode()
 	if err != nil {
+		releaseSendSlot(req.Scene, req.Email)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate code"})
 		return
 	}
-	row := model.VerificationCode{
-		TargetType: "email",
-		Target:     req.Email,
-		Scene:      req.Scene,
-		CodeHash:   hashVerificationCode("email", req.Email, req.Scene, code),
-		IP:         c.ClientIP(),
-		ExpiresAt:  time.Now().Add(10 * time.Minute),
-	}
-	if err := h.db.Create(&row).Error; err != nil {
+	if err := storeCode(req.Scene, req.Email, hashVerificationCode("email", req.Email, req.Scene, code)); err != nil {
+		releaseSendSlot(req.Scene, req.Email)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save code"})
 		return
 	}
 	if err := sendEmailCode(req.Email, req.Scene, code); err != nil {
+		releaseSendSlot(req.Scene, req.Email)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send email"})
 		return
 	}
@@ -279,15 +277,18 @@ func (h *Handler) emailIdentityExists(email string) bool {
 }
 
 func (h *Handler) consumeVerificationCode(targetType, target, scene, code string) bool {
-	var row model.VerificationCode
-	if err := h.db.Where("target_type = ? AND target = ? AND scene = ? AND used = ? AND expires_at > ?", targetType, target, scene, false, time.Now()).
-		Order("id DESC").First(&row).Error; err != nil {
+	hash, ok := getCode(scene, target)
+	if !ok {
 		return false
 	}
-	if !verifyVerificationCodeHash(targetType, target, scene, code, row.CodeHash) {
+	if !verifyVerificationCodeHash(targetType, target, scene, code, hash) {
+		// 输错计数，超限作废验证码防爆破
+		if n, err := incrTry(scene, target); err == nil && n >= maxCodeTries {
+			burnCode(scene, target)
+		}
 		return false
 	}
-	h.db.Model(&row).Update("used", true)
+	burnCode(scene, target)
 	return true
 }
 
