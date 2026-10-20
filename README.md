@@ -42,11 +42,11 @@ npm install && npm run dev
 |------|------|
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | 生产/测试环境、部署流程 checklist、DB 与凭证 |
 | [docs/PROJECT_MAP.md](docs/PROJECT_MAP.md) | 前后端 codebase 全景地图（目录、API 路由、数据流） |
-| [server/ARCHITECTURE.md](server/ARCHITECTURE.md) | 后端架构详解 |
-| [server/README.md](server/README.md) | 后端 API 概览 |
-| [web/ISSUES.md](web/ISSUES.md) / [web/TODO.md](web/TODO.md) | 功能清单与迭代计划 |
-| [web/docs/relationship-graph-plan.md](web/docs/relationship-graph-plan.md) | 关系图谱功能方案 |
-| [server/docs/STORAGE_REDESIGN.md](server/docs/STORAGE_REDESIGN.md) | 存储层重设计 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 后端架构详解 |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | 路线图：已完成迭代记录 + 当前待办 |
+| [docs/design/](docs/design/) | 设计方案：存储层重设计、关系图谱 |
+| [server/README.md](server/README.md) | 后端 API 概览与环境变量 |
+| [web/README.md](web/README.md) | 前端技术栈与目录速览 |
 
 ## 部署速览
 
