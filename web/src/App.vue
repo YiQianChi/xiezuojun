@@ -4,6 +4,7 @@
       <router-link to="/" class="logo">写作菌</router-link>
     </div>
     <div class="nav-right">
+      <button v-if="canInstall" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
       <button class="nav-link" @click="showQQModal = true">QQ问题反馈群</button>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
       <button v-if="isLoggedIn" @click="logout" class="nav-link logout">退出</button>
@@ -43,7 +44,8 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { toasts } from './composables/useToast'
+import { toasts, toast } from './composables/useToast'
+import { usePwaInstall } from './composables/usePwaInstall'
 import OnboardingTour from './components/OnboardingTour.vue'
 
 const route = useRoute()
@@ -53,6 +55,16 @@ const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login'
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
 const showQQModal = ref(false)
 const onboardingRef = ref<{ start: () => void; forceStart: () => void } | null>(null)
+const { canInstall, promptInstall } = usePwaInstall()
+
+async function installApp() {
+  const outcome = await promptInstall()
+  if (outcome === 'accepted') toast.success('已安装！桌面上的「写作菌」双击即用')
+  else if (outcome === 'unavailable') {
+    // 浏览器没抛 beforeinstallprompt（已安装/不支持/已 standalone）——给手动指引
+    toast.info('请在浏览器地址栏右侧 ⋯ 菜单里选「安装应用」')
+  }
+}
 
 function copyQQ() {
   navigator.clipboard?.writeText('1091462449').then(() => {
@@ -135,6 +147,11 @@ function logout() {
 
 .logout {
   font-family: inherit;
+}
+
+.install-link {
+  color: var(--accent, #007aff);
+  font-weight: 600;
 }
 
 /* Toast */
