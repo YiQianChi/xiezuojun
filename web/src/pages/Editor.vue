@@ -271,6 +271,7 @@
     <!-- 底部状态栏 -->
     <div class="status-bar">
       <span class="status-item">{{ wordCount }} 字</span>
+      <span v-if="isOffline" class="status-item offline-indicator" title="当前离线，内容已自动存在本机，恢复网络后会自动上传">📡 离线</span>
       <span class="status-item">{{ saveStatus }}</span>
       <button class="status-item speech-btn" :class="{ speaking: isSpeaking }" @click="toggleSpeech" :disabled="ttsLoading" :title="isSpeaking ? '停止朗读' : '朗读（选区优先）'">
         {{ ttsLoading ? '⏳' : isSpeaking ? '⏹' : '🔊' }}
@@ -862,6 +863,8 @@ onMounted(async () => {
   initEditor()
   window.addEventListener('keydown', handleGlobalKeydown)
   document.addEventListener('click', closeToolboxOnClickOutside)
+  window.addEventListener('online', onOnlineStatusChange)
+  window.addEventListener('offline', onOnlineStatusChange)
   loadProjectName()
   loadVoices() // E2: 非关键，不 await
   await loadBranches()
@@ -881,6 +884,8 @@ async function loadProjectName() {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
   document.removeEventListener('click', closeToolboxOnClickOutside)
+  window.removeEventListener('online', onOnlineStatusChange)
+  window.removeEventListener('offline', onOnlineStatusChange)
   if (editor.value) editor.value.destroy()
   if (saveTimer) clearTimeout(saveTimer)
   currentAudio?.pause()
@@ -928,7 +933,7 @@ function initEditor() {
       // ponytail: write localStorage draft on every keystroke window so
       // browser crash / tab close in the 1.5s debounce gap doesn't lose data.
       if (activeDocId.value) {
-        localStorage.setItem('draft-' + activeDocId.value, getEditorHTML(ed))
+        try { localStorage.setItem('draft-' + activeDocId.value, getEditorHTML(ed)) } catch {}
       }
       if (saveTimer) clearTimeout(saveTimer)
       saveTimer = setTimeout(() => autoSave(), 1500)
@@ -1101,6 +1106,7 @@ async function switchBranch() {
 
 async function loadDocs() {
   loadingDocs.value = true
+  const docsCacheKey = `xzj-docs-${projectId}-${activeBranchId.value ?? 'main'}`
   try {
     const res = await documentApi.list(String(projectId), activeBranchId.value)
     const fresh = res.data?.data || res.data || []
@@ -1122,9 +1128,19 @@ async function loadDocs() {
       }
     }
     documents.value = fresh
+    // ponytail: 缓存文档树，离线刷新时兜底展示
+    try { localStorage.setItem(docsCacheKey, JSON.stringify(fresh)) } catch {}
   } catch (e) {
     console.error('加载文档失败', e)
-    documents.value = []
+    // ponytail: 离线兜底——用上次缓存的文档树，作者断网刷新也能继续写
+    try {
+      const cached = JSON.parse(localStorage.getItem(docsCacheKey) || '[]')
+      if (Array.isArray(cached) && cached.length) {
+        documents.value = cached
+      } else {
+        documents.value = []
+      }
+    } catch { documents.value = [] }
   } finally {
     loadingDocs.value = false
   }
@@ -1190,10 +1206,20 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   }
 
   try {
-    const res = await documentApi.get(doc.id)
-    const docData = res.data?.data || res.data
-    let content = docData?.content
-    if (typeof content !== 'string') content = ''
+    let content: string
+    let fromCache = false
+    try {
+      const res = await documentApi.get(doc.id)
+      const docData = res.data?.data || res.data
+      content = (typeof docData?.content === 'string') ? docData.content : ''
+      // ponytail: 缓存章节内容，离线时兜底可读
+      try { localStorage.setItem('xzj-doc-content-' + doc.id, content) } catch {}
+    } catch {
+      // ponytail: 离线兜底——用缓存内容打开，作者断网也能翻章节看/改
+      content = ''
+      try { content = localStorage.getItem('xzj-doc-content-' + doc.id) || '' } catch {}
+      fromCache = true
+    }
 
     if (editor.value) {
       isSettingContent.value = true
@@ -1205,12 +1231,12 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
         editor.value.commands.setContent(editorContentFromText(content), { emitUpdate: false })
       }
       wordCount.value = getEditorText().length
-      saveStatus.value = '已保存'
+      saveStatus.value = fromCache ? '📡 离线读取' : '已保存'
       setTimeout(() => { isSettingContent.value = false }, 100)
 
       // ponytail: check for unsaved local draft (browser crashed during 1.5s debounce)
       const draftKey = 'draft-' + doc.id
-      const draftHTML = localStorage.getItem(draftKey)
+      const draftHTML = (() => { try { return localStorage.getItem(draftKey) } catch { return null } })()
       if (draftHTML && draftHTML !== getEditorHTML()) {
         draftBanner.value = { docId: doc.id, text: draftHTML }
       } else {
@@ -1224,8 +1250,24 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
 }
 
 let saveRetryCount = 0
+// ponytail: offline state — no point burning retries when navigator.onLine is false;
+// 'online' event listener triggers a catch-up save the moment network returns.
+const isOffline = ref(!navigator.onLine)
+function onOnlineStatusChange() {
+  const offline = !navigator.onLine
+  isOffline.value = offline
+  if (!offline) {
+    // 网络恢复：立即补传（草稿仍在 localStorage，丢不了）
+    saveRetryCount = 0
+    autoSave()
+  }
+}
 async function autoSave() {
   if (!activeDocId.value || !editor.value) return
+  if (isOffline.value) {
+    saveStatus.value = '📡 离线中，已存本地'
+    return
+  }
   try {
     saveStatus.value = '保存中...'
     await documentApi.update(activeDocId.value, {
@@ -1243,7 +1285,7 @@ async function autoSave() {
       saveStatus.value = `保存失败，重试中(${saveRetryCount}/3)...`
       setTimeout(() => autoSave(), 2000 * saveRetryCount)
     } else {
-      saveStatus.value = '⚠️ 保存失败，请检查网络'
+      saveStatus.value = isOffline.value ? '📡 离线中，已存本地' : '⚠️ 保存失败，已存本地，恢复网络自动上传'
       saveRetryCount = 0
     }
   }

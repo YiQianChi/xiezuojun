@@ -931,6 +931,10 @@
   cursor: pointer;
 }
 .voice-select:disabled { opacity: 0.5; }
+.offline-indicator {
+  color: #e6a23c;
+  font-weight: 500;
+}
 
 /* 工具箱触发器（状态栏右侧） */
 .toolbox-trigger {
