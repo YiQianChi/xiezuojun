@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -28,6 +29,15 @@ var (
 )
 
 func init() {
+	// ponytail-desktop: DESKTOP=1 时用内存 miniredis（发码本身在桌面版用不到，仅保启动不炸）
+	if os.Getenv("DESKTOP") == "1" {
+		mr := miniredis.NewMiniRedis()
+		if err := mr.Start(); err != nil {
+			panic("miniredis start failed: " + err.Error())
+		}
+		vcodeRdb = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+		return
+	}
 	addr := os.Getenv("REDIS_ADDR")
 	if addr == "" {
 		addr = "127.0.0.1:6379"

@@ -15,3 +15,7 @@ __debugbin*
 vendor/
 .env
 *.bak
+
+# 桌面版构建产物
+server/desktop
+server/xzj-desktop*
