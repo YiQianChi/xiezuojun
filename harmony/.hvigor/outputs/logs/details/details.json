@@ -1,0 +1,85 @@
+{
+  "HVIGOR": {
+    "IS_INCREMENTAL": true,
+    "IS_DAEMON": true,
+    "IS_PARALLEL": true,
+    "IS_HVIGORFILE_TYPE_CHECK": false,
+    "TASK_TIME": {},
+    "APIS": [],
+    "CONFIG_EXPERIMENT": {
+      "ENABLE_MODULE_SKIP": false,
+      "ENABLE_CPP_FUNCTION_LEVEL_INCREMENTAL": false
+    },
+    "CONFIG_PROPERTIES": {},
+    "BUILD_ID": "202610212214075600",
+    "ERROR_MESSAGE": [
+      {
+        "CODE": "00303149",
+        "MESSAGE": "Path not found. At file: %s",
+        "SOLUTIONS": [
+          "Please check field: modules in file: Z:\\harmony\\build-profile.json5."
+        ],
+        "TIMESTAMP": "1792592047577"
+      },
+      {
+        "CODE": "00303149",
+        "STACK": "00303149 Configuration Error\n...\n    at HvigorLogger.printErrorExit (***\\tools\\hvigor\\hvigor\\src\\base\\log\\hv***g.js:1:5087)\n    at exitIfNotExists (***\\tools\\hvigor\\hvigor\\src\\base\\util\\fi***l.js:1:1245)\n    at ***\\tools\\hvigor\\hvigor\\src\\base\\internal\\lifecycle\\in***t.js:1:3371\n...\n    at init (***\\tools\\hvigor\\hvigor\\src\\base\\internal\\lifecycle\\in***t.js:1:3125)\n...\n    at async start (***\\tools\\hvigor\\hvigor\\src\\base\\boot\\in***x.js:1:2472)\n    at async boot (***\\tools\\hvigor\\hvigor\\src\\base\\boot\\in***x.js:1:1789)\n    at async Worker.<anonymous> (***\\tools\\hvigor\\hvigor\\src\\base\\daemon\\cluster\\wo***e.js:1:4063)",
+        "PROJECT_CONFIG": {
+          "buildMode": "Debug",
+          "compileMode": "esmodule",
+          "moduleType": "entry",
+          "targetName": ".default",
+          "packageManagerType": "ohpm",
+          "isLocalTest": false,
+          "needCoverageInsert": false,
+          "debugLine": false,
+          "compileSdkVersion": 23,
+          "compatibleSdkVersion": 12,
+          "originCompatibleSdkVersion": "5.0.0(12)",
+          "etsLoaderVersion": "6.1.0.105",
+          "etsLoaderReleaseType": "Release",
+          "aotCompileMode": "type",
+          "isCrossplatform": false,
+          "bundleType": "app",
+          "apiVersion": 23,
+          "isFaMode": false,
+          "deviceTypes": [
+            "phone",
+            "tablet"
+          ],
+          "integratedHsp": false,
+          "branchElimination": false,
+          "tsImportSendable": false,
+          "resolveConflictMode": true,
+          "useNativeResolver": true,
+          "shouldEmitJs": true,
+          "useTscResolve": false,
+          "singleFileEmit": false,
+          "executionMode": "memory",
+          "isHarDeduplicateEnabled": false,
+          "autoLazyImport": false,
+          "allowEmptyBundleName": false,
+          "reExportCheckMode": "noCheck",
+          "usePathPlaceholder": false,
+          "writeRollupCache": true,
+          "isExpandImportEnabled": false,
+          "ignoreCrossplatformCheck": false,
+          "skipOhModulesLint": false,
+          "enableStrictCheckOHModule": false,
+          "useDeclarationFileSignature": false,
+          "isPreloadSoEnabled": false,
+          "strictMode.caseSensitiveCheck": true,
+          "strictMode.useNormalizedOHMUrl": true,
+          "strictMode.noExternalImportByPath": true,
+          "runtimeOS": "HarmonyOS",
+          "sdkInfo": "false:23:6.1.0.105:Release",
+          "useSourceHash": false,
+          "isByteCodeHarOptimize": false,
+          "copyCodeResourceEnable": true,
+          "uiTransformOptimization": false
+        }
+      }
+    ],
+    "TOTAL_TIME": 82864100
+  }
+}

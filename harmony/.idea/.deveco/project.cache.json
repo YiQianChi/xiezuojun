@@ -1,0 +1,16 @@
+{
+	"CommonInfo":{
+		"project.ide.version":"6.1.0.860",
+		"current.select.product":"default",
+		"current.select.buildMode":"",
+		"crossplatform.projectType":""
+	},
+	"BuildOptions":{
+		"SELECT_BUILD_PRODUCT":"default",
+		"BUNDLE_NAME":"com.xiezuojun.app",
+		"BUILD_PATH":{
+			"OUTPUT_PATH":"D:\\xiezuojun\\harmony\\build\\outputs\\default"
+		},
+		"SELECT_BUILD_MODE":""
+	}
+}

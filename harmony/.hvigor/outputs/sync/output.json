@@ -1,0 +1,164 @@
+{
+  "version": 1,
+  "ohos-module-entry": {
+    "SELECT_TARGET": "default",
+    "MODULE_BUILD_DIR": "D:\\xiezuojun\\harmony\\entry\\build",
+    "TARGETS": {
+      "default": {
+        "SOURCE_ROOT": "D:\\xiezuojun\\harmony\\entry\\src\\main",
+        "RESOURCES_PATH": [
+          "D:\\xiezuojun\\harmony\\entry\\src\\main\\resources"
+        ],
+        "BUILD_PATH": {
+          "OUTPUT_PATH": "D:\\xiezuojun\\harmony\\entry\\build\\default\\outputs\\default",
+          "INTERMEDIA_PATH": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates",
+          "JS_ASSETS_PATH": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates\\loader_out\\default",
+          "JS_LITE_ASSETS_PATH": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates\\loader_out_lite\\default",
+          "RES_PATH": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates\\res\\default",
+          "RES_PROFILE_PATH": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
+          "ETS_SUPER_VISUAL_PATH": "D:\\xiezuojun\\harmony\\entry\\build\\default\\cache\\default\\default@CompileArkTS\\esmodule",
+          "JS_SUPER_VISUAL_PATH": "D:\\xiezuojun\\harmony\\entry\\build\\default\\cache\\default\\default@CompileJS\\jsbundle",
+          "WORKER_LOADER": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates\\loader\\default\\loader.json",
+          "MANIFEST_JSON": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates\\manifest\\default",
+          "OUTPUT_METADATA_JSON": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
+          "SOURCE_MAP_DIR": "D:\\xiezuojun\\harmony\\entry\\build\\default\\intermediates\\source_map\\default"
+        },
+        "BUILD_OPTION": {
+          "debuggable": true
+        }
+      }
+    },
+    "BUILD_OPTION": {
+      "default-default": {
+        "debuggable": true,
+        "copyFrom": "default",
+        "strictMode": {
+          "caseSensitiveCheck": true,
+          "useNormalizedOHMUrl": true
+        },
+        "name": "debug"
+      }
+    },
+    "BUILD_PROFILE_OPT": {
+      "apiType": "stageMode",
+      "buildOption": {},
+      "buildOptionSet": [
+        {
+          "name": "release",
+          "arkOptions": {
+            "obfuscation": {
+              "ruleOptions": {
+                "enable": false,
+                "files": [
+                  "./obfuscation-rules.txt"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "default"
+        },
+        {
+          "name": "debug"
+        }
+      ],
+      "targets": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    "BUILD_CACHE_DIR": ""
+  },
+  "ohos-project": {
+    "SELECT_PRODUCT_NAME": "default",
+    "MODULE_BUILD_DIR": "D:\\xiezuojun\\harmony\\build",
+    "BUNDLE_NAME": "com.xiezuojun.app",
+    "VERSION_CODE": 1,
+    "VERSION_NAME": "0.1.0",
+    "BUILD_PATH": {
+      "OUTPUT_PATH": "D:\\xiezuojun\\harmony\\build\\outputs\\default"
+    },
+    "MODULES": [
+      {
+        "name": "entry",
+        "srcPath": "D:\\xiezuojun\\harmony\\entry",
+        "targets": [
+          {
+            "name": "default",
+            "applyToProducts": [
+              "default"
+            ]
+          }
+        ],
+        "belongProjectPath": "D:\\xiezuojun\\harmony"
+      }
+    ],
+    "PROFILE_OPT": {
+      "app": {
+        "signingConfigs": [
+          {
+            "name": "default",
+            "type": "HarmonyOS",
+            "material": {
+              "certpath": "C:\\Users\\G\\.ohos\\config\\default_harmony_kmlWJyjPzqYj5NEaFFPOxQQgLwUNS2F5PK2-ZaYyncQ=.cer",
+              "keyAlias": "debugKey",
+              "keyPassword": "0000001B25AA67F85E04994B64308C9F6D8BBE2F1474E2C53ABF8EA5C01571F688975CBB071FDA7EF7F26F",
+              "profile": "C:\\Users\\G\\.ohos\\config\\default_harmony_kmlWJyjPzqYj5NEaFFPOxQQgLwUNS2F5PK2-ZaYyncQ=.p7b",
+              "signAlg": "SHA256withECDSA",
+              "storeFile": "C:\\Users\\G\\.ohos\\config\\default_harmony_kmlWJyjPzqYj5NEaFFPOxQQgLwUNS2F5PK2-ZaYyncQ=.p12",
+              "storePassword": "0000001BFC50E2869627C8E84A6810A0E444817CD6EBF24ECC4C10235FE222856E4BF429B166CE32BBDDE7"
+            }
+          }
+        ],
+        "products": [
+          {
+            "name": "default",
+            "signingConfig": "default",
+            "compatibleSdkVersion": "5.0.0(12)",
+            "runtimeOS": "HarmonyOS",
+            "buildOption": {
+              "strictMode": {
+                "caseSensitiveCheck": true,
+                "useNormalizedOHMUrl": true
+              }
+            },
+            "targetSdkVersion": "6.1.0(23)"
+          }
+        ],
+        "buildModeSet": [
+          {
+            "name": "debug"
+          },
+          {
+            "name": "release"
+          }
+        ]
+      },
+      "modules": [
+        {
+          "name": "entry",
+          "srcPath": "./entry",
+          "targets": [
+            {
+              "name": "default",
+              "applyToProducts": [
+                "default"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "CONFIG_PROPERTIES": {
+      "enableSignTask": true,
+      "skipNativeIncremental": false,
+      "hvigor.keepDependency": true
+    },
+    "OVERALL_PROJECT_PATHS": [
+      "D:\\xiezuojun\\harmony"
+    ],
+    "BUILD_CACHE_DIR": ""
+  }
+}
