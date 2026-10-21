@@ -8,7 +8,8 @@ struct Index {
 
   build() {
     Column() {
-      Web({ src: $rawfile('web/index.html'), controller: this.controller })
+      // ponytail-debug: 临时加载线上站做对照实验——出登录页=壳通、问题在 rawfile 加载；仍白=Web 配置问题
+      Web({ src: 'https://xiezuojun.com', controller: this.controller })
         .width('100%')
         .height('100%')
         .domStorageAccess(true)
