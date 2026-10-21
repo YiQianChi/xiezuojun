@@ -44,6 +44,15 @@
               <button class="bw-cheer" @click="cheer" :class="{ sent: cheerJustSent }">👏 加油</button>
             </div>
             <div v-if="peerCheerFlash" class="bw-cheer-flash">💛 搭子给你加了油！</div>
+            <div v-if="peerMilestoneFlash" class="bw-ms-flash peer">✦ {{ peerMilestoneFlash }}</div>
+            <div v-if="peerNudgeFlash" class="bw-nudge-flash">{{ peerNudgeFlash }}</div>
+            <div class="bw-nudge-row">
+              <button
+                v-for="n in NUDGES" :key="n.id"
+                class="bw-nudge-chip" :class="{ cd: nudgeCdLeft(n.id) > 0 }"
+                @click="sendNudge(n)"
+              >{{ n.icon }} {{ nudgeCdLeft(n.id) > 0 ? nudgeCdLeft(n.id) + 's' : n.label }}</button>
+            </div>
           </template>
           <template v-else-if="waiting">
             <div class="bw-waiting">
@@ -56,13 +65,30 @@
           </template>
         </div>
 
-        <!-- 总结 -->
-        <div v-else-if="state === 'summary'" class="bw-summary">
+        <!-- 总结：点击收工，回到未开始 -->
+        <div v-else-if="state === 'summary'" class="bw-summary" @click="reset" title="点击收工，重新开始">
           <span class="sum-time">{{ formatTime(summaryMs) }}</span>
           <span class="sum-sep">·</span>
           <span class="sum-words" :class="{ negative: summaryWords < 0 }">{{ summaryWords >= 0 ? '+' : '' }}{{ summaryWords }} 字</span>
+          <span class="sum-close">✕</span>
+        </div>
+
+        <!-- 本次里程碑刻度条 -->
+        <div v-if="milestoneTicks.total > 0 && state !== 'summary'" class="bw-ms-strip">
+          <span
+            v-for="i in 6" :key="i"
+            class="ms-tick" :class="{ on: i <= milestoneTicks.done, now: i === milestoneTicks.done + 1 }"
+          ></span>
+          <span class="ms-next">{{ milestoneTicks.nextLabel }}</span>
         </div>
       </div>
+    </div>
+
+    <!-- 自己的里程碑弹花（不打断输入，3 秒淡出） -->
+    <div v-if="myMilestoneFlash" class="bw-ms-pop">
+      <span class="ms-emoji">✦</span>
+      <span class="ms-title">{{ myMilestoneFlash.title }}</span>
+      <span class="ms-sub">{{ myMilestoneFlash.sub }}</span>
     </div>
   </Teleport>
 </template>
@@ -89,12 +115,96 @@ const summaryMs = ref(0)
 const summaryWords = ref(0)
 const now = ref(Date.now())
 
+// ---- 里程碑（正反馈）：字数每 500 字、时长每 25 分钟 ----
+const MS_WORD_STEP = 500
+const MS_TIME_STEP_MS = 25 * 60 * 1000
+const myMilestoneFlash = ref<{ title: string; sub: string } | null>(null)
+const peerMilestoneFlash = ref('')
+let msWordLevel = 0    // 已达成的字数档（500 的倍数）
+let msTimeLevel = 0    // 已达成的时长档（25 分钟的倍数）
+let msFlashTimer: ReturnType<typeof setTimeout> | null = null
+let peerMsTimer: ReturnType<typeof setTimeout> | null = null
+
+const milestoneTicks = computed(() => {
+  const wordLv = Math.max(0, Math.floor(wordsDelta.value / MS_WORD_STEP))
+  const timeLv = Math.floor(elapsedMs.value / MS_TIME_STEP_MS)
+  const done = wordLv + timeLv
+  if (done <= 0) return { total: 0, done: 0, nextLabel: '' }
+  const nextWord = (wordLv + 1) * MS_WORD_STEP
+  const nextTimeMin = ((timeLv + 1) * MS_TIME_STEP_MS) / 60000
+  const nextLabel = (nextWord - wordsDelta.value) <= (nextTimeMin * 60 - elapsedMs.value / 1000) * 14
+    ? `下一个 ${nextWord} 字`
+    : `下一个 ${nextTimeMin} 分钟`
+  return { total: done, done, nextLabel }
+})
+
+function checkMilestones() {
+  if (state.value !== 'running') return
+  const wordLv = Math.floor(Math.max(0, wordsDelta.value) / MS_WORD_STEP)
+  const timeLv = Math.floor(elapsedMs.value / MS_TIME_STEP_MS)
+  if (wordLv > msWordLevel) {
+    msWordLevel = wordLv
+    fireMyMilestone(`又破 ${wordLv * MS_WORD_STEP} 字！`, milestoneSub())
+  } else if (timeLv > msTimeLevel) {
+    msTimeLevel = timeLv
+    fireMyMilestone(`连续 ${timeLv * 25} 分钟！`, milestoneSub())
+  }
+}
+function milestoneSub(): string {
+  const totalSec = Math.floor(elapsedMs.value / 1000)
+  if (totalSec < 60) return ''
+  const wpm = (wordsDelta.value / (totalSec / 60)).toFixed(1)
+  return `${formatTime(elapsedMs.value)} · 平均 ${wpm} 字/分钟`
+}
+function fireMyMilestone(title: string, sub: string) {
+  myMilestoneFlash.value = { title, sub }
+  if (msFlashTimer) clearTimeout(msFlashTimer)
+  msFlashTimer = setTimeout(() => { myMilestoneFlash.value = null }, 3000)
+}
+function flashPeerMilestone(text: string) {
+  peerMilestoneFlash.value = text
+  if (peerMsTimer) clearTimeout(peerMsTimer)
+  peerMsTimer = setTimeout(() => { peerMilestoneFlash.value = '' }, 4000)
+}
+
 // 搭子状态
 interface PeerSession { user_id: string; nickname: string; started_at: string; words_delta: number }
 const peer = ref<PeerSession | null>(null)
 const waiting = ref(false)
 const peerCheerFlash = ref(false)
 const cheerJustSent = ref(false)
+
+// ---- 快捷互动（方案A）：预设 4 种，60s 冷却，只在对方窗内闪一条 4s 提示 ----
+const NUDGES = [
+  { id: 'water', icon: '💧', label: '喝杯水', recv: '让你喝杯水' },
+  { id: 'rest', icon: '☕', label: '歇一会', recv: '让你歇一会' },
+  { id: 'fire', icon: '🔥', label: '加把劲', recv: '给你加了把劲' },
+  { id: 'together', icon: '🤝', label: '一起冲', recv: '邀你一起冲' },
+] as const
+const NUDGE_ICONS: Record<string, string> = { water: '💧', rest: '☕', fire: '🔥', together: '🤝' }
+const NUDGE_RECV: Record<string, string> = { water: '让你喝杯水', rest: '让你歇一会', fire: '给你加了把劲', together: '邀你一起冲' }
+const peerNudgeFlash = ref('')
+const nudgeCooldown = ref<Record<string, number>>({}) // id → 冷却到期时间戳
+const nudgeNow = ref(Date.now()) // 冷却倒计时的响应式时钟
+let peerNudgeTimer: ReturnType<typeof setTimeout> | null = null
+let nudgeTick: ReturnType<typeof setInterval> | null = null
+function nudgeCdLeft(id: string): number {
+  return Math.max(0, Math.ceil(((nudgeCooldown.value[id] || 0) - nudgeNow.value) / 1000))
+}
+function startNudgeTick() {
+  if (nudgeTick) return
+  nudgeTick = setInterval(() => {
+    nudgeNow.value = Date.now()
+    const active = Object.values(nudgeCooldown.value).some((t) => t > nudgeNow.value)
+    if (!active && nudgeTick) { clearInterval(nudgeTick); nudgeTick = null }
+  }, 1000)
+}
+async function sendNudge(n: typeof NUDGES[number]) {
+  if (!peer.value || nudgeCdLeft(n.id) > 0) return
+  nudgeCooldown.value = { ...nudgeCooldown.value, [n.id]: Date.now() + 60000 }
+  startNudgeTick()
+  try { await buddyApi.nudge(n.id) } catch { }
+}
 
 // 窗口拖动
 const winPos = ref({ x: 0, y: 0 })
@@ -135,6 +245,7 @@ const peerTime = computed(() => {
 
 function tick() {
   now.value = Date.now()
+  checkMilestones()
   saveSnapshot()
 }
 
@@ -246,6 +357,14 @@ function handleEvent(ev: any) {
   } else if (ev.type === 'cheer') {
     peerCheerFlash.value = true
     setTimeout(() => { peerCheerFlash.value = false }, 4000)
+  } else if (ev.type === 'peer_milestone') {
+    if (ev.peer?.nickname) peer.value = { ...peer.value!, ...ev.peer }
+    flashPeerMilestone(`${ev.peer?.nickname || '搭子'} 又破 ${ev.milestone} 字了！`)
+  } else if (ev.type === 'peer_nudge') {
+    const icon = NUDGE_ICONS[ev.nudge] || '✦'
+    peerNudgeFlash.value = `${icon} ${ev.from || '搭子'} ${NUDGE_RECV[ev.nudge] || '戳了戳你'}`
+    if (peerNudgeTimer) clearTimeout(peerNudgeTimer)
+    peerNudgeTimer = setTimeout(() => { peerNudgeFlash.value = '' }, 4000)
   }
 }
 
@@ -302,6 +421,8 @@ function start() {
     accumulatedMs.value = 0
     startWordCount.value = props.currentWordCount
     lastWordCount.value = props.currentWordCount
+    msWordLevel = 0
+    msTimeLevel = 0
   }
   sessionStart.value = Date.now()
   state.value = 'running'
@@ -342,6 +463,10 @@ function reset() {
   lastWordCount.value = 0
   summaryMs.value = 0
   summaryWords.value = 0
+  msWordLevel = 0
+  msTimeLevel = 0
+  myMilestoneFlash.value = null
+  peerMilestoneFlash.value = ''
   clearSnapshot()
 }
 defineExpose({ reset })
@@ -370,6 +495,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', onDragEnd)
   if (intervalRef.value) clearInterval(intervalRef.value)
   if (beatRef.value) clearInterval(beatRef.value)
+  if (nudgeTick) clearInterval(nudgeTick)
+  if (msFlashTimer) clearTimeout(msFlashTimer)
+  if (peerMsTimer) clearTimeout(peerMsTimer)
+  if (peerNudgeTimer) clearTimeout(peerNudgeTimer)
   closeEvents()
 })
 </script>
@@ -442,6 +571,59 @@ onBeforeUnmount(() => {
 
 .bw-online { margin-top: 8px; font-size: 10.5px; color: var(--text-tertiary, #999); text-align: center; }
 
+/* ---- 里程碑 ---- */
+.bw-ms-strip {
+  display: flex; align-items: center; gap: 4px; margin-top: 8px;
+  padding-top: 7px; border-top: 1px solid var(--border-subtle, rgba(0,0,0,0.06));
+}
+.bw-ms-strip .ms-tick { width: 12px; height: 3px; border-radius: 2px; background: var(--bg-hover, rgba(0,0,0,0.12)); }
+.bw-ms-strip .ms-tick.on { background: #30d158; }
+.bw-ms-strip .ms-tick.now { background: var(--accent, #007aff); animation: bfab 1.2s infinite; }
+.bw-ms-strip .ms-next { margin-left: auto; font-size: 9px; color: var(--text-tertiary, #999); white-space: nowrap; }
+
+.bw-ms-flash {
+  margin-top: 7px; padding: 5px 8px; border-radius: 8px; text-align: center;
+  font-size: 11px; font-weight: 600; animation: cheerin 0.4s ease;
+}
+.bw-ms-flash.peer {
+  background: rgba(10,132,255,0.1); color: var(--accent, #007aff);
+}
+
+/* ---- 快捷互动条 ---- */
+.bw-nudge-flash {
+  margin-top: 7px; padding: 5px 8px; border-radius: 8px; text-align: center;
+  background: rgba(48,209,88,0.1); color: #2f9e44; font-size: 11px; font-weight: 600;
+  animation: cheerin 0.4s ease;
+}
+.bw-nudge-row {
+  display: flex; gap: 4px; margin-top: 7px; padding-top: 7px;
+  border-top: 1px solid var(--border-subtle, rgba(0,0,0,0.06));
+}
+.bw-nudge-chip {
+  flex: 1; border: none; border-radius: 7px; padding: 5px 0; cursor: pointer;
+  background: var(--bg-hover, rgba(0,0,0,0.06)); color: var(--text-secondary, #666);
+  font-size: 9.5px; font-weight: 600; white-space: nowrap;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.bw-nudge-chip:hover { background: rgba(0,122,255,0.12); color: var(--accent, #007aff); }
+.bw-nudge-chip:active { transform: scale(0.94); }
+.bw-nudge-chip.cd { opacity: 0.35; pointer-events: none; }
+
+.bw-ms-pop {
+  position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%);
+  z-index: 999; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 14px 28px; border-radius: 16px; text-align: center;
+  background: var(--bg-secondary, #fff);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06);
+  animation: mpop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1), mfade 0.5s ease 2.5s forwards;
+}
+@keyframes mpop { from { transform: translate(-50%, -35%) scale(0.7); opacity: 0; } }
+@keyframes mfade { to { opacity: 0; transform: translate(-50%, -55%); } }
+.bw-ms-pop .ms-emoji { font-size: 20px; color: var(--accent, #007aff); }
+.bw-ms-pop .ms-title { font-size: 14px; font-weight: 800; color: var(--accent, #007aff); }
+.bw-ms-pop .ms-sub { font-size: 10.5px; color: var(--text-tertiary, #999); }
+
 .bw-match-btn {
   width: 100%; padding: 8px; border: none; border-radius: 9px; cursor: pointer;
   background: rgba(0,122,255,0.1); color: var(--accent, #007aff);
@@ -459,7 +641,8 @@ onBeforeUnmount(() => {
 .bw-btn.cancel { width: auto; padding: 0 8px; font-size: 11px; }
 
 .bw-summary { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 4px 0; cursor: pointer; }
-.bw-summary:hover::after { content: '✕'; font-size: 10px; color: var(--text-tertiary); margin-left: 4px; }
+.bw-summary .sum-close { display: none; font-size: 10px; color: var(--text-tertiary, #999); }
+.bw-summary:hover .sum-close { display: inline; }
 .sum-time { font-size: 15px; font-weight: 700; color: var(--accent, #007aff); font-variant-numeric: tabular-nums; }
 .sum-sep { color: var(--text-tertiary, #999); }
 .sum-words { font-size: 12px; color: #30d158; }

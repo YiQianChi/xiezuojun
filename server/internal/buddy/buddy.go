@@ -72,7 +72,10 @@ func cheerKey(uid string) string   { return keyCheer + uid }
 func Heartbeat(userID, nickname string, projectID uint, wordsDelta int) *Session {
 	now := time.Now()
 	s := readSession(userID)
-	if s == nil {
+	prevDelta := 0
+	if s != nil {
+		prevDelta = s.WordsDelta
+	} else {
 		s = &Session{UserID: userID, StartedAt: now}
 	}
 	s.Nickname = nickname
@@ -86,8 +89,17 @@ func Heartbeat(userID, nickname string, projectID uint, wordsDelta int) *Session
 		rdb.Expire(rctx, matchedKey(userID), beatTimeout)
 		rdb.Expire(rctx, matchedKey(peer), beatTimeout)
 		s.Matched = peer
-	} else {
-		s.Matched = ""
+		// 里程碑：字数跨 500 的倍数 → 实时推给搭子（负数按 0 算，删字不触发）
+		oldLv, newLv := prevDelta/500, wordsDelta/500
+		if oldLv < 0 {
+			oldLv = 0
+		}
+		if newLv < 0 {
+			newLv = 0
+		}
+		if newLv > oldLv {
+			publishEvent(peer, Event{Type: "peer_milestone", Peer: s, Milestone: newLv * 500})
+		}
 	}
 	return s
 }
@@ -178,6 +190,29 @@ func Cheer(fromUserID string) {
 	rdb.Incr(rctx, cheerKey(peer))
 	rdb.Expire(rctx, cheerKey(peer), 5*time.Minute)
 	publishEvent(peer, Event{Type: "cheer"})
+}
+
+// Nudge 快捷互动（喝杯水/歇一会等）：SSE 实时推给搭子。
+// 冷却由前端控制（60s/种），服务端只做同种 10s 限频防连点。
+var validNudges = map[string]bool{"water": true, "rest": true, "fire": true, "together": true}
+
+func Nudge(fromUserID, nudge string) {
+	if !validNudges[nudge] {
+		return
+	}
+	peer, err := rdb.Get(rctx, matchedKey(fromUserID)).Result()
+	if err != nil {
+		return
+	}
+	cdKey := "xzj:buddy:nudgecd:" + fromUserID + ":" + nudge
+	if ok, _ := rdb.SetNX(rctx, cdKey, 1, 10*time.Second).Result(); !ok {
+		return // 同种 10s 内已发过
+	}
+	from := ""
+	if s := readSession(fromUserID); s != nil {
+		from = s.Nickname
+	}
+	publishEvent(peer, Event{Type: "peer_nudge", Nudge: nudge, From: from})
 }
 
 // BuddyState 搭子状态视图（轮询返回）

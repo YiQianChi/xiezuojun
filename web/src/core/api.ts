@@ -326,6 +326,9 @@ export const buddyApi = {
   cheer() {
     return api.post('/buddy/cheer')
   },
+  nudge(nudge: string) {
+    return api.post('/buddy/nudge', { nudge })
+  },
   state() {
     return api.get('/buddy/state', { params: { consume_cheer: 1 } })
   },

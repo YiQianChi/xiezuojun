@@ -16,8 +16,11 @@ const keyEvents = "xzj:buddy:evt:"
 
 // Event 推送给单个用户的实时事件
 type Event struct {
-	Type string   `json:"type"`          // matched | peer_left | cheer
-	Peer *Session `json:"peer,omitempty"` // matched 时带上对方会话
+	Type      string   `json:"type"`                // matched | peer_left | cheer | peer_milestone | peer_nudge
+	Peer      *Session `json:"peer,omitempty"`      // matched 时带上对方会话
+	Milestone int      `json:"milestone,omitempty"` // peer_milestone：对方跨过的字数档（500 的倍数）
+	Nudge     string   `json:"nudge,omitempty"`     // peer_nudge：互动类型（water/rest/fire/together）
+	From      string   `json:"from,omitempty"`      // peer_nudge：发送方昵称
 }
 
 func publishEvent(uid string, ev Event) {

@@ -14,6 +14,7 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/buddy/match", handleMatch)
 	rg.POST("/buddy/leave-match", handleLeaveMatch)
 	rg.POST("/buddy/cheer", handleCheer)
+	rg.POST("/buddy/nudge", handleNudge)
 	rg.GET("/buddy/state", handleState)
 	rg.GET("/buddy/events", handleEvents) // SSE 实时推送
 }
@@ -58,6 +59,16 @@ func handleCheer(c *gin.Context) {
 	uid := c.GetString("userID")
 	Cheer(uid)
 	c.JSON(http.StatusOK, gin.H{"data": "cheered"})
+}
+
+func handleNudge(c *gin.Context) {
+	uid := c.GetString("userID")
+	var req struct {
+		Nudge string `json:"nudge"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	Nudge(uid, req.Nudge)
+	c.JSON(http.StatusOK, gin.H{"data": "nudged"})
 }
 
 func handleState(c *gin.Context) {
