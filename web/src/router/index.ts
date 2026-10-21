@@ -1,7 +1,11 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
+
+// ponytail-harmony: 鸿蒙壳走 resource://rawfile/ 协议，无 HTTP server 兜底 history 路由——
+// 构建时 VITE_ROUTER=hash 切 hash 路由（web/.env.harmony 注入），网页/桌面保持 history
+const useHash = !!(import.meta as any).env?.VITE_ROUTER
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: useHash ? createWebHashHistory() : createWebHistory(),
   routes: [
     {
       path: '/',
