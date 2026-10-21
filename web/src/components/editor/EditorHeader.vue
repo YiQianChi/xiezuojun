@@ -1,6 +1,11 @@
 <template>
   <div class="editor-header">
-    <button @click="$emit('back')" class="back-btn">← 返回书架</button>
+    <div class="header-left">
+      <button class="btn icon-btn menu-btn" @click="$emit('toggle-sidebar')" title="目录">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <button @click="$emit('back')" class="back-btn">← 返回书架</button>
+    </div>
     <div class="doc-name">
       <span class="proj-name">{{ projectName || '未命名项目' }}</span>
       <template v-if="currentDocName && mode === 'write'">
@@ -96,6 +101,7 @@ defineEmits<{
   'open-history': []
   'toggle-focus': []
   'toggle-reference': []
+  'toggle-sidebar': []
 }>()
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
@@ -108,6 +114,14 @@ function toggleDark() {
 </script>
 
 <style scoped>
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.menu-btn { display: none; }
+
 .editor-header {
   height: 52px;
   display: flex;
@@ -228,5 +242,21 @@ function toggleDark() {
   background: var(--accent, #007aff);
   color: #fff;
   border-color: var(--accent, #007aff);
+}
+
+/* ponytail-mobile: 窄屏——汉堡出、返回文字缩、模式切换和操作按钮收紧 */
+@media (max-width: 768px) {
+  .editor-header { padding: 0 10px; gap: 8px; height: 48px; }
+  .menu-btn { display: inline-flex; }
+  .back-btn { font-size: 12px; padding: 6px 4px; }
+  .doc-name { font-size: 13px; min-width: 0; flex: 1; }
+  .proj-name { max-width: 30%; font-size: 12px; }
+  .doc-name .doc-sep { display: none; }
+  .mode-switcher { margin: 0 4px; }
+  .mode-tab { padding: 5px 8px; font-size: 12px; }
+  .mode-tab .dot { display: none; }
+  .mode-tab.plan, .mode-tab.review { display: none; }
+  .header-actions .btn:not(.icon-btn) { display: none; }
+  .header-actions { gap: 4px; }
 }
 </style>

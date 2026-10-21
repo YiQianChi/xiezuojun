@@ -1,5 +1,7 @@
 <template>
       <div class="editor-page" :class="{ 'focus-mode': focusMode }">
+    <!-- ponytail-focus: 专注模式底部字数激励（C 方案） -->
+    <div v-if="focusMode" class="focus-today-words">今天 +{{ todayWords }} 字</div>
     <!-- 顶部栏 -->
     <EditorHeader
       :project-name="projectName"
@@ -15,11 +17,16 @@
       @open-history="openVersionModal"
       @toggle-focus="focusMode = !focusMode"
       @toggle-reference="referencePanelOpen = !referencePanelOpen"
+      @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen"
     />
 
     <div class="editor-body">
-      <!-- 左侧文档树 -->
+      <!-- 移动端抽屉遮罩 -->
+      <div v-if="mobileSidebarOpen" class="sidebar-scrim" @click="mobileSidebarOpen = false"></div>
+      <!-- 左侧文档树（移动端=抽屉） -->
       <EditorSidebar
+        :class="{ 'drawer-open': mobileSidebarOpen }"
+        class="doc-tree"
         :branches="branches"
         :active-branch-id="activeBranchId"
         :documents="documents"
@@ -727,6 +734,23 @@ const usedSettings = ref<UsedSetting[]>([])
 const contextPanelOpen = ref(false) // 右侧参考面板默认收起，AI 操作时自动弹出
 const referencePanelOpen = ref(false) // B5: 分屏参考面板
 const focusMode = ref(false) // 专注模式：隐藏侧栏+顶栏，编辑器全屏
+// ponytail-mobile: 移动端抽屉侧栏（A 方案）——显示由 CSS @media 管，这里只管开合状态
+const mobileSidebarOpen = ref(false)
+
+// ponytail-focus: 专注模式「今天字数」——首次进入记基线，之后 = 当前字数 - 基线（最小 0）
+const todayWords = ref(0)
+let todayBaseline = -1
+watch(focusMode, (on) => {
+  if (on) {
+    todayBaseline = wordCount.value
+    todayWords.value = 0
+  }
+})
+watch(wordCount, (n) => {
+  if (focusMode.value && todayBaseline >= 0) {
+    todayWords.value = Math.max(0, n - todayBaseline)
+  }
+})
 const storyboardOpen = ref(false) // 章节大纲卡片视图
 const statsOpen = ref(false) // 写作统计面板
 const chatOpen = ref(false) // AI 对话面板
@@ -1182,6 +1206,8 @@ async function initDefaultStructure() {
 
 async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   compareActive.value = false
+  // ponytail-mobile: 移动端选中章节后收起抽屉
+  mobileSidebarOpen.value = false
   // 切换文档时停止朗读
   if (currentAudio) {
     currentAudio.pause()

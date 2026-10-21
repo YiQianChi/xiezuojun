@@ -11,7 +11,9 @@
 
     <div class="context-panel-inner" v-show="open">
       <div class="context-header">
+        <div class="sheet-grabber" @click="$emit('update:open', false)" title="收起面板"></div>
         <h4>AI 参考设定</h4>
+        <button class="sheet-close" @click="$emit('update:open', false)" title="关闭">✕</button>
       </div>
 
       <div class="context-body">
@@ -215,6 +217,20 @@ watch(() => props.projectId, () => loadSettings(), { immediate: true })
   justify-content: space-between;
   padding: 12px 14px 10px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+/* ponytail-mobile: 底部抽屉抓手+关闭钮——桌面端隐藏，窄屏显示 */
+.sheet-grabber { display: none; }
+.sheet-close { display: none; border: none; background: transparent; color: var(--text-tertiary, #aeaeb2); font-size: 14px; padding: 4px 6px; cursor: pointer; }
+@media (max-width: 768px) {
+  .sheet-grabber {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+  }
+  .sheet-close { display: block; }
 }
 .context-header h4 {
   margin: 0;
