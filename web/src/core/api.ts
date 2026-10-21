@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+// ponytail-harmony: 桌面/网页=相对路径；鸿蒙壳=本地 rawfile 加载，API 需绝对地址（构建时注入）
+const API_BASE = (import.meta as any).env?.VITE_API_BASE ?? ''
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE + '/api',
   timeout: 10000,
 })
 
@@ -78,7 +80,8 @@ api.interceptors.response.use(
     }
 
     try {
-      const res = await axios.post('/api/auth/refresh', { refresh_token: refreshToken })
+      // ponytail-harmony: 刷新请求也走 API_BASE（鸿蒙壳下同域绝对地址）
+      const res = await axios.post(API_BASE + '/api/auth/refresh', { refresh_token: refreshToken })
       const newToken = res.data.data?.access_token || res.data.access_token
       const newRefresh = res.data.data?.refresh_token || res.data.refresh_token
       localStorage.setItem('access_token', newToken)

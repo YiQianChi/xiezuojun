@@ -1,3 +1,5 @@
+// ponytail-harmony: 鸿蒙壳下 API 走绝对地址（与 api.ts 同源定义）
+export const API_BASE: string = (import.meta as any).env?.VITE_API_BASE ?? ''
 /**
  * SSE streaming client for AI generate endpoint.
  * Uses fetch + ReadableStream (axios can't stream response bodies).
@@ -26,7 +28,7 @@ export async function streamGenerate(
   signal?: AbortSignal,
 ): Promise<void> {
   const token = localStorage.getItem('access_token')
-  const resp = await fetch('/api/ai/generate', {
+  const resp = await fetch(API_BASE + '/api/ai/generate', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -116,7 +118,7 @@ export async function streamChat(
   signal?: AbortSignal,
 ): Promise<void> {
   const token = localStorage.getItem('access_token')
-  const resp = await fetch('/api/ai/chat', {
+  const resp = await fetch(API_BASE + '/api/ai/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
