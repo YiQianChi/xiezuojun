@@ -1,2 +1,11 @@
 web/dist-harmony/
 harmony/entry/src/main/resources/rawfile/web/
+
+# DevEco 构建产物（经 Samba 共享写回）
+harmony/.hvigor/
+harmony/.idea/
+harmony/build/
+harmony/entry/build/
+harmony/oh_modules/
+harmony/entry/oh_modules/
+harmony/oh-package-lock.json5
