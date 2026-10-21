@@ -1,2 +1,0 @@
-D:/xiezuojun/harmony/entry/build/default/cache/default/default@CompileArkTS/esmodule/release/entry/build/default/generated/r/default/ResourceTable.js;&entry/build/generated/r/ResourceTable&;esm;entry|entry|0.1.0|build/default/generated/r/default/ResourceTable.js;entry;false;ts
-D:/xiezuojun/harmony/entry/build/default/cache/default/default@CompileArkTS/esmodule/release/entry/src/main/ets/pages/Index.ts;&entry/src/main/ets/pages/Index&;esm;entry|entry|0.1.0|src/main/ets/pages/Index.ts;entry;false;ets
