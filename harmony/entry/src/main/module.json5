@@ -19,7 +19,7 @@
         "icon": "$media:app_icon",
         "label": "$string:EntryAbility_label",
         "startWindowIcon": "$media:app_icon",
-        "startWindowBackground": "#ffffff",
+        "startWindowBackground": "$color:start_window_background",
         "exported": true
       }
     ],
