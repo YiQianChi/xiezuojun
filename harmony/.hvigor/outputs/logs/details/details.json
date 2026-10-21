@@ -11,7 +11,8 @@
       "ENABLE_CPP_FUNCTION_LEVEL_INCREMENTAL": false
     },
     "CONFIG_PROPERTIES": {},
-    "BUILD_ID": "202610212214075600",
+    "TOTAL_TIME": 29665000,
+    "BUILD_ID": "202610212232279990",
     "ERROR_MESSAGE": [
       {
         "CODE": "00303149",
@@ -19,7 +20,7 @@
         "SOLUTIONS": [
           "Please check field: modules in file: Z:\\harmony\\build-profile.json5."
         ],
-        "TIMESTAMP": "1792592047577"
+        "TIMESTAMP": "1792593148013"
       },
       {
         "CODE": "00303149",
@@ -79,7 +80,6 @@
           "uiTransformOptimization": false
         }
       }
-    ],
-    "TOTAL_TIME": 82864100
+    ]
   }
 }
