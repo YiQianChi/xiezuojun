@@ -761,10 +761,54 @@ const chatOpen = ref(false) // AI 对话面板
 const helpOpen = ref(false) // E5: 快捷键帮助弹窗
 const toolboxOpen = ref(false) // 工具箱弹出菜单
 
-// ---- 显示设置（字号/行距/字距/底部留白）：只存用户改过的项，CSS 变量下发 ----
+// ---- 显示设置（字号/行距/字距）+ 打字机视线位置 ----
+// 视线位置语义（Boss 定的）：码字行停在屏幕 N% 高度，眼睛聚焦屏幕中段。
+// 实现 = 底部 padding 由视线位置动态推导（容器高 × (1-N%)，让最后一行能滚到视线线）
+//        + 打字时光标低于视线线就把容器向上滚
 const DS_KEY = 'xzj-display-settings'
 const displayOverrides = ref<Record<string, number>>({})
-try { displayOverrides.value = JSON.parse(localStorage.getItem(DS_KEY) || '{}') } catch {}
+try {
+  displayOverrides.value = JSON.parse(localStorage.getItem(DS_KEY) || '{}')
+  delete displayOverrides.value.bottomPad // 旧版「底部留白」已并入视线位置，清掉残留
+} catch {}
+
+const eyeLineRatio = computed(() => (displayOverrides.value.eyeLine ?? 45) / 100)
+const typewriterPad = ref(60)
+let twResizeObs: ResizeObserver | null = null
+
+function updateTypewriterPad() {
+  const c = document.querySelector('.tiptap-container')
+  if (c) typewriterPad.value = Math.round(c.clientHeight * (1 - eyeLineRatio.value))
+}
+
+// 容器在 v-else 分支里（打开章节才渲染），首次 onMounted 时可能还不存在——
+// 所以观察器要等容器出现再挂，不能只在 onMounted 挂一次
+let twObserved: Element | null = null
+function setupTypewriterObserver() {
+  const c = document.querySelector('.tiptap-container')
+  if (!c || c === twObserved) return
+  twResizeObs?.disconnect()
+  twResizeObs = new ResizeObserver(() => updateTypewriterPad())
+  twResizeObs.observe(c)
+  twObserved = c
+  updateTypewriterPad()
+}
+watch(activeDocId, () => { nextTick(setupTypewriterObserver) })
+
+// 打字时若光标低于视线线，把容器上滚让光标回到视线线（光标在线上不动，不打扰阅读回看）
+function typewriterScroll() {
+  if (!editor.value) return
+  const container = document.querySelector('.tiptap-container') as HTMLElement | null
+  if (!container) return
+  try {
+    const coords = editor.value.view.coordsAtPos(editor.value.state.selection.from)
+    const cRect = container.getBoundingClientRect()
+    const targetY = cRect.top + cRect.height * eyeLineRatio.value
+    if (coords.bottom > targetY) {
+      container.scrollTop += coords.bottom - targetY
+    }
+  } catch { /* 光标位置算不出时跳过 */ }
+}
 
 const displayVars = computed(() => {
   const o = displayOverrides.value
@@ -772,7 +816,7 @@ const displayVars = computed(() => {
   if (o.fontSize !== undefined) s['--ds-font-size'] = o.fontSize + 'px'
   if (o.lineHeight !== undefined) s['--ds-line-height'] = String(o.lineHeight)
   if (o.letterSpacing !== undefined) s['--ds-letter-spacing'] = o.letterSpacing + 'em'
-  if (o.bottomPad !== undefined) s['--ds-bottom-pad'] = o.bottomPad + 'px'
+  s['--ds-bottom-pad'] = typewriterPad.value + 'px' // 视线位置始终生效
   return s
 })
 
@@ -781,6 +825,8 @@ function onDisplaySetting(key: string, value: number | undefined) {
   else displayOverrides.value[key] = value
   try { localStorage.setItem(DS_KEY, JSON.stringify(displayOverrides.value)) } catch {}
 }
+
+watch(eyeLineRatio, () => { updateTypewriterPad() })
 const selectedVoice = ref('zh-CN') // E2: TTS 音色选择
 
 function replayOnboarding() {
@@ -918,6 +964,8 @@ onMounted(async () => {
   loadVoices() // E2: 非关键，不 await
   await loadBranches()
   await loadDocs()
+  // 打字机视线：底距 + 容器尺寸变化（改窗口/手机键盘弹起）时重算
+  setupTypewriterObserver()
   // 恢复上次的章节；新书（只有一章）直接打开第一章，不让新手面对空编辑器
   if (!activeDocId.value) {
     let target: any = null
@@ -944,6 +992,8 @@ async function loadProjectName() {
 }
 
 onBeforeUnmount(() => {
+  twResizeObs?.disconnect()
+  twResizeObs = null
   window.removeEventListener('keydown', handleGlobalKeydown)
   document.removeEventListener('click', closeToolboxOnClickOutside)
   window.removeEventListener('online', onOnlineStatusChange)
@@ -999,6 +1049,7 @@ function initEditor() {
       }
       if (saveTimer) clearTimeout(saveTimer)
       saveTimer = setTimeout(() => autoSave(), 1500)
+      typewriterScroll() // 打字机视线：光标沉过视线线就把页面向上托
     }
   })
 

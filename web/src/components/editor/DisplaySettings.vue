@@ -1,6 +1,6 @@
 <template>
   <div class="ds-trigger" :class="{ open }">
-    <button class="memory-btn" @click.stop="open = !open" title="显示设置（字号/行距/字距/底部留白）">
+    <button class="memory-btn" @click.stop="open = !open" title="显示设置（字号/行距/字距/视线位置）">
       <span v-if="!open">⚙️</span>
       <span v-else>✕</span>
     </button>
@@ -29,11 +29,12 @@
       </div>
 
       <div class="ds-row">
-        <span class="ds-label">底部留白</span>
-        <input type="range" min="20" max="200" step="10"
-          :value="val('bottomPad')" @input="set('bottomPad', $event)" />
-        <span class="ds-value">{{ val('bottomPad') }}px</span>
+        <span class="ds-label">视线位置</span>
+        <input type="range" min="30" max="70" step="5"
+          :value="val('eyeLine')" @input="set('eyeLine', $event)" />
+        <span class="ds-value">{{ val('eyeLine') }}%</span>
       </div>
+      <div class="ds-hint">打字时文字行保持在屏幕的这个高度，眼睛不用追着屏幕底部跑</div>
 
       <button class="ds-reset" @click="reset">恢复默认</button>
     </div>
@@ -50,11 +51,11 @@ const emit = defineEmits<{ update: [key: string, value: number | undefined] }>()
 
 const open = ref(false)
 
-// 展示用默认值（与 editor-page.css 的各端默认值一致）
+// 展示用默认值（与 editor-page.css 的各端默认值一致；视线位置两端一致）
 const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
 const DEFAULTS: Record<string, number> = isMobile
-  ? { fontSize: 16, lineHeight: 1.95, letterSpacing: 0, bottomPad: 96 }
-  : { fontSize: 17, lineHeight: 1.9, letterSpacing: 0, bottomPad: 60 }
+  ? { fontSize: 16, lineHeight: 1.95, letterSpacing: 0, eyeLine: 45 }
+  : { fontSize: 17, lineHeight: 1.9, letterSpacing: 0, eyeLine: 45 }
 
 function val(key: string): number {
   return props.overrides[key] ?? DEFAULTS[key]
@@ -135,6 +136,12 @@ function reset() {
   cursor: pointer;
 }
 .ds-reset:hover { color: var(--text-primary); background: var(--bg-tertiary, #f5f5f7); }
+.ds-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  padding: 2px 0 4px;
+}
 @media (max-width: 720px) {
   .ds-popup { position: fixed; left: 16px; right: 16px; bottom: 64px; width: auto; }
 }
