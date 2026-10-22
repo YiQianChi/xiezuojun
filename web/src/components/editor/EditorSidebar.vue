@@ -23,6 +23,7 @@
       <template v-else>
         <!-- 设定区 -->
         <div v-if="settingRootNodes.length > 0" class="setting-zone">
+          <div class="zone-caption">设定</div>
           <DocTreeNode
             v-for="(node, i) in settingRootNodes"
             :key="node.id"
@@ -46,6 +47,7 @@
 
         <!-- 文章区 -->
         <div v-if="articleRootNodes.length > 0" class="article-zone">
+          <div class="zone-caption">正文</div>
           <DocTreeNode
             v-for="(node, i) in articleRootNodes"
             :key="node.id"
@@ -200,6 +202,13 @@ defineEmits<{
   margin-top: 4px;
 }
 
+.zone-caption {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  padding: 2px 8px 4px;
+  letter-spacing: 1px;
+  user-select: none;
+}
 .zone-divider {
   height: 1px;
   background: var(--border);

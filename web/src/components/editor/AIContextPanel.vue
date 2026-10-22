@@ -130,14 +130,16 @@ async function loadSettings() {
     const res = await documentApi.list(String(props.projectId))
     const data = res.data?.data
     const allDocs = Array.isArray(data) ? data : []
-    // ponytail: group by parent folder's title - dynamic, not hardcoded
-    const titleById = new Map<number, string>()
-    allDocs.forEach((d: any) => { if (d.id) titleById.set(d.id, d.title) })
-    const SETTING_TYPES = ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline', 'note']
+    // 设定区已平铺（2026-10-22 起无「设定」文件夹）——分组标签按文档类型来，不再看父文件夹
+    const TYPE_LABELS: Record<string, string> = {
+      outline: '大纲', characters: '人物', worldbuilding: '世界观',
+      storyline: '故事主线', chapter_outline: '章节大纲', note: '笔记',
+    }
+    const SETTING_TYPES = Object.keys(TYPE_LABELS)
     settingDocs.value = allDocs
       .filter((d: any) => SETTING_TYPES.includes(d.type))
       .map((d: any) => {
-        const groupLabel = d.parent_id ? (titleById.get(d.parent_id) || '其他') : '其他'
+        const groupLabel = TYPE_LABELS[d.type] || '其他'
         return { id: d.id, title: d.title, type: groupLabel, ai_include: d.ai_include }
       })
   } catch {

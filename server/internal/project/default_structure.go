@@ -36,29 +36,13 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 		ParentID *uint
 	}
 
-	settingRootTitle := "设定"
-	settingRoot := model.Document{
-		ProjectID:  proj.ID,
-		Type:       "folder",
-		Title:      settingRootTitle,
-		SortOrder:  0,
-		WordCount:  0,
-		SearchText: "",
-		Status:     1,
-	}
-	if err := h.db.Create(&settingRoot).Error; err != nil {
-		return err
-	}
-	if err := h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, settingRoot, ""); err != nil {
-		return err
-	}
-
+	// 2026-10-22 Boss 定：设定区平铺，不要「设定」文件夹——5 个设定文档直接挂根级
 	settingDefs := []defaultDocX{
-		{Title: "大纲", Type: "outline", Content: "", ParentID: &settingRoot.ID},
-		{Title: "人物设定", Type: "characters", Content: "", ParentID: &settingRoot.ID},
-		{Title: "世界观", Type: "worldbuilding", Content: "", ParentID: &settingRoot.ID},
-		{Title: "故事主线", Type: "storyline", Content: "", ParentID: &settingRoot.ID},
-		{Title: "章节大纲", Type: "chapter_outline", Content: "", ParentID: &settingRoot.ID},
+		{Title: "大纲", Type: "outline", Content: "", ParentID: nil},
+		{Title: "人物设定", Type: "characters", Content: "", ParentID: nil},
+		{Title: "世界观", Type: "worldbuilding", Content: "", ParentID: nil},
+		{Title: "故事主线", Type: "storyline", Content: "", ParentID: nil},
+		{Title: "章节大纲", Type: "chapter_outline", Content: "", ParentID: nil},
 	}
 
 	for i, def := range settingDefs {
