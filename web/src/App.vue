@@ -1,7 +1,10 @@
 <template>
   <nav class="top-nav" v-if="showNav">
     <div class="nav-left">
-      <router-link to="/" class="logo">写作菌</router-link>
+      <router-link to="/" class="logo">
+        <img src="/icons/icon-192.png" alt="写作菌" class="logo-icon" />
+        写作菌
+      </router-link>
     </div>
     <div class="nav-right">
       <button v-if="canInstall" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
@@ -127,6 +130,16 @@ function logout() {
   color: var(--text-primary);
   text-decoration: none;
   letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: block;
 }
 
 .nav-right {
