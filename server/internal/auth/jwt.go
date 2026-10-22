@@ -27,7 +27,9 @@ func NewJWTManager(secret string) *JWTManager {
 	return &JWTManager{
 		secret:        []byte(secret),
 		accessExpiry:  2 * time.Hour,
-		refreshExpiry: 30 * 24 * time.Hour,
+		// 家庭电脑半常绿：refresh 180 天 + 滑动续期（每次访问自动换新 refresh），
+		// 半年不打开才需要重新登录（Boss 2026-10-22：家里电脑不想输密码）
+		refreshExpiry: 180 * 24 * time.Hour,
 	}
 }
 
