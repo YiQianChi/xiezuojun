@@ -41,7 +41,7 @@
         @drop-node="handleDropNode"
         @add-doc-root="createDocAtRoot"
         @add-setting="createSettingAtRoot"
-        @add-article="createChapterAtRoot"
+        @add-article="createVolumeAtRoot"
         @add-doc-in="createDocInFolder"
         @cycle-status="handleCycleStatus"
       />
@@ -1622,14 +1622,9 @@ function createDocAtRoot() {
   openCreateDocModal(null, 'volume')
 }
 
-// ponytail: 文章区＋号建章节——只有一卷时进该卷（保持全书编号连续）；多卷/无卷才落根级
-function createChapterAtRoot() {
-  const vols = documents.value.filter((d: any) => d.type === 'volume' && !d.parent_id)
-  if (vols.length === 1) {
-    openCreateDocModal(vols[0].id, 'chapter')
-    return
-  }
-  openCreateDocModal(null, 'chapter')
+// ponytail: 文章区＋号=新建卷（层级：卷→章节；章节走每卷的「+ 在卷下新建章节」）
+function createVolumeAtRoot() {
+  openCreateDocModal(null, 'volume')
 }
 
 // ponytail: 设定区＋号——根目录建设定（弹窗里选类型：大纲/人物/世界观等）
