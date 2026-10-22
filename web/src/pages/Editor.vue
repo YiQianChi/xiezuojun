@@ -375,7 +375,7 @@
             <div class="help-row"><kbd>Ctrl+S</kbd><span>保存</span></div>
             <div class="help-row"><kbd>Ctrl+F</kbd><span>搜索（本章）</span></div>
             <div class="help-row"><kbd>Ctrl+Shift+F</kbd><span>搜索（全项目）</span></div>
-            <div class="help-row"><kbd>Ctrl+P</kbd><span>切换模式（构思→写作→审阅）</span></div>
+            <div class="help-row"><kbd>Ctrl+P</kbd><span>切换模式（构思→写作）</span></div>
             <div class="help-row"><kbd>Ctrl+Shift+Z</kbd><span>专注模式</span></div>
             <div class="help-row"><kbd>Alt+↑</kbd><span>上一个场景</span></div>
             <div class="help-row"><kbd>Alt+↓</kbd><span>下一个场景</span></div>
@@ -1650,7 +1650,7 @@ function handleGlobalKeydown(e: KeyboardEvent) {
   // B4: Ctrl+P 循环切换工作模式
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
     e.preventDefault()
-    const modes: EditorMode[] = ['plan', 'write', 'review']
+    const modes: EditorMode[] = ['plan', 'write'] // 审核暂时隐藏，别被快捷键切进去
     const idx = modes.indexOf(mode.value)
     switchMode(modes[(idx + 1) % modes.length])
     return

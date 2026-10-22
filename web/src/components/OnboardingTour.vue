@@ -71,7 +71,6 @@
             <div class="demo-modes">
               <span class="demo-mode">构思</span>
               <span class="demo-mode active">写作</span>
-              <span class="demo-mode">审核</span>
             </div>
             <div class="demo-header-actions">
               <span class="demo-icon-btn">🌙</span><span class="demo-icon-btn">📖</span><span class="demo-icon-btn">⬜</span><span class="demo-icon-btn">⏱</span>
@@ -126,9 +125,9 @@ const allSteps: Step[] = [
   { badge: '第 1 步 / 共 5 步', title: '左侧栏：设定 + 文章', desc: '左侧分两个区域，所有创作素材和正文章节都在这里管理。',
     selector: '.doc-tree', placement: 'right',
     features: [{ icon:'📋', bg:'#f7f4f1', name:'设定区', desc:'放创作素材：大纲、人物设定、世界观' },{ icon:'📖', bg:'#fff', name:'文章区', desc:'按章节组织的正文，点击即写' }] },
-  { badge: '第 2 步 / 共 5 步', title: '顶部：三种工作模式', desc: '随时切换模式，覆盖从构思到成稿再到审核的全流程。',
+  { badge: '第 2 步 / 共 5 步', title: '顶部：两种工作模式', desc: '随时切换模式，从构思到成稿。',
     selector: '.mode-switcher', placement: 'bottom',
-    features: [{ icon:'🧠', bg:'#af52de15', name:'构思', desc:'5步AI引导：梗概→世界观→人物→大纲' },{ icon:'✍️', bg:'#007aff15', name:'写作', desc:'沉浸式编辑器，AI续写/改写/润色/扩写' },{ icon:'🔍', bg:'#ff950015', name:'审核', desc:'AI查人物矛盾、伏笔遗漏、节奏问题' }] },
+    features: [{ icon:'🧠', bg:'#af52de15', name:'构思', desc:'5步AI引导：梗概→世界观→人物→大纲' },{ icon:'✍️', bg:'#007aff15', name:'写作', desc:'沉浸式编辑器，AI续写/改写/润色/扩写' }] },
   { badge: '第 3 步 / 共 5 步', title: '右侧工具：分屏 · 专注 · 版本历史', desc: '写作模式下，右侧工具栏提供多种辅助功能。',
     selector: '.header-actions', placement: 'bottom',
     features: [{ icon:'📖', bg:'#007aff15', name:'分屏参考', desc:'左边写正文，右边看设定素材' },{ icon:'⬜', bg:'#007aff15', name:'专注模式', desc:'隐藏侧栏，全屏写作' },{ icon:'⏱', bg:'#007aff15', name:'版本历史', desc:'随时回到任意历史版本，不怕写错' }] },

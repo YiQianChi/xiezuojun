@@ -27,7 +27,9 @@
         @click="$emit('switch-mode', 'write')"
         title="写作：正文创作 + AI 续写/改写"
       ><span class="dot"></span>写作</button>
+      <!-- 审核功能先隐藏（2026-10-22 Boss 指示），恢复时删掉 v-if 即可 -->
       <button
+        v-if="false"
         class="mode-tab review"
         :class="{ active: mode === 'review' }"
         @click="$emit('switch-mode', 'review')"
