@@ -41,7 +41,7 @@
         @drop-node="handleDropNode"
         @add-doc-root="createDocAtRoot"
         @add-setting="createSettingAtRoot"
-        @add-article="createDocAtRoot"
+        @add-article="createChapterAtRoot"
         @add-doc-in="createDocInFolder"
         @cycle-status="handleCycleStatus"
       />
@@ -269,8 +269,8 @@
           <div @click="deleteDoc" class="danger">删除</div>
         </template>
         <template v-else>
-          <div @click="newDocUnder('chapter')">新建文件</div>
-          <div @click="newDocUnder('volume')">新建文件夹</div>
+          <div @click="newDocUnder('chapter')">新建章节</div>
+          <div @click="newDocUnder('volume')">新建卷</div>
         </template>
       </div>
     </div>
@@ -613,9 +613,9 @@ const newDocName = ref('')
 const createDocType = ref<string>('chapter')
 const createDocParent = ref<number | null>(null)
 const createDocFolderTypeOptions = computed(() => {
-  if (createDocType.value !== 'volume') return undefined
+  // 只有「新建设定」弹窗需要选类型；卷/章节的弹窗都是单一用途
+  if (createDocType.value !== 'setting') return undefined
   return [
-    { value: 'volume', label: '📁 卷/文件夹' },
     { value: 'outline', label: '📋 大纲' },
     { value: 'characters', label: '👥 人物' },
     { value: 'worldbuilding', label: '🌍 世界观' },
@@ -893,6 +893,19 @@ onMounted(async () => {
   loadVoices() // E2: 非关键，不 await
   await loadBranches()
   await loadDocs()
+  // 恢复上次的章节；新书（只有一章）直接打开第一章，不让新手面对空编辑器
+  if (!activeDocId.value) {
+    let target: any = null
+    try {
+      const lastId = Number(localStorage.getItem(`xzj-last-doc-${projectId}`) || 0)
+      if (lastId) target = documents.value.find((d: any) => d.id === lastId && d.type === 'chapter')
+    } catch {}
+    if (!target) {
+      const chapters = documents.value.filter((d: any) => d.type === 'chapter')
+      if (chapters.length === 1) target = chapters[0]
+    }
+    if (target) openDoc(target)
+  }
 })
 
 async function loadProjectName() {
@@ -1139,7 +1152,11 @@ async function loadDocs() {
     const isFirstLoad = documents.value.length === 0
     let savedExpand: Set<number> | null = null
     if (isFirstLoad) {
-      try { savedExpand = new Set(JSON.parse(localStorage.getItem(expandKey) || '[]')) } catch {}
+      // 只有真的存过展开状态才用；否则走默认展开（原写法 '[]' 恒成功导致默认展开永不生效）
+      const rawExpand = localStorage.getItem(expandKey)
+      if (rawExpand !== null) {
+        try { savedExpand = new Set(JSON.parse(rawExpand)) } catch {}
+      }
     }
     const prev = new Map(documents.value.map(d => [d.id, d._expanded]))
     for (const d of fresh) {
@@ -1148,7 +1165,8 @@ async function loadDocs() {
       } else if (isFirstLoad && savedExpand) {
         d._expanded = savedExpand.has(d.id)
       } else if (isFirstLoad) {
-        d._expanded = d.type === 'volume' || d.title === '文章'
+        // 首次打开（无保存的展开状态）：卷和文件夹默认展开，新手进来就能看到第一章
+        d._expanded = d.type === 'volume' || d.type === 'folder'
       }
     }
     documents.value = fresh
@@ -1221,6 +1239,8 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; await autoSave() }
   activeDocId.value = doc.id
   currentDocName.value = doc.title
+  // 记住每本书最后打开的章节，下次进编辑器直接续上
+  try { localStorage.setItem(`xzj-last-doc-${projectId}`, String(doc.id)) } catch {}
   aiToolbar.value.visible = false
   // 切换章节时清空搜索状态与高亮（全项目跳转除外）
   if (!opts?.keepSearch && (searchQuery.value || searchTotal.value)) {
@@ -1402,9 +1422,14 @@ function createDocAtRoot() {
   openCreateDocModal(null, 'volume')
 }
 
-// ponytail: 设定区＋号——根目录建设定类(folder)
+// ponytail: 文章区＋号直接建章节——新手第一诉求是写正文，建卷走右键菜单
+function createChapterAtRoot() {
+  openCreateDocModal(null, 'chapter')
+}
+
+// ponytail: 设定区＋号——根目录建设定（弹窗里选类型：大纲/人物/世界观等）
 function createSettingAtRoot() {
-  openCreateDocModal(null, 'folder')
+  openCreateDocModal(null, 'setting')
 }
 
 // ponytail: 文件夹内+按钮，根据文件夹类型决定子文档类型

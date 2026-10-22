@@ -60,7 +60,7 @@
             @add-child="(folder) => $emit('add-doc-in', folder)"
             @cycle-status="(n) => $emit('cycle-status', n)"
           />
-          <div class="zone-add-link article" @click.stop="$emit('add-article')">＋ 新建文章</div>
+          <div class="zone-add-link article" @click.stop="$emit('add-article')">＋ 新建章节</div>
         </div>
       </template>
     </div>

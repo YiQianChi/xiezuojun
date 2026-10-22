@@ -143,6 +143,9 @@ export const projectApi = {
   create(data: { name: string; description?: string }) {
     return api.post('/projects', data)
   },
+  importBook(data: { name: string; volumes: { title: string; chapters: { title: string; content: string }[] }[] }) {
+    return api.post('/projects/import', data)
+  },
   update(id: string | number, data: { name?: string; description?: string }) {
     return api.patch(`/projects/${id}`, data)
   },

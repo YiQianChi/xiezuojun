@@ -1,15 +1,15 @@
 <template>
   <div v-if="modelValue" class="modal-overlay" @click="close">
     <div class="modal" @click.stop>
-      <h3>{{ isFolder ? '新建文件夹' : '新建文档' }}</h3>
+      <h3>{{ dialogTitle }}</h3>
       <input
         v-model="name"
-        :placeholder="isFolder ? '文件夹名' : '文档名'"
+        :placeholder="inputPlaceholder"
         class="input"
         @keyup.enter="confirm"
         autofocus
       />
-      <div v-if="isFolder && folderTypeOptions?.length" class="folder-type-row">
+      <div v-if="folderTypeOptions?.length" class="folder-type-row">
         <label class="folder-type-label">类型</label>
         <div class="folder-type-options">
           <button
@@ -45,10 +45,16 @@ const emit = defineEmits<{
 
 const name = ref('')
 const selectedFolderType = ref('')
-const isFolder = computed(() => {
-  const t = props.docType
-  return t === 'volume' || ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline'].includes(t)
-})
+
+// 术语统一：标题/占位符按创建目标动态生成，全书只叫「卷/章节/设定/文档」
+const TITLE_MAP: Record<string, [string, string]> = {
+  chapter: ['新建章节', '章节名，如：第三章 转机'],
+  volume: ['新建卷', '卷名，如：第一卷'],
+  setting: ['新建设定', '设定名称'],
+  note: ['新建文档', '文档名'],
+}
+const dialogTitle = computed(() => TITLE_MAP[props.docType]?.[0] || '新建文档')
+const inputPlaceholder = computed(() => TITLE_MAP[props.docType]?.[1] || '文档名')
 
 watch(() => props.folderTypeOptions, (opts) => {
   if (opts && opts.length) selectedFolderType.value = opts[0].value

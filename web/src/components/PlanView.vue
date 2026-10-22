@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { documentApi } from '../core/api'
-import { streamGenerate } from '../core/sse'
+import { streamGenerate, friendlyAIError } from '../core/sse'
 
 const props = defineProps<{
   projectName: string
@@ -286,7 +286,7 @@ async function startStep(id: number) {
     step.editing = false
   } catch (e: any) {
     step.status = 'pending'
-    step.error = e.message || 'AI 生成失败，请重试'
+    step.error = friendlyAIError(e)
   }
 }
 

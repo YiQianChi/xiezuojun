@@ -8,7 +8,7 @@
       <div class="header-actions">
         <button class="btn ghost" @click="showTrash = true">回收站</button>
         <button class="btn ghost" @click="showUserCenter = true">用户中心</button>
-        <button class="btn primary" @click="showCreateModal = true">
+        <button class="btn primary" @click="openCreateModal">
           <span>+</span> 新建书籍
         </button>
       </div>
@@ -20,7 +20,7 @@
       <div class="empty-icon">📚</div>
       <h3>还没有书籍</h3>
       <p>开始你的第一本书吧</p>
-      <button class="btn primary" @click="showCreateModal = true">创建第一本书</button>
+      <button class="btn primary" @click="openCreateModal">创建第一本书</button>
     </div>
 
     <div v-else class="books-grid">
@@ -52,7 +52,7 @@
         </div>
       </div>
 
-      <div class="book-card add-card" @click="showCreateModal = true">
+      <div class="book-card add-card" @click="openCreateModal">
         <div class="book-cover add">
           <span>+</span>
         </div>
@@ -63,24 +63,41 @@
       </div>
     </div>
 
-    <!-- 新建书籍弹窗 -->
-    <div v-if="showCreateModal" class="modal-overlay" @click="showCreateModal = false">
+    <!-- 新建书籍弹窗（空白 / 导入 TXT 二合一） -->
+    <div v-if="showCreateModal" class="modal-overlay" @click="closeCreateModal">
       <div class="modal" @click.stop>
         <h3>新建书籍</h3>
-        <div class="form-group">
-          <label>书籍名称</label>
-          <input v-model="newBookName" placeholder="输入书籍名称" class="input" @keyup.enter="createBook" />
+        <div class="create-mode-tabs">
+          <button
+            class="mode-tab"
+            :class="{ active: createMode === 'blank' }"
+            @click="createMode = 'blank'"
+          >✨ 空白新书</button>
+          <button
+            class="mode-tab"
+            :class="{ active: createMode === 'import' }"
+            @click="createMode = 'import'"
+          >📥 导入 TXT</button>
         </div>
-        <div class="form-group">
-          <label>简介（可选）</label>
-          <input v-model="newBookDesc" placeholder="一句话描述这本书" class="input" />
-        </div>
-        <div class="modal-actions">
-          <button class="btn" @click="showCreateModal = false">取消</button>
-          <button class="btn primary" @click="createBook" :disabled="creating">
-            {{ creating ? '创建中...' : '创建' }}
-          </button>
-        </div>
+
+        <template v-if="createMode === 'blank'">
+          <div class="form-group">
+            <label>书籍名称</label>
+            <input v-model="newBookName" placeholder="输入书籍名称" class="input" @keyup.enter="createBook" />
+          </div>
+          <div class="form-group">
+            <label>简介（可选）</label>
+            <input v-model="newBookDesc" placeholder="一句话描述这本书" class="input" />
+          </div>
+          <div class="modal-actions">
+            <button class="btn" @click="closeCreateModal">取消</button>
+            <button class="btn primary" @click="createBook" :disabled="creating">
+              {{ creating ? '创建中...' : '创建' }}
+            </button>
+          </div>
+        </template>
+
+        <ImportBookPanel v-else ref="importPanelRef" @imported="onImported" />
       </div>
     </div>
 
@@ -190,6 +207,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { projectApi, trashApi, userApi } from '../core/api'
 import { toast } from '../composables/useToast'
+import ImportBookPanel from '../components/ImportBookPanel.vue'
 
 const router = useRouter()
 const projects = ref<any[]>([])
@@ -197,6 +215,8 @@ const loading = ref(false)
 
 
 const showCreateModal = ref(false)
+const createMode = ref<'blank' | 'import'>('blank')
+const importPanelRef = ref<{ reset: () => void } | null>(null)
 const newBookName = ref('')
 const newBookDesc = ref('')
 const creating = ref(false)
@@ -241,6 +261,16 @@ async function loadProjects() {
   }
 }
 
+function openCreateModal() {
+  createMode.value = 'blank'
+  showCreateModal.value = true
+}
+
+function closeCreateModal() {
+  showCreateModal.value = false
+  importPanelRef.value?.reset()
+}
+
 async function createBook() {
   if (!newBookName.value.trim()) return
   creating.value = true
@@ -264,6 +294,12 @@ async function createBook() {
 function openBook(project: any) {
   const id = project.id || project.project_id
   router.push(`/editor/${id}`)
+}
+
+// 导入完成 → 关弹窗直接进新书编辑器
+function onImported(projectId: number) {
+  showCreateModal.value = false
+  router.push(`/editor/${projectId}`)
 }
 
 async function deleteBook(project: any) {
@@ -660,6 +696,33 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 新建书籍弹窗的模式切换 tab */
+.create-mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 4px;
+  background: var(--bg-tertiary, #f5f5f7);
+  border-radius: 10px;
+}
+.mode-tab {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all .15s;
+}
+.mode-tab.active {
+  background: var(--bg-secondary, #fff);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
 }
 
 /* 弹窗 */

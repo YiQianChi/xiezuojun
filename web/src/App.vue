@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toasts, toast } from './composables/useToast'
 import { usePwaInstall } from './composables/usePwaInstall'
@@ -52,7 +52,12 @@ const route = useRoute()
 const router = useRouter()
 const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
-const isLoggedIn = ref(!!localStorage.getItem('access_token'))
+const isLoggedIn = ref(false)
+// 登录/登出后路由会跳转，每次导航都重读一次 token，保证导航栏状态实时
+function refreshLoginState() {
+  isLoggedIn.value = !!localStorage.getItem('access_token')
+}
+watch(() => route.fullPath, refreshLoginState)
 const showQQModal = ref(false)
 const onboardingRef = ref<{ start: () => void; forceStart: () => void } | null>(null)
 const { canInstall, promptInstall } = usePwaInstall()
@@ -76,6 +81,7 @@ function onReplayOnboarding() {
   onboardingRef.value?.forceStart()
 }
 onMounted(() => {
+  refreshLoginState()
   document.addEventListener('contextmenu', (e) => e.preventDefault())
   window.addEventListener('replay-onboarding', onReplayOnboarding)
 })

@@ -21,7 +21,7 @@
  */
 import { ref, nextTick, type Ref } from 'vue'
 import { Mark } from '@tiptap/core'
-import { streamGenerate } from '../core/sse'
+import { streamGenerate, friendlyAIError } from '../core/sse'
 import { toast } from './useToast'
 
 export type AIAction = 'continue' | 'rewrite' | 'polish' | 'expand'
@@ -206,25 +206,31 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
     const insertPos = end
     const originalRange = { from: start, to: end }
 
-    // 先插入一个换行，作为 AI 文本的起始锚点
-    editor.value.chain()
-      .focus()
-      .setTextSelection({ from: insertPos, to: insertPos })
-      .insertContent('\n')
-      .run()
+    // 锚点（换行 + AI 起始位置）延迟到首个内容块到达时才插入。
+    // 之前是点「生成」就插 '\n'，生成失败要回滚——而 PM 里 '\n' 会规范化成硬换行/空段落，
+    // 按位置删不可靠（失败一次正文多一行）。懒插入后：失败=正文零改动，无需回滚。
+    let anchorReady = false
+    let aiFrom = insertPos
 
-    const aiFrom = insertPos + 1  // AI 文本起始位置（换行之后）
-
-    // 记住原文信息
-    aiInsert.value = {
-      active: true,
-      x: 0, y: 0,
-      from: aiFrom,
-      to: aiFrom,
-      action,
-      originalText: selectedText,
-      originalFrom: originalRange.from,
-      originalTo: originalRange.to,
+    function ensureAnchor() {
+      if (anchorReady || !editor.value) return
+      editor.value.chain()
+        .focus()
+        .setTextSelection({ from: insertPos, to: insertPos })
+        .insertContent('\n')
+        .run()
+      aiFrom = insertPos + 1  // AI 文本起始位置（换行之后）
+      aiInsert.value = {
+        active: true,
+        x: 0, y: 0,
+        from: aiFrom,
+        to: aiFrom,
+        action,
+        originalText: selectedText,
+        originalFrom: originalRange.from,
+        originalTo: originalRange.to,
+      }
+      anchorReady = true
     }
 
     // ---- 流式接收 + rAF 节流写入编辑器 ----
@@ -276,6 +282,7 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
           },
           onContent: (chunk) => {
             accumulated += chunk
+            ensureAnchor()
             if (!pendingFlush) {
               pendingFlush = true
               requestAnimationFrame(flushToEditor)
@@ -304,17 +311,18 @@ export function useAIToolbar(opts: UseAIToolbarOptions) {
       saveStatus.value = '已生成，等待采用'
     } catch (e: any) {
       console.error('AI 生成失败', e)
-      saveStatus.value = oldStatus || '生成失败'
       // abort 引发的错误不弹 toast
       if (!(e?.name === 'AbortError')) {
-        toast.error(e.message || '生成失败')
+        toast.error(friendlyAIError(e))
       }
-      // 如果已经有部分内容，进入 preview；否则清理状态回到 idle
+      // 如果已经有部分内容，进入 preview；否则回到 idle（锚点懒插入，此时正文零改动，无需清理）
       if (accumulated && aiInsert.value.active && aiInsert.value.to > aiInsert.value.from) {
         aiPhase.value = 'preview'
+        saveStatus.value = oldStatus || '已保存'
       } else {
         aiPhase.value = 'idle'
         aiInsert.value.active = false
+        saveStatus.value = '生成失败'
       }
     } finally {
       aiLoading.value = false

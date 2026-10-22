@@ -6,7 +6,8 @@ import (
 	"xiezuojun-server/internal/model"
 )
 
-const articleRootTitle = "文章"
+// 种子卷名直接叫「第一卷」——叫「文章」会和侧栏分区名混淆，新手不知道是干嘛的
+const articleRootTitle = "第一卷"
 
 func defaultDocContent(docType, title string) string {
 	switch docType {

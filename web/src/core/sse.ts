@@ -17,6 +17,19 @@ export interface SSECallbacks {
   onDone?: () => void
 }
 
+/**
+ * 把后端/网络的技术错误翻译成作者能看懂的话。
+ * 原始错误仍打在 console，界面只给 actionable 的中文提示。
+ */
+export function friendlyAIError(e: any): string {
+  const msg = String(e?.message || '')
+  if (/登录已过期/.test(msg)) return msg
+  if (/API error|ai stream failed|HTTP \d{3}|Failed to fetch|NetworkError|fetch failed|网络/i.test(msg)) {
+    return 'AI 暂时不可用，请稍后再试。若长时间不可用，请到 QQ 群反馈'
+  }
+  return msg || 'AI 生成失败，请重试'
+}
+
 export async function streamGenerate(
   params: {
     project_id: string
