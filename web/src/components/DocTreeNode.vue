@@ -17,7 +17,8 @@
       </span>
       <span v-else class="toggle-icon spacer"></span>
 
-      <span class="node-index">{{ index }}</span>
+      <!-- 章节不显示序号——标题自带「第X章」，数字是冗余噪音 -->
+      <span v-if="node.type !== 'chapter'" class="node-index">{{ index }}</span>
       <span class="node-icon">{{ nodeIcon }}</span>
       <span
         v-if="!isFolder"
@@ -26,7 +27,7 @@
         :title="statusLabel"
         @click.stop="emit('cycle-status', node)"
       ></span>
-      <span class="node-title">{{ displayTitle }}</span>
+      <span class="node-title" :class="titleSizeClass">{{ displayTitle }}</span>
       <div v-if="!isFolder && node.word_goal > 0" class="mini-progress-wrap" @click.stop>
         <div class="mini-progress-bar">
           <div class="mini-progress-fill" :style="{ width: progressPct + '%', background: progressColor }"></div>
@@ -111,6 +112,15 @@ const nodeIcon = computed(() => {
 
 // ponytail: 作者自己决定章节标题，不做自动编号
 const displayTitle = computed(() => props.node.title)
+
+// 长标题自动缩字号，尽量完整展示（Boss：以美观为主，能显示全就别省略号）
+// 侧栏可用宽度约 240px，去掉图标/状态点/缩进后标题区 ~175px：12px≈14字、10.5px≈16字
+const titleSizeClass = computed(() => {
+  const len = [...String(props.node.title || '')].length
+  if (len > 14) return 'title-shrink-2'
+  if (len > 11) return 'title-shrink-1'
+  return ''
+})
 
 // ponytail: 文件夹标签按 type 推导
 const childLabel = computed(() => {
@@ -287,6 +297,10 @@ const progressColor = computed(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 长标题缩字号尽量展示全 */
+.node-title.title-shrink-1 { font-size: 12px; }
+.node-title.title-shrink-2 { font-size: 10.5px; letter-spacing: -0.3px; }
 
 /* B3: 状态圆点 */
 .status-dot {
