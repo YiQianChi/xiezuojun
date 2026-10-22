@@ -45,10 +45,7 @@
     ],
     "buildModeSet": [
       { "name": "debug" },
-      {
-        "name": "release",
-        "signingConfig": "release"
-      }
+      { "name": "release" }
     ]
   },
   "modules": [
