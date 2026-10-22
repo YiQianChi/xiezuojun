@@ -195,8 +195,9 @@
   }
   /* 正文留白与字号按手机收窄 */
   .tiptap-container { padding: 16px 18px 96px; padding-bottom: var(--ds-bottom-pad, 96px); }
-  .tiptap-container .tiptap { font-size: var(--ds-font-size, 16px); line-height: var(--ds-line-height, 1.95); letter-spacing: var(--ds-letter-spacing, normal); }
-  .tiptap-container .tiptap p { margin: 0.6em 0; }
+  /* ponytail: .tiptap 元素是 tiptap JS 渲染的，没有 scoped data 属性，必须用 :deep 才选得到 */
+  .tiptap-container :deep(.ProseMirror) { font-size: var(--ds-font-size, 16px); line-height: var(--ds-line-height, 1.95); letter-spacing: var(--ds-letter-spacing, normal); }
+  .tiptap-container :deep(.ProseMirror p) { margin: 0.6em 0; }
   /* 状态栏：只留核心项，safe-area 底部留白 */
   .status-bar { gap: 10px; padding: 0 14px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
   .status-bar .voice-select { display: none; }
@@ -223,12 +224,12 @@
 }
 
 /* ponytail-focus: 专注模式沉浸增强（C 方案元素）——大行距 + 居中窄栏 + 底部字数激励 */
-.editor-page.focus-mode .tiptap-container .tiptap {
+.editor-page.focus-mode .tiptap-container :deep(.ProseMirror) {
   line-height: var(--ds-line-height, 2.05);
   font-size: var(--ds-font-size, 16.5px);
   letter-spacing: var(--ds-letter-spacing, 0.01em);
 }
-.editor-page.focus-mode .tiptap-container .tiptap p { margin: 0.75em 0; }
+.editor-page.focus-mode .tiptap-container :deep(.ProseMirror p) { margin: 0.75em 0; }
 .editor-page.focus-mode .editor-wrapper {
   background: linear-gradient(180deg, var(--bg-primary), var(--bg-primary));
 }
@@ -717,13 +718,13 @@
 }
 
 :deep(.ProseMirror h1) {
-  font-size: 28px;
+  font-size: 1.65em; /* 相对正文字号，显示设置调字号时标题跟着缩放 */
   font-weight: 700;
   margin: 1em 0 0.6em;
 }
 
 :deep(.ProseMirror h2) {
-  font-size: 22px;
+  font-size: 1.3em;
   font-weight: 600;
   margin: 1em 0 0.5em;
 }
