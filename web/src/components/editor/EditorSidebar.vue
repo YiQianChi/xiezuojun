@@ -21,8 +21,8 @@
         <button @click="$emit('init-default')" class="btn small">初始化默认结构</button>
       </div>
       <template v-else>
-        <!-- 设定区 -->
-        <div v-if="settingRootNodes.length > 0" class="setting-zone">
+        <!-- 设定区：即使空也显示（保留新建设定入口） -->
+        <div class="setting-zone">
           <div class="zone-caption">作品相关</div>
           <DocTreeNode
             v-for="(node, i) in settingRootNodes"

@@ -29,7 +29,7 @@ func defaultDocContent(docType, title string) string {
 	}
 }
 
-func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uint, firstChapterTitle string) error {
+func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uint, firstChapterTitle string, settingTypes []string) error {
 	type defaultDocX struct {
 		Title    string
 		Type     string
@@ -37,13 +37,28 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 		ParentID *uint
 	}
 
-	// 2026-10-22 Boss 定：设定区平铺，不要「设定」文件夹——5 个设定文档直接挂根级
-	settingDefs := []defaultDocX{
+	// 2026-10-22 Boss 定：设定区平铺，不要「设定」文件夹——设定文档直接挂根级
+	// 2026-10-22 起建书时作者自选要哪些设定文件；nil=全部（老调用方/导入保持原样），空数组=不建
+	allSettingDefs := []defaultDocX{
 		{Title: "大纲", Type: "outline", Content: "", ParentID: nil},
 		{Title: "人物设定", Type: "characters", Content: "", ParentID: nil},
 		{Title: "世界观", Type: "worldbuilding", Content: "", ParentID: nil},
 		{Title: "故事主线", Type: "storyline", Content: "", ParentID: nil},
 		{Title: "章节大纲", Type: "chapter_outline", Content: "", ParentID: nil},
+	}
+	var settingDefs []defaultDocX
+	if settingTypes == nil {
+		settingDefs = allSettingDefs
+	} else {
+		allowed := map[string]bool{}
+		for _, t := range settingTypes {
+			allowed[t] = true
+		}
+		for _, d := range allSettingDefs {
+			if allowed[d.Type] {
+				settingDefs = append(settingDefs, d)
+			}
+		}
 	}
 
 	for i, def := range settingDefs {

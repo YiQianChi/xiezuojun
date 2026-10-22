@@ -93,6 +93,14 @@
             <label>首章名称（可选）</label>
             <input v-model="firstChapterTitle" placeholder="默认：第一章" class="input" @keyup.enter="createBook" />
           </div>
+          <div class="form-group">
+            <label>作品相关文件（按需勾选）</label>
+            <div class="setting-checks">
+              <label v-for="s in settingOptions" :key="s.value" class="setting-check">
+                <input type="checkbox" v-model="s.checked" /> {{ s.label }}
+              </label>
+            </div>
+          </div>
           <div class="modal-actions">
             <button class="btn" @click="closeCreateModal">取消</button>
             <button class="btn primary" @click="createBook" :disabled="creating">
@@ -224,6 +232,14 @@ const importPanelRef = ref<{ reset: () => void } | null>(null)
 const newBookName = ref('')
 const newBookDesc = ref('')
 const firstChapterTitle = ref('')
+// 建书时自选要哪些作品相关文件（默认全选）
+const settingOptions = ref([
+  { value: 'outline', label: '大纲', checked: true },
+  { value: 'characters', label: '人物设定', checked: true },
+  { value: 'worldbuilding', label: '世界观', checked: true },
+  { value: 'storyline', label: '故事主线', checked: true },
+  { value: 'chapter_outline', label: '章节大纲', checked: true },
+])
 const creating = ref(false)
 
 // 回收站
@@ -283,7 +299,8 @@ async function createBook() {
     const res = await projectApi.create({
       name: newBookName.value.trim(),
       description: newBookDesc.value.trim(),
-      first_chapter_title: firstChapterTitle.value.trim() || undefined
+      first_chapter_title: firstChapterTitle.value.trim() || undefined,
+      setting_types: settingOptions.value.filter(s => s.checked).map(s => s.value)
     })
     const project = res.data?.data || res.data
     showCreateModal.value = false
@@ -704,6 +721,22 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 建书弹窗的作品相关勾选组 */
+.setting-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.setting-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.setting-check input { accent-color: var(--accent, #007aff); }
 
 /* 新建书籍弹窗的模式切换 tab */
 .create-mode-tabs {

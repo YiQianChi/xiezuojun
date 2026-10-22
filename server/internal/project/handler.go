@@ -142,6 +142,8 @@ func (h *Handler) CreateProject(c *gin.Context) {
 		Tags     string `json:"tags"`
 		// 首章名称（可选，默认「第一章」）
 		FirstChapterTitle string `json:"first_chapter_title"`
+		// 要创建的设定文件类型（可选；nil=全部五个，空数组=一个都不建）
+		SettingTypes []string `json:"setting_types"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -174,7 +176,7 @@ func (h *Handler) CreateProject(c *gin.Context) {
 
 	// 创建默认作品结构：一级资料文件 + 二级「文章」正文目录
 	h.locks.Lock(proj.UserID)
-	err = h.createDefaultProjectDocuments(proj, mainBranch.ID, req.FirstChapterTitle)
+	err = h.createDefaultProjectDocuments(proj, mainBranch.ID, req.FirstChapterTitle, req.SettingTypes)
 	h.locks.Unlock(proj.UserID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create default docs: " + err.Error()})

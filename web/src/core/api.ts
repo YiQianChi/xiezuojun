@@ -140,7 +140,7 @@ export const projectApi = {
   get(id: string | number) {
     return api.get(`/projects/${id}`)
   },
-  create(data: { name: string; description?: string; first_chapter_title?: string }) {
+  create(data: { name: string; description?: string; first_chapter_title?: string; setting_types?: string[] }) {
     return api.post('/projects', data)
   },
   importBook(data: { name: string; volumes: { title: string; chapters: { title: string; content: string }[] }[] }) {
