@@ -408,22 +408,36 @@
       @create="onCreateDocConfirm"
     />
 
-    <!-- 首次进入：初始化作品相关文件（Boss 定：建书时不创建，进编辑器再询问） -->
+    <!-- 首次进入：初始化向导（第一步首章名称 → 第二步作品相关文件） -->
     <div v-if="showSettingsInit" class="modal-overlay" @click="skipSettingsInit">
       <div class="settings-init-modal" @click.stop>
-        <h3>要为这本书建哪些作品相关文件？</h3>
-        <p class="si-desc">不建也没关系，以后随时可以在左侧「＋ 新建设定」补。</p>
-        <div class="si-options">
-          <label v-for="s in settingsInitOptions" :key="s.value" class="si-option">
-            <input type="checkbox" v-model="s.checked" /> {{ s.label }}
-          </label>
-        </div>
-        <div class="si-actions">
-          <button class="si-btn" @click="skipSettingsInit">跳过</button>
-          <button class="si-btn primary" @click="confirmSettingsInit" :disabled="settingsInitCreating">
-            {{ settingsInitCreating ? '创建中…' : '创建' }}
-          </button>
-        </div>
+        <div class="si-steps">第 {{ settingsInitStep }} 步 / 共 2 步</div>
+
+        <template v-if="settingsInitStep === 1">
+          <h3>第一章叫什么？</h3>
+          <p class="si-desc">写个章节名，比如「第一章 雨夜」。</p>
+          <input v-model="firstChapterNameInput" class="si-input" placeholder="第一章" @keyup.enter="settingsInitStep = 2" />
+          <div class="si-actions">
+            <button class="si-btn" @click="skipSettingsInit">跳过</button>
+            <button class="si-btn primary" @click="settingsInitStep = 2">下一步</button>
+          </div>
+        </template>
+
+        <template v-else>
+          <h3>要为这本书建哪些作品相关文件？</h3>
+          <p class="si-desc">不建也没关系，以后随时可以在左侧「＋ 新建设定」补。</p>
+          <div class="si-options">
+            <label v-for="s in settingsInitOptions" :key="s.value" class="si-option">
+              <input type="checkbox" v-model="s.checked" /> {{ s.label }}
+            </label>
+          </div>
+          <div class="si-actions">
+            <button class="si-btn" @click="settingsInitStep = 1">上一步</button>
+            <button class="si-btn primary" @click="confirmSettingsInit" :disabled="settingsInitCreating">
+              {{ settingsInitCreating ? '创建中…' : '完成' }}
+            </button>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -780,9 +794,11 @@ const chatOpen = ref(false) // AI 对话面板
 const helpOpen = ref(false) // E5: 快捷键帮助弹窗
 const toolboxOpen = ref(false) // 工具箱弹出菜单
 
-// ---- 首次进入：作品相关文件初始化询问（建书不建设定，进来再问） ----
+// ---- 首次进入：初始化向导（第一步首章名称 → 第二步作品相关文件） ----
 const showSettingsInit = ref(false)
 const settingsInitCreating = ref(false)
+const settingsInitStep = ref(1)
+const firstChapterNameInput = ref('')
 const settingsInitOptions = ref([
   { value: 'outline', label: '📋 大纲', checked: true },
   { value: 'characters', label: '👥 人物设定', checked: true },
@@ -797,6 +813,12 @@ function maybeAskSettingsInit() {
   try { if (localStorage.getItem(skipKey)) return } catch {}
   const hasSettings = documents.value.some((d: any) => SETTING_INIT_TYPES.includes(d.type))
   if (!hasSettings) {
+    // 预填当前首章名（用户改了才发重命名）
+    const first = documents.value
+      .filter((d: any) => d.type === 'chapter')
+      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))[0]
+    firstChapterNameInput.value = first?.title || '第一章'
+    settingsInitStep.value = 1
     showSettingsInit.value = true
     // 和新手引导错开：init 弹窗关闭后再让 tour 弹（事件驱动，见 OnboardingTour）
     window.dispatchEvent(new CustomEvent('settings-init-state', { detail: true }))
@@ -810,10 +832,18 @@ function skipSettingsInit() {
 }
 
 async function confirmSettingsInit() {
-  const chosen = settingsInitOptions.value.filter(s => s.checked)
-  if (chosen.length === 0) { skipSettingsInit(); return }
   settingsInitCreating.value = true
   try {
+    // 第一步：首章改名（用户没动就不发请求）
+    const first = documents.value
+      .filter((d: any) => d.type === 'chapter')
+      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))[0]
+    const newTitle = firstChapterNameInput.value.trim()
+    if (first && newTitle && newTitle !== first.title) {
+      await documentApi.update(first.id, { title: newTitle })
+    }
+    // 第二步：作品相关文件
+    const chosen = settingsInitOptions.value.filter(s => s.checked)
     for (let i = 0; i < chosen.length; i++) {
       const s = chosen[i]
       await documentApi.create({

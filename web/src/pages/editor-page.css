@@ -1675,3 +1675,23 @@
   border-color: var(--accent, #007aff);
 }
 .si-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 初始化向导的步骤条和输入框 */
+.si-steps {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+.si-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-secondary, #fff);
+  box-sizing: border-box;
+}
+.si-input:focus { border-color: var(--accent, #007aff); }
