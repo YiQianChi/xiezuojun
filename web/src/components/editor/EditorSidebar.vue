@@ -23,7 +23,7 @@
       <template v-else>
         <!-- 设定区 -->
         <div v-if="settingRootNodes.length > 0" class="setting-zone">
-          <div class="zone-caption">设定</div>
+          <div class="zone-caption">作品相关</div>
           <DocTreeNode
             v-for="(node, i) in settingRootNodes"
             :key="node.id"
