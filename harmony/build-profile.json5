@@ -13,6 +13,19 @@
           "storeFile": "C:\\Users\\G\\.ohos\\config\\default_harmony_kmlWJyjPzqYj5NEaFFPOxQQgLwUNS2F5PK2-ZaYyncQ=.p12",
           "storePassword": "0000001BFC50E2869627C8E84A6810A0E444817CD6EBF24ECC4C10235FE222856E4BF429B166CE32BBDDE7"
         }
+      },
+      {
+        "name": "release",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "D:/xiezuojun/harmony/signing/release.cer",
+          "keyAlias": "xzj",
+          "keyPassword": "0000001B2Le199789",
+          "profile": "D:/xiezuojun/harmony/signing/release.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "D:/xiezuojun/harmony/signing/xiezuojun.p12",
+          "storePassword": "0000001B2Le199789"
+        }
       }
     ],
     "products": [
@@ -31,11 +44,10 @@
       }
     ],
     "buildModeSet": [
+      { "name": "debug" },
       {
-        "name": "debug"
-      },
-      {
-        "name": "release"
+        "name": "release",
+        "signingConfig": "release"
       }
     ]
   },
@@ -46,9 +58,7 @@
       "targets": [
         {
           "name": "default",
-          "applyToProducts": [
-            "default"
-          ]
+          "applyToProducts": ["default"]
         }
       ]
     }
