@@ -408,6 +408,25 @@
       @create="onCreateDocConfirm"
     />
 
+    <!-- 首次进入：初始化作品相关文件（Boss 定：建书时不创建，进编辑器再询问） -->
+    <div v-if="showSettingsInit" class="modal-overlay" @click="skipSettingsInit">
+      <div class="settings-init-modal" @click.stop>
+        <h3>要为这本书建哪些作品相关文件？</h3>
+        <p class="si-desc">不建也没关系，以后随时可以在左侧「＋ 新建设定」补。</p>
+        <div class="si-options">
+          <label v-for="s in settingsInitOptions" :key="s.value" class="si-option">
+            <input type="checkbox" v-model="s.checked" /> {{ s.label }}
+          </label>
+        </div>
+        <div class="si-actions">
+          <button class="si-btn" @click="skipSettingsInit">跳过</button>
+          <button class="si-btn primary" @click="confirmSettingsInit" :disabled="settingsInitCreating">
+            {{ settingsInitCreating ? '创建中…' : '创建' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 文件夹属性弹窗 -->
     <FolderPropsModal
       v-model="showFolderPropsModal"
@@ -761,6 +780,58 @@ const chatOpen = ref(false) // AI 对话面板
 const helpOpen = ref(false) // E5: 快捷键帮助弹窗
 const toolboxOpen = ref(false) // 工具箱弹出菜单
 
+// ---- 首次进入：作品相关文件初始化询问（建书不建设定，进来再问） ----
+const showSettingsInit = ref(false)
+const settingsInitCreating = ref(false)
+const settingsInitOptions = ref([
+  { value: 'outline', label: '📋 大纲', checked: true },
+  { value: 'characters', label: '👥 人物设定', checked: true },
+  { value: 'worldbuilding', label: '🌍 世界观', checked: true },
+  { value: 'storyline', label: '📖 故事主线', checked: true },
+  { value: 'chapter_outline', label: '📑 章节大纲', checked: true },
+])
+const SETTING_INIT_TYPES = ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline']
+
+function maybeAskSettingsInit() {
+  const skipKey = `xzj-settings-init-asked-${projectId}`
+  try { if (localStorage.getItem(skipKey)) return } catch {}
+  const hasSettings = documents.value.some((d: any) => SETTING_INIT_TYPES.includes(d.type))
+  if (!hasSettings) {
+    showSettingsInit.value = true
+    // 和新手引导错开：init 弹窗关闭后再让 tour 弹（事件驱动，见 OnboardingTour）
+    window.dispatchEvent(new CustomEvent('settings-init-state', { detail: true }))
+  }
+}
+
+function skipSettingsInit() {
+  showSettingsInit.value = false
+  window.dispatchEvent(new CustomEvent('settings-init-state', { detail: false }))
+  try { localStorage.setItem(`xzj-settings-init-asked-${projectId}`, '1') } catch {}
+}
+
+async function confirmSettingsInit() {
+  const chosen = settingsInitOptions.value.filter(s => s.checked)
+  if (chosen.length === 0) { skipSettingsInit(); return }
+  settingsInitCreating.value = true
+  try {
+    for (let i = 0; i < chosen.length; i++) {
+      const s = chosen[i]
+      await documentApi.create({
+        project_id: projectId,
+        type: s.value,
+        title: s.label.replace(/^\S+\s/, ''), // 去掉 emoji 前缀
+        sort_order: i,
+      })
+    }
+    skipSettingsInit()
+    await loadDocs()
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '创建失败，请重试')
+  } finally {
+    settingsInitCreating.value = false
+  }
+}
+
 // ---- 显示设置（字号/行距/字距）+ 打字机视线位置 ----
 // 视线位置语义（Boss 定的）：码字行停在屏幕 N% 高度，眼睛聚焦屏幕中段。
 // 实现 = 底部 padding 由视线位置动态推导（容器高 × (1-N%)，让最后一行能滚到视线线）
@@ -964,6 +1035,7 @@ onMounted(async () => {
   loadVoices() // E2: 非关键，不 await
   await loadBranches()
   await loadDocs()
+  maybeAskSettingsInit()
   // 打字机视线：底距 + 容器尺寸变化（改窗口/手机键盘弹起）时重算
   setupTypewriterObserver()
   // 恢复上次的章节；新书（只有一章）直接打开第一章，不让新手面对空编辑器

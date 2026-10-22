@@ -496,20 +496,33 @@ watch(() => route.name, (name) => {
   if (!localStorage.getItem('access_token')) return
   if (localStorage.getItem(STORAGE_KEY) === '1') return
   if (!active.value && !showPrompt.value && name === 'Editor') {
-    setTimeout(() => showWelcomePrompt(), 800)
+    // 在回调触发时刻再判断 init 弹窗——watch 在路由切换瞬间就触发，init 事件要等 loadDocs 后才到
+    setTimeout(() => { if (!initModalOpen) showWelcomePrompt() }, 800)
   }
 })
+
+// init 弹窗关闭后补弹欢迎（如果引导还没看过）
+let initModalOpen = false
+function onInitState(e: Event) {
+  initModalOpen = (e as CustomEvent).detail === true
+  if (!initModalOpen && !active.value && !showPrompt.value
+    && route.name === 'Editor'
+    && localStorage.getItem(STORAGE_KEY) !== '1') {
+    setTimeout(() => showWelcomePrompt(), 400)
+  }
+}
 
 defineExpose({ start, forceStart: () => { showPrompt.value = false; start(true) } })
 
 onMounted(() => {
+  window.addEventListener('settings-init-state', onInitState)
   if (!localStorage.getItem('access_token')) return
   if (localStorage.getItem(STORAGE_KEY) === '1') return
   if (route.name !== 'Editor') return
-  setTimeout(() => showWelcomePrompt(), 800)
+  setTimeout(() => { if (!initModalOpen) showWelcomePrompt() }, 800)
 })
 
-onUnmounted(() => { clearTimers() })
+onUnmounted(() => { clearTimers(); window.removeEventListener('settings-init-state', onInitState) })
 </script>
 
 <style scoped>

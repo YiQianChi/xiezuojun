@@ -1620,3 +1620,58 @@
   color: var(--text-tertiary, #86868b);
   border-top: 1px solid var(--border, rgba(0,0,0,0.06));
 }
+
+/* 首次进入：作品相关文件初始化弹窗 */
+.settings-init-modal {
+  background: var(--bg-secondary, #fff);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.15);
+  padding: 24px;
+  width: 380px;
+  max-width: 90vw;
+}
+.settings-init-modal h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  color: var(--text-primary);
+}
+.si-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0 0 14px;
+}
+.si-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.si-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.si-option input { accent-color: var(--accent, #007aff); }
+.si-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.si-btn {
+  padding: 7px 16px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.si-btn.primary {
+  background: var(--accent, #007aff);
+  color: #fff;
+  border-color: var(--accent, #007aff);
+}
+.si-btn:disabled { opacity: .5; cursor: not-allowed; }

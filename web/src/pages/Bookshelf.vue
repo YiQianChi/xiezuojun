@@ -93,14 +93,6 @@
             <label>首章名称（可选）</label>
             <input v-model="firstChapterTitle" placeholder="默认：第一章" class="input" @keyup.enter="createBook" />
           </div>
-          <div class="form-group">
-            <label>作品相关文件（按需勾选）</label>
-            <div class="setting-checks">
-              <label v-for="s in settingOptions" :key="s.value" class="setting-check">
-                <input type="checkbox" v-model="s.checked" /> {{ s.label }}
-              </label>
-            </div>
-          </div>
           <div class="modal-actions">
             <button class="btn" @click="closeCreateModal">取消</button>
             <button class="btn primary" @click="createBook" :disabled="creating">
@@ -232,14 +224,6 @@ const importPanelRef = ref<{ reset: () => void } | null>(null)
 const newBookName = ref('')
 const newBookDesc = ref('')
 const firstChapterTitle = ref('')
-// 建书时自选要哪些作品相关文件（默认全选）
-const settingOptions = ref([
-  { value: 'outline', label: '大纲', checked: true },
-  { value: 'characters', label: '人物设定', checked: true },
-  { value: 'worldbuilding', label: '世界观', checked: true },
-  { value: 'storyline', label: '故事主线', checked: true },
-  { value: 'chapter_outline', label: '章节大纲', checked: true },
-])
 const creating = ref(false)
 
 // 回收站
@@ -300,7 +284,7 @@ async function createBook() {
       name: newBookName.value.trim(),
       description: newBookDesc.value.trim(),
       first_chapter_title: firstChapterTitle.value.trim() || undefined,
-      setting_types: settingOptions.value.filter(s => s.checked).map(s => s.value)
+      setting_types: [] // 作品相关文件不在建书时创建——进编辑器后弹窗让作者选
     })
     const project = res.data?.data || res.data
     showCreateModal.value = false
