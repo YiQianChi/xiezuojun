@@ -2,6 +2,7 @@ package project
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,13 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		Type: req.Type, Title: req.Title, SortOrder: req.SortOrder,
 		WordCount: countWords(req.Content), SearchText: req.Content, Status: 1,
 		Icon: req.Icon,
+	}
+
+	// 章节没带内容时自动给标题头模板，和种子首章保持一致（之前新建章节是空内容，两不一致）
+	if req.Type == "chapter" && strings.TrimSpace(req.Content) == "" {
+		doc.SearchText = "# " + req.Title + "\n\n"
+		req.Content = doc.SearchText
+		doc.WordCount = countWords(req.Content)
 	}
 
 	// 文件夹层级限制：最多 3 层

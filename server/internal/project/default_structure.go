@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"strings"
 
 	"xiezuojun-server/internal/model"
 )
@@ -28,7 +29,7 @@ func defaultDocContent(docType, title string) string {
 	}
 }
 
-func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uint) error {
+func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uint, firstChapterTitle string) error {
 	type defaultDocX struct {
 		Title    string
 		Type     string
@@ -81,19 +82,26 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 		return err
 	}
 
+	chapterTitle := strings.TrimSpace(firstChapterTitle)
+	if chapterTitle == "" {
+		chapterTitle = "第一章"
+	}
+	if len([]rune(chapterTitle)) > 100 {
+		chapterTitle = string([]rune(chapterTitle)[:100])
+	}
 	chapter := model.Document{
 		ProjectID:  proj.ID,
 		BranchID:   &branchID,
 		ParentID:   &articleDoc.ID,
 		Type:       "chapter",
-		Title:      "第一章",
+		Title:      chapterTitle,
 		SortOrder:  len(settingDefs) + 2,
-		WordCount:  countWords(defaultDocContent("chapter", "第一章")),
-		SearchText: defaultDocContent("chapter", "第一章"),
+		WordCount:  countWords(defaultDocContent("chapter", chapterTitle)),
+		SearchText: defaultDocContent("chapter", chapterTitle),
 		Status:     1,
 	}
 	if err := h.db.Create(&chapter).Error; err != nil {
 		return err
 	}
-	return h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, chapter, defaultDocContent("chapter", "第一章"))
+	return h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, chapter, defaultDocContent("chapter", chapterTitle))
 }

@@ -91,7 +91,7 @@ func (h *Handler) ImportBook(c *gin.Context) {
 		return
 	}
 	h.locks.Lock(uid)
-	err = h.createDefaultProjectDocuments(proj, mainBranch.ID)
+	err = h.createDefaultProjectDocuments(proj, mainBranch.ID, "")
 	h.locks.Unlock(uid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create default docs: " + err.Error()})

@@ -89,6 +89,10 @@
             <label>简介（可选）</label>
             <input v-model="newBookDesc" placeholder="一句话描述这本书" class="input" />
           </div>
+          <div class="form-group">
+            <label>首章名称（可选）</label>
+            <input v-model="firstChapterTitle" placeholder="默认：第一章" class="input" @keyup.enter="createBook" />
+          </div>
           <div class="modal-actions">
             <button class="btn" @click="closeCreateModal">取消</button>
             <button class="btn primary" @click="createBook" :disabled="creating">
@@ -219,6 +223,7 @@ const createMode = ref<'blank' | 'import'>('blank')
 const importPanelRef = ref<{ reset: () => void } | null>(null)
 const newBookName = ref('')
 const newBookDesc = ref('')
+const firstChapterTitle = ref('')
 const creating = ref(false)
 
 // 回收站
@@ -277,12 +282,14 @@ async function createBook() {
   try {
     const res = await projectApi.create({
       name: newBookName.value.trim(),
-      description: newBookDesc.value.trim()
+      description: newBookDesc.value.trim(),
+      first_chapter_title: firstChapterTitle.value.trim() || undefined
     })
     const project = res.data?.data || res.data
     showCreateModal.value = false
     newBookName.value = ''
     newBookDesc.value = ''
+    firstChapterTitle.value = ''
     router.push(`/editor/${project.id || project.project_id}`)
   } catch (e: any) {
     toast.error(e.response?.data?.error || '创建失败')
