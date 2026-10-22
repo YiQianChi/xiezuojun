@@ -520,7 +520,7 @@ import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
 import { documentApi, branchApi, projectApi, ttsApi } from '../core/api'
-import { chapterDisplayTitle, stripChapterPrefix } from '../core/chapterTitle'
+import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import SearchPanel from '../components/SearchPanel.vue'
 import PlanView from '../components/PlanView.vue'
 import ReviewView from '../components/ReviewView.vue'
@@ -848,6 +848,16 @@ async function confirmSettingsInit() {
     const newTitle = firstChapterNameInput.value.trim()
     if (first && newTitle && newTitle !== first.title) {
       await documentApi.update(first.id, { title: newTitle })
+      // 同步内容里的 H1 标题行（种子首章的内容是建书时按旧名写的）
+      try {
+        const res = await documentApi.get(first.id)
+        const docData = res.data?.data || res.data
+        const content = typeof docData?.content === 'string' ? docData.content : ''
+        const ord = chapterOrdinal(first, documents.value) || 1
+        const display = `第${numToChinese(ord)}章 ${newTitle}`
+        const updated = content.replace(/^#\s.*$/m, '# ' + display)
+        if (updated !== content) await documentApi.update(first.id, { content: updated })
+      } catch { /* 内容同步失败不阻断 */ }
     }
     // 第二步：作品相关文件
     const chosen = settingsInitOptions.value.filter(s => s.checked)
@@ -862,6 +872,11 @@ async function confirmSettingsInit() {
     }
     skipSettingsInit()
     await loadDocs()
+    // 首章改过名的话内容也变了，编辑器里正开着它就重新加载，防旧内容被自动保存盖回
+    if (first && newTitle && newTitle !== first.title && activeDocId.value === first.id) {
+      const refreshed = documents.value.find((d: any) => d.id === first.id)
+      if (refreshed) await openDoc(refreshed)
+    }
   } catch (e: any) {
     toast.error(e.response?.data?.error || '创建失败，请重试')
   } finally {

@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"xiezuojun-server/internal/model"
@@ -9,6 +10,54 @@ import (
 
 // 种子卷名直接叫「第一卷」——叫「文章」会和侧栏分区名混淆，新手不知道是干嘛的
 const articleRootTitle = "第一卷"
+
+// numToChinese 章节序号的中文写法（与前端 chapterTitle.ts 保持一致）
+func numToChinese(n int) string {
+	digits := []rune("零一二三四五六七八九")
+	if n <= 0 {
+		return fmt.Sprintf("%d", n)
+	}
+	if n < 10 {
+		return string(digits[n])
+	}
+	if n < 20 {
+		if n%10 == 0 {
+			return "十"
+		}
+		return "十" + string(digits[n%10])
+	}
+	if n < 100 {
+		s := string(digits[n/10]) + "十"
+		if n%10 > 0 {
+			s += string(digits[n%10])
+		}
+		return s
+	}
+	if n < 1000 {
+		h, r := n/100, n%100
+		s := string(digits[h]) + "百"
+		if r == 0 {
+			return s
+		}
+		if r < 10 {
+			return s + "零" + string(digits[r])
+		}
+		return s + numToChinese(r)
+	}
+	return fmt.Sprintf("%d", n)
+}
+
+// chapterContentTemplate 章节初始内容：# 第N章 名称（N=同父级现有章节数+1，由调用方传）
+// 名字里作者手写的「第X章」前缀先剥掉，防空名时双重编号（如「# 第一章 第一章」）
+var chapterPrefixRe = regexp.MustCompile(`^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]\s*`)
+
+func chapterContentTemplate(ordinal int, title string) string {
+	name := strings.TrimSpace(chapterPrefixRe.ReplaceAllString(title, ""))
+	if name == "" {
+		return fmt.Sprintf("# 第%s章\n\n", numToChinese(ordinal))
+	}
+	return fmt.Sprintf("# 第%s章 %s\n\n", numToChinese(ordinal), name)
+}
 
 func defaultDocContent(docType, title string) string {
 	switch docType {
@@ -111,12 +160,12 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 		Type:       "chapter",
 		Title:      chapterTitle,
 		SortOrder:  len(settingDefs) + 2,
-		WordCount:  countWords(defaultDocContent("chapter", chapterTitle)),
-		SearchText: defaultDocContent("chapter", chapterTitle),
+		WordCount:  countWords(chapterContentTemplate(1, chapterTitle)),
+		SearchText: chapterContentTemplate(1, chapterTitle),
 		Status:     1,
 	}
 	if err := h.db.Create(&chapter).Error; err != nil {
 		return err
 	}
-	return h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, chapter, defaultDocContent("chapter", chapterTitle))
+	return h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, chapter, chapterContentTemplate(1, chapterTitle))
 }
