@@ -48,7 +48,7 @@ const selectedFolderType = ref('')
 
 // 术语统一：标题/占位符按创建目标动态生成，全书只叫「卷/章节/设定/文档」
 const TITLE_MAP: Record<string, [string, string]> = {
-  chapter: ['新建章节', '章节名，如：第三章 转机'],
+  chapter: ['新建章节', '章节名，如：雨夜（第几章自动生成）'],
   volume: ['新建卷', '卷名，如：第一卷'],
   setting: ['新建设定', '设定名称'],
   note: ['新建文档', '文档名'],

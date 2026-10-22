@@ -59,6 +59,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { chapterDisplayTitle } from '../core/chapterTitle'
 
 const props = defineProps<{
   node: any
@@ -110,13 +111,15 @@ const nodeIcon = computed(() => {
   return map[props.node.type] || '📄'
 })
 
-// ponytail: 作者自己决定章节标题，不做自动编号
-const displayTitle = computed(() => props.node.title)
+// ponytail: 章节标题 = 自动序号 + 作者写的名字（位置变序号自动跟随）
+const displayTitle = computed(() =>
+  props.node.type === 'chapter' ? chapterDisplayTitle(props.node, props.allDocs) : props.node.title
+)
 
 // 长标题自动缩字号，尽量完整展示（Boss：以美观为主，能显示全就别省略号）
 // 侧栏可用宽度约 240px，去掉图标/状态点/缩进后标题区 ~175px：12px≈14字、10.5px≈16字
 const titleSizeClass = computed(() => {
-  const len = [...String(props.node.title || '')].length
+  const len = [...String(displayTitle.value || '')].length
   if (len > 14) return 'title-shrink-2'
   if (len > 11) return 'title-shrink-1'
   return ''

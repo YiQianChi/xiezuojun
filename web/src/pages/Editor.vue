@@ -5,7 +5,7 @@
     <!-- 顶部栏 -->
     <EditorHeader
       :project-name="projectName"
-      :current-doc-name="currentDocName"
+      :current-doc-name="currentDocDisplayName"
       :mode="mode"
       :active-doc-id="activeDocId"
       :saving-version="savingVersion"
@@ -415,8 +415,8 @@
 
         <template v-if="settingsInitStep === 1">
           <h3>第一章叫什么？</h3>
-          <p class="si-desc">写个章节名，比如「第一章 雨夜」。</p>
-          <input v-model="firstChapterNameInput" class="si-input" placeholder="第一章" @keyup.enter="settingsInitStep = 2" />
+          <p class="si-desc">只写章节名就好（如「雨夜」），第几章系统按位置自动排。</p>
+          <input v-model="firstChapterNameInput" class="si-input" placeholder="雨夜" @keyup.enter="settingsInitStep = 2" />
           <div class="si-actions">
             <button class="si-btn" @click="skipSettingsInit">跳过</button>
             <button class="si-btn primary" @click="settingsInitStep = 2">下一步</button>
@@ -520,6 +520,7 @@ import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
 import { documentApi, branchApi, projectApi, ttsApi } from '../core/api'
+import { chapterDisplayTitle, stripChapterPrefix } from '../core/chapterTitle'
 import SearchPanel from '../components/SearchPanel.vue'
 import PlanView from '../components/PlanView.vue'
 import ReviewView from '../components/ReviewView.vue'
@@ -557,6 +558,12 @@ const branches = ref<any[]>([])
 const activeBranchId = ref<number | null>(null)
 const activeDocId = ref<number | null>(null)
 const currentDocName = ref('')
+// 顶栏章节名和侧栏一致：第N章 + 作者写的名字（序号自动）
+const currentDocDisplayName = computed(() => {
+  const d = documents.value.find((x: any) => x.id === activeDocId.value)
+  if (d && d.type === 'chapter') return chapterDisplayTitle(d, documents.value)
+  return currentDocName.value
+})
 const projectName = ref('')
 const loadingDocs = ref(false)
 const wordCount = ref(0)
@@ -813,11 +820,11 @@ function maybeAskSettingsInit() {
   try { if (localStorage.getItem(skipKey)) return } catch {}
   const hasSettings = documents.value.some((d: any) => SETTING_INIT_TYPES.includes(d.type))
   if (!hasSettings) {
-    // 预填当前首章名（用户改了才发重命名）
+    // 预填当前首章名（剥离「第X章」前缀，用户写了才发重命名）
     const first = documents.value
       .filter((d: any) => d.type === 'chapter')
       .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))[0]
-    firstChapterNameInput.value = first?.title || '第一章'
+    firstChapterNameInput.value = first ? stripChapterPrefix(first.title) : ''
     settingsInitStep.value = 1
     showSettingsInit.value = true
     // 和新手引导错开：init 弹窗关闭后再让 tour 弹（事件驱动，见 OnboardingTour）
@@ -1600,8 +1607,13 @@ function createDocAtRoot() {
   openCreateDocModal(null, 'volume')
 }
 
-// ponytail: 文章区＋号直接建章节——新手第一诉求是写正文，建卷走右键菜单
+// ponytail: 文章区＋号建章节——只有一卷时进该卷（保持全书编号连续）；多卷/无卷才落根级
 function createChapterAtRoot() {
+  const vols = documents.value.filter((d: any) => d.type === 'volume' && !d.parent_id)
+  if (vols.length === 1) {
+    openCreateDocModal(vols[0].id, 'chapter')
+    return
+  }
   openCreateDocModal(null, 'chapter')
 }
 
