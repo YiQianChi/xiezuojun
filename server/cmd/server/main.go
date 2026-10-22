@@ -60,9 +60,6 @@ func main() {
 	}
 
 
-	// ponytail: one-shot migration — wrap orphaned setting docs into a "设定" folder
-	migrateSettingFolder(db)
-
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" || jwtSecret == "change-me-in-production" || len(jwtSecret) < 32 {
 		log.Fatal("JWT_SECRET must be set to a strong value (>=32 chars); refusing to start")
@@ -355,56 +352,5 @@ func main() {
 	log.Println("🚀 写作菌后端启动，端口:", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal("server failed:", err)
-	}
-}
-
-// migrateSettingFolder: 对每个项目，如果设定类文档（outline/characters/worldbuilding/storyline/chapter_outline）
-// 是根级（parent_id IS NULL），则创建一个"设定"文件夹把它们包进去。已迁移过的项目跳过。
-func migrateSettingFolder(db *gorm.DB) {
-	settingTypes := []string{"outline", "characters", "worldbuilding", "storyline", "chapter_outline"}
-
-	// 找所有有根级设定文档的项目
-	var projectIDs []uint
-	db.Table("documents").
-		Where("type IN ? AND parent_id IS NULL AND status = 1", settingTypes).
-		Distinct("project_id").
-		Pluck("project_id", &projectIDs)
-
-	if len(projectIDs) == 0 {
-		return
-	}
-
-	for _, pid := range projectIDs {
-		// 创建"设定"文件夹
-		folder := model.Document{
-			ProjectID: pid,
-			Type:      "folder",
-			Title:     "设定",
-			SortOrder: 0,
-			Status:    1,
-		}
-		if err := db.Create(&folder).Error; err != nil {
-			log.Printf("迁移: 创建设定文件夹失败 project=%d: %v", pid, err)
-			continue
-		}
-
-		// 把根级设定文档挂到文件夹下
-		result := db.Model(&model.Document{}).
-			Where("project_id = ? AND type IN ? AND parent_id IS NULL", pid, settingTypes).
-			Updates(map[string]interface{}{
-				"parent_id":  folder.ID,
-				"sort_order": gorm.Expr("FIND_IN_SET(type, 'outline,characters,worldbuilding,storyline,chapter_outline') - 1"),
-			})
-		if result.Error != nil {
-			log.Printf("迁移: 更新设定文档失败 project=%d: %v", pid, result.Error)
-			continue
-		}
-
-		// "文章"根文件夹 sort_order 设为 1（在"设定"后面）
-		db.Model(&model.Document{}).
-			Where("project_id = ? AND type = 'volume' AND parent_id IS NULL", pid).
-			Update("sort_order", 1)
-
-		log.Printf("迁移: project=%d 设定文件夹已创建(id=%d)，%d 个文档已归位", pid, folder.ID, result.RowsAffected)
 	}
 }

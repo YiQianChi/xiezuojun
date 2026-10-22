@@ -1530,9 +1530,9 @@ function newDocUnder(type: 'volume' | 'chapter') {
 }
 
 // ponytail: 判断是否文件夹容器——folder=设定文件夹, volume=文章文件夹, 其他设定类型也可展开
+// ponytail: 设定区平铺后只有卷是容器；设定文档是纯文件（Boss 2026-10-22：设定下面不要有文件夹）
 function isFolderNode(doc: any): boolean {
-  const t = doc.type
-  return t === 'volume' || t === 'folder' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
+  return doc.type === 'volume'
 }
 
 // 右键文件夹 → 属性

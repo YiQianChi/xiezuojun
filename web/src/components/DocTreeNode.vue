@@ -89,11 +89,8 @@ const children = computed(() => {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 })
 
-// ponytail: volume + folder + 设定五大类都是文件夹容器
-const isFolder = computed(() => {
-  const t = props.node.type
-  return t === 'volume' || t === 'folder' || t === 'outline' || t === 'characters' || t === 'worldbuilding' || t === 'storyline' || t === 'chapter_outline'
-})
+// ponytail: 设定区平铺后只有卷是容器（设定文档=纯文件，不可再挂子文档）
+const isFolder = computed(() => props.node.type === 'volume')
 
 const nodeIcon = computed(() => {
   // ponytail: 用户自选图标优先，否则按 type 默认

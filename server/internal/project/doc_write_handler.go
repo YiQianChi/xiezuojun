@@ -48,6 +48,15 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		}
 	}
 
+	// 设定区平铺后只有卷（volume）能当父级；设定文档是纯文件，不能挂子文档
+	if req.ParentID != nil && *req.ParentID > 0 {
+		var parent model.Document
+		if err := h.db.First(&parent, *req.ParentID).Error; err == nil && parent.Type != "volume" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "只有卷下面才能新建内容"})
+			return
+		}
+	}
+
 	if err := h.db.Create(&doc).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -76,8 +76,8 @@
             <input v-model="pickerFileName" type="text" placeholder="输入文件名" />
           </div>
           <div class="fp-field">
-            <label>目标文件夹</label>
-            <div v-if="pickerFolders.length === 0" class="fp-empty">暂无设定文件夹，请先初始化项目结构</div>
+            <label>写入到</label>
+            <div v-if="pickerFolders.length === 0" class="fp-empty">还没有设定文件，请先在左侧「＋ 新建设定」创建</div>
             <div v-else class="fp-folder-list">
               <label
                 v-for="f in pickerFolders"
@@ -86,7 +86,7 @@
                 :class="{ active: pickerFolderId === f.id }"
               >
                 <input type="radio" v-model="pickerFolderId" :value="f.id" />
-                <span class="fp-icon">📁</span>
+                <span class="fp-icon">📄</span>
                 <span class="fp-name">{{ f.title }}</span>
               </label>
             </div>
@@ -328,43 +328,29 @@ function closeFolderPicker() {
 
 async function confirmWrite() {
   const step = pickerStep.value
-  const folderId = pickerFolderId.value
-  if (!step || !folderId) return
+  const docId = pickerFolderId.value
+  if (!step || !docId) return
 
-  const folder = pickerFolders.value.find(f => f.id === folderId)
-  if (!folder) return
+  const target = pickerFolders.value.find(f => f.id === docId)
+  if (!target) return
 
   pickerWriting.value = true
   pickerError.value = ''
   step.writing = true
   try {
-    const content = `# ${pickerFileName.value}\n\n${step.preview}`
-    const res = await documentApi.list(String(props.projectId))
-    const docs = res.data?.data || res.data || []
-    // ponytail: 同名子文档存在则更新，否则新建
-    const existing = docs.find((d: any) => d.parent_id === folderId && d.title === pickerFileName.value)
-    if (existing) {
-      await documentApi.update(existing.id, { content })
-      pickerWriting.value = false
-      step.writing = false
-      showFolderPicker.value = false
-      pickerStep.value = null
-      emit('jump-to-doc', existing.id)
-    } else {
-      const createRes = await documentApi.create({
-        project_id: Number(props.projectId),
-        parent_id: folderId,
-        type: 'note',
-        title: pickerFileName.value,
-        content,
-      })
-      pickerWriting.value = false
-      step.writing = false
-      showFolderPicker.value = false
-      pickerStep.value = null
-      const newId = createRes.data?.data?.id || createRes.data?.id
-      if (newId) emit('jump-to-doc', newId)
-    }
+    // 设定区已平铺为纯文件：直接写进目标设定文档，不再建子文档
+    // 文档为空 → 写入；已有内容 → 追加在末尾（分隔线隔开），不覆盖作者已有设定
+    const res = await documentApi.get(docId)
+    const docData = res.data?.data || res.data
+    const existing = (typeof docData?.content === 'string' ? docData.content : '').trim()
+    const block = `# ${pickerFileName.value}\n\n${step.preview}`
+    const merged = existing ? existing.replace(/\s+$/, '') + '\n\n---\n\n' + block : block
+    await documentApi.update(docId, { content: merged })
+    pickerWriting.value = false
+    step.writing = false
+    showFolderPicker.value = false
+    pickerStep.value = null
+    emit('jump-to-doc', docId)
   } catch (e: any) {
     pickerWriting.value = false
     step.writing = false
