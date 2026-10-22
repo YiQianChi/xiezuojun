@@ -1,5 +1,5 @@
 <template>
-      <div class="editor-page" :class="{ 'focus-mode': focusMode }">
+      <div class="editor-page" :class="{ 'focus-mode': focusMode }" :style="displayVars">
     <!-- ponytail-focus: 专注模式底部字数激励（C 方案） -->
     <div v-if="focusMode" class="focus-today-words">今天 +{{ todayWords }} 字</div>
     <!-- 顶部栏 -->
@@ -290,6 +290,9 @@
       <button class="status-item scene-nav-btn" @click="jumpScene(-1)" title="上一个场景 (Alt+↑)">⬆️</button>
       <button class="status-item scene-nav-btn" @click="jumpScene(1)" title="下一个场景 (Alt+↓)">⬇️</button>
 
+      <!-- 显示设置：字号/行距/字距/底部留白 -->
+      <DisplaySettings :overrides="displayOverrides" @update="onDisplaySetting" />
+
       <!-- 工具箱：低频功能收起来 -->
       <div class="toolbox-trigger" :class="{ open: toolboxOpen }">
         <button class="memory-btn" @click.stop="toolboxOpen = !toolboxOpen" title="工具箱">
@@ -499,6 +502,7 @@ import TrashPanel from '../components/editor/TrashPanel.vue'
 import StoryboardView from '../components/editor/StoryboardView.vue'
 import WritingStatsPanel from '../components/editor/WritingStatsPanel.vue'
 import BuddyWindow from '../components/editor/BuddyWindow.vue'
+import DisplaySettings from '../components/editor/DisplaySettings.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
 import FolderPropsModal from '../components/editor/FolderPropsModal.vue'
 import SaveVersionModal from '../components/editor/SaveVersionModal.vue'
@@ -756,6 +760,27 @@ const statsOpen = ref(false) // 写作统计面板
 const chatOpen = ref(false) // AI 对话面板
 const helpOpen = ref(false) // E5: 快捷键帮助弹窗
 const toolboxOpen = ref(false) // 工具箱弹出菜单
+
+// ---- 显示设置（字号/行距/字距/底部留白）：只存用户改过的项，CSS 变量下发 ----
+const DS_KEY = 'xzj-display-settings'
+const displayOverrides = ref<Record<string, number>>({})
+try { displayOverrides.value = JSON.parse(localStorage.getItem(DS_KEY) || '{}') } catch {}
+
+const displayVars = computed(() => {
+  const o = displayOverrides.value
+  const s: Record<string, string> = {}
+  if (o.fontSize !== undefined) s['--ds-font-size'] = o.fontSize + 'px'
+  if (o.lineHeight !== undefined) s['--ds-line-height'] = String(o.lineHeight)
+  if (o.letterSpacing !== undefined) s['--ds-letter-spacing'] = o.letterSpacing + 'em'
+  if (o.bottomPad !== undefined) s['--ds-bottom-pad'] = o.bottomPad + 'px'
+  return s
+})
+
+function onDisplaySetting(key: string, value: number | undefined) {
+  if (value === undefined) delete displayOverrides.value[key]
+  else displayOverrides.value[key] = value
+  try { localStorage.setItem(DS_KEY, JSON.stringify(displayOverrides.value)) } catch {}
+}
 const selectedVoice = ref('zh-CN') // E2: TTS 音色选择
 
 function replayOnboarding() {

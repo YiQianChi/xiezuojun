@@ -194,8 +194,8 @@
     background: rgba(0, 0, 0, 0.35);
   }
   /* 正文留白与字号按手机收窄 */
-  .tiptap-container { padding: 16px 18px 96px; }
-  .tiptap-container .tiptap { font-size: 16px; line-height: 1.95; }
+  .tiptap-container { padding: 16px 18px 96px; padding-bottom: var(--ds-bottom-pad, 96px); }
+  .tiptap-container .tiptap { font-size: var(--ds-font-size, 16px); line-height: var(--ds-line-height, 1.95); letter-spacing: var(--ds-letter-spacing, normal); }
   .tiptap-container .tiptap p { margin: 0.6em 0; }
   /* 状态栏：只留核心项，safe-area 底部留白 */
   .status-bar { gap: 10px; padding: 0 14px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
@@ -224,9 +224,9 @@
 
 /* ponytail-focus: 专注模式沉浸增强（C 方案元素）——大行距 + 居中窄栏 + 底部字数激励 */
 .editor-page.focus-mode .tiptap-container .tiptap {
-  line-height: 2.05;
-  font-size: 16.5px;
-  letter-spacing: 0.01em;
+  line-height: var(--ds-line-height, 2.05);
+  font-size: var(--ds-font-size, 16.5px);
+  letter-spacing: var(--ds-letter-spacing, 0.01em);
 }
 .editor-page.focus-mode .tiptap-container .tiptap p { margin: 0.75em 0; }
 .editor-page.focus-mode .editor-wrapper {
@@ -586,6 +586,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 60px 24px 60px 52px;
+  padding-bottom: var(--ds-bottom-pad, 60px);
 }
 
 .tiptap-container > :deep(div) {
@@ -600,8 +601,9 @@
   outline: none;
   min-height: 500px;
   font-family: var(--font-serif);
-  font-size: 17px;
-  line-height: 1.9;
+  font-size: var(--ds-font-size, 17px);
+  line-height: var(--ds-line-height, 1.9);
+  letter-spacing: var(--ds-letter-spacing, normal);
   color: var(--text-primary);
   overflow: visible !important;
   height: auto !important;
