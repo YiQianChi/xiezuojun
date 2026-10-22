@@ -193,17 +193,17 @@
     z-index: 110;
     background: rgba(0, 0, 0, 0.35);
   }
-  /* 正文留白与字号按手机收窄 */
-  .tiptap-container { padding: 16px 18px 96px; padding-bottom: var(--ds-bottom-pad, 96px); }
+  /* 正文留白与字号按手机收窄。注意必须带 .editor-page 提权——base 规则在文件后段，同特异性会盖掉这里 */
+  .editor-page .tiptap-container { padding: 16px 18px 96px; padding-bottom: var(--ds-bottom-pad, 96px); }
   /* ponytail: .tiptap 元素是 tiptap JS 渲染的，没有 scoped data 属性，必须用 :deep 才选得到 */
   .tiptap-container :deep(.ProseMirror) { font-size: var(--ds-font-size, 16px); line-height: var(--ds-line-height, 1.95); letter-spacing: var(--ds-letter-spacing, normal); }
   .tiptap-container :deep(.ProseMirror p) { margin: 0.6em 0; }
-  /* 状态栏：只留核心项，safe-area 底部留白 */
-  .status-bar { gap: 10px; padding: 0 14px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
+  /* 状态栏：只留核心项，safe-area 底部留白（提防 base 规则在文件后段覆盖） */
+  .editor-page .status-bar { gap: 10px; padding: 0 14px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
   .status-bar .voice-select { display: none; }
   .status-bar .scene-nav-btn { display: none; }
-  /* 编辑器右侧面板：移动端改底部抽屉（不全屏盖正文，AI 自动弹出时正文仍可见） */
-  .context-panel, .reference-panel {
+  /* 编辑器右侧面板：移动端改底部抽屉（不全屏盖正文，AI 自动弹出时正文仍可见）。加 .editor-page 提权防 base 覆盖 */
+  .editor-page .context-panel, .editor-page .reference-panel {
     position: fixed;
     left: 0;
     right: 0;
@@ -217,7 +217,7 @@
     box-shadow: 0 -6px 30px rgba(0, 0, 0, 0.18);
     padding-bottom: env(safe-area-inset-bottom);
   }
-  .context-panel.collapsed, .reference-panel.collapsed {
+  .editor-page .context-panel.collapsed, .editor-page .reference-panel.collapsed {
     height: 32px;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   }
