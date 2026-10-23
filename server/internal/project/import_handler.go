@@ -111,6 +111,15 @@ func (h *Handler) ImportBook(c *gin.Context) {
 	totalWords := 0
 	created := 0
 
+	// 大书性能：批量 DB 插入 + 结构 JSON 只写一次。
+	// 旧路每章走 saveDocWithMeta → updateStructure（读改写整个 structure.json），3000 章是 O(n²)，
+	// 900 万字的书会拖到分钟级甚至超时。导入是全新建档，结构可以最后一次性生成。
+	structureItems := make([]map[string]interface{}, 0, len(req.Volumes)*8)
+	structure, _ := h.ds.loadStructureJSON(uid, proj.ID, proj.Name)
+	if structure != nil {
+		structureItems = structure
+	}
+
 	for vi, vol := range req.Volumes {
 		volTitle := strings.TrimSpace(vol.Title)
 		if volTitle == "" {
@@ -133,10 +142,11 @@ func (h *Handler) ImportBook(c *gin.Context) {
 			if err := h.db.Create(&volDoc).Error; err != nil {
 				continue
 			}
-			if err := h.saveDocWithMeta(uid, proj.ID, proj.Name, volDoc, ""); err != nil {
-				continue
-			}
+			_ = h.ds.ensureFolderDir(uid, proj.ID, proj.Name, volDoc.ID)
 		}
+		structureItems = append(structureItems, map[string]interface{}{
+			"id": volDoc.ID, "title": volTitle, "type": "volume", "status": "active",
+		})
 
 		for ci, ch := range vol.Chapters {
 			title := strings.TrimSpace(ch.Title)
@@ -158,7 +168,10 @@ func (h *Handler) ImportBook(c *gin.Context) {
 					"title": title, "parent_id": volDoc.ID, "branch_id": mainBranch.ID,
 					"sort_order": ci + 1, "word_count": wc, "search_text": content,
 				})
-				_ = h.saveDocWithMeta(uid, proj.ID, proj.Name, seedChapter, content)
+				_ = h.ds.saveDocContent(uid, proj.ID, proj.Name, seedChapter.ID, content, volDoc.ID)
+				structureItems = append(structureItems, map[string]interface{}{
+					"id": seedChapter.ID, "title": title, "type": "chapter", "status": "active",
+				})
 				created++
 				continue
 			}
@@ -171,9 +184,12 @@ func (h *Handler) ImportBook(c *gin.Context) {
 			if err := h.db.Create(&doc).Error; err != nil {
 				continue
 			}
-			if err := h.saveDocWithMeta(uid, proj.ID, proj.Name, doc, content); err != nil {
+			if err := h.ds.saveDocContent(uid, proj.ID, proj.Name, doc.ID, content, volDoc.ID); err != nil {
 				continue
 			}
+			structureItems = append(structureItems, map[string]interface{}{
+				"id": doc.ID, "title": title, "type": "chapter", "status": "active",
+			})
 			created++
 		}
 	}
@@ -182,6 +198,9 @@ func (h *Handler) ImportBook(c *gin.Context) {
 	if !seedChapterUsed && seedChapter.ID > 0 {
 		h.db.Model(&seedChapter).Updates(map[string]interface{}{"status": 0, "search_text": ""})
 	}
+
+	// 结构 JSON 一次性写入（替代逐章 updateStructure 的 O(n²)）
+	_ = h.ds.saveStructureJSON(uid, proj.ID, proj.Name, structureItems)
 
 	h.updateQuota(uid)
 	_ = store.AppendChangelog(h.paths, uid, store.ChangeEntry{
