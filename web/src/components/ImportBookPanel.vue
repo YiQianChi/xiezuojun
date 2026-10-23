@@ -22,9 +22,14 @@
       <div class="import-progress-box">
         <div class="ip-text">{{ importStatus }}</div>
         <div class="ip-bar">
-          <div class="ip-fill" :style="{ width: importPct + '%' }"></div>
+          <div class="ip-fill" :class="{ shimmer: importingActive }" :style="{ width: importPct + '%' }">
+            <div class="ip-shine"></div>
+          </div>
         </div>
-        <div class="ip-count">{{ importedChapters }} / {{ totalChaptersToImport }} 章</div>
+        <div class="ip-count">
+          <span class="ip-pct">{{ importPct }}%</span>
+          {{ importedChapters }} / {{ totalChaptersToImport }} 章
+        </div>
       </div>
     </template>
 
@@ -121,13 +126,16 @@ const importing = ref(false)
 const importStatus = ref('')
 const importedChapters = ref(0)
 const totalChaptersToImport = ref(0)
+// 导入进行中标志（驱动 shimmer 动效，完成/失败时停）
+const importingActive = ref(false)
 const importPct = computed(() =>
   totalChaptersToImport.value > 0 ? Math.min(100, Math.round(importedChapters.value / totalChaptersToImport.value * 100)) : 0)
 
 // 章节/卷标题行识别：整行匹配且限制长度，防止误吃正文里提到「第三章」的句子
-// 四种现实格式：①第X章/节/回 ②行首纯数字序号「752.标题」（很多老书后半段省略「章」字）③「第050.标题」省略「章」字带「第」④特殊章
+// 五种现实格式：①第X章/节/回（尾巴禁逗号句中句号，仅允许结尾句号——真实章名如「第914章 蔚蔚的心里障碍。」）②行首纯数字序号「752.标题」③「第050.标题」省略「章」字（尾巴放宽到 78，标题常与正文首句粘同一行）④Chapter N ⑤特殊章
+// 另：原始行以全角空格/tab 缩进开头 = 正文段，直接跳过标题判定（见 parseVolumes）
 const VOLUME_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*卷[^\n]{0,40}|卷\s*[0-9零一二三四五六七八九十百千万两]+[^\n]{0,30})[ \t　]*$/
-const CHAPTER_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回话][^\n]{0,40}|第\s*[0-9]{1,4}\s*[、.．]\s*[^\s第][^\n]{0,78}|序章|序|楔子|引子|尾声|终章|番外[^\n]{0,30}|Chapter\s+\d+[^\n]{0,40}|[0-9]{1,4}[、.．]\s*[^\s第][^\n]{0,38})[ \t　]*$/
+const CHAPTER_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回话](?:[^，。！？\n]{0,40}[。！？]?)?|第\s*[0-9]{1,4}\s*[、.．]\s*[^\s第][^\n]{0,78}|序章|楔子|引子|尾声|终章|番外[^\n]{0,30}|Chapter\s+\d+[^\n]{0,40}|[0-9]{1,4}[、.．]\s*[^\s第][^\n]{0,38})[ \t　]*$/
 
 const totalChapters = computed(() => volumes.value.reduce((n, v) => n + v.chapters.length, 0))
 const totalChars = computed(() =>
@@ -280,6 +288,12 @@ function parseVolumes(text: string): ParsedVolume[] {
   }
 
   for (const line of lines) {
+    // 原始行以全角空格缩进开头 = 正文段（如「　　第一章的正文…」），不当标题——防正文段恰好以「第X章」开头被误切
+    if (/^[　\t]{1,}/.test(line)) {
+      if (curCh) curCh.body.push(line)
+      else preamble.push(line)
+      continue
+    }
     const t = line.trim()
     if (t && t.length <= 60 && VOLUME_RE.test(t)) {
       curVol = { title: t, chapters: [] }
@@ -363,6 +377,7 @@ async function doImport() {
     }
     totalChaptersToImport.value = chapterStream.length
     importedChapters.value = 0
+    importingActive.value = true
 
     const BATCH = 500
     let projectId: number | null = null
@@ -378,7 +393,10 @@ async function doImport() {
         else batchVols.push({ title: item.volTitle, chapters: [item.chapter] })
       }
 
-      importStatus.value = firstBatch ? '创建书籍并导入第一批…' : `导入中（第 ${Math.floor(i / BATCH) + 1} 批）…`
+      const batchNo = Math.floor(i / BATCH) + 1
+      importStatus.value = firstBatch ? '创建书籍并导入第一批…' : `导入中（第 ${batchNo} 批）…`
+      // 请求发出前先推进度到本批中点，让条在请求期间就"在动"
+      importedChapters.value = Math.min(i + Math.floor(slice.length / 2), totalChaptersToImport.value)
       const res: any = firstBatch
         ? await projectApi.importBook({ name: bookName.value.trim(), volumes: batchVols })
         : await projectApi.importBookBatch({ project_id: projectId!, name: bookName.value.trim(), volumes: batchVols })
@@ -388,11 +406,13 @@ async function doImport() {
       firstBatch = false
     }
 
+    importingActive.value = false
     importStatus.value = '导入完成'
     toast.success(`导入完成：${importedChapters.value} 章已上架`)
     emit('update:modelValue', false)
     emit('imported', projectId!)
   } catch (e: any) {
+    importingActive.value = false
     toast.error(e.response?.data?.error || '导入失败，请重试')
     step.value = 'preview'
   } finally {
@@ -433,6 +453,26 @@ async function doImport() {
   text-align: center;
   margin-top: 10px;
   font-variant-numeric: tabular-nums;
+}
+.ip-pct {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent, #007aff);
+  margin-right: 10px;
+  font-variant-numeric: tabular-nums;
+}
+/* 请求进行中的流光动效：一道高光从左到右循环滑过 */
+.ip-fill { position: relative; overflow: hidden; }
+.ip-fill.shimmer .ip-shine {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+  animation: ip-shine 1.2s ease-in-out infinite;
+}
+@keyframes ip-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
 }
 .drop-zone:hover, .drop-zone.dragover {
   border-color: var(--accent, #007aff);
