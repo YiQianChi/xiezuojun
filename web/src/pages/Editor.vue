@@ -289,8 +289,6 @@
         <option value="zh-CN">默认女声</option>
         <option v-for="v in voiceList" :key="v.voice" :value="v.voice">{{ v.name }}</option>
       </select>
-      <button class="status-item scene-nav-btn" @click="jumpScene(-1)" title="上一个场景 (Alt+↑)">⬆️</button>
-      <button class="status-item scene-nav-btn" @click="jumpScene(1)" title="下一个场景 (Alt+↓)">⬇️</button>
 
       <!-- 显示设置：字号/行距/字距/底部留白 -->
       <DisplaySettings :overrides="displayOverrides" :line-numbers="lineNumbers" @update="onDisplaySetting" @toggle-line-numbers="onToggleLineNumbers" />
@@ -386,12 +384,9 @@
             <div class="help-row"><kbd>Ctrl+Shift+F</kbd><span>搜索（全项目）</span></div>
             <div class="help-row"><kbd>Ctrl+P</kbd><span>切换模式（构思→写作）</span></div>
             <div class="help-row"><kbd>Ctrl+Shift+Z</kbd><span>专注模式</span></div>
-            <div class="help-row"><kbd>Alt+↑</kbd><span>上一个场景</span></div>
-            <div class="help-row"><kbd>Alt+↓</kbd><span>下一个场景</span></div>
             <div class="help-row"><kbd>Ctrl+/</kbd><span>本帮助</span></div>
             <div class="help-row"><kbd>Esc</kbd><span>关闭弹窗/退出专注</span></div>
           </div>
-          <div class="help-tip">场景分隔符：在段落开头输入 ✧ 或 --- 即可创建场景分隔</div>
         </div>
       </div>
     </Teleport>
@@ -624,35 +619,7 @@ async function loadVoices() {
   } catch { /* ponytail: 语音列表加载失败不影响朗读 */ }
 }
 
-// E1: 场景分隔导航 — 查找 ✧/---/*** 开头的段落位置
-const SCENE_SEP = /^(✧{1,}|={3,}|\*{3,}|-{3,}|※{1,}|◇{1,})/
-function findScenePositions(): number[] {
-  if (!editor.value) return []
-  const positions: number[] = []
-  editor.value.state.doc.descendants((node: any, pos: number) => {
-    if (node.isText) {
-      const text = node.text || ''
-      if (SCENE_SEP.test(text.trim())) positions.push(pos)
-    }
-    return true
-  })
-  return positions
-}
-function jumpScene(dir: 1 | -1) {
-  if (!editor.value) return
-  const positions = findScenePositions()
-  if (positions.length === 0) { toast.info('未找到场景分隔符（✧ 或 ---）'); return }
-  const sel = editor.value.state.selection.from
-  const target = dir === 1
-    ? positions.find(p => p > sel + 1)
-    : [...positions].reverse().find(p => p < sel - 1)
-  if (target === undefined) { toast.info(dir === 1 ? '已是最后一个场景' : '已是第一个场景'); return }
-  editor.value.chain().setTextSelection(target).run()
-  editor.value.view.coordsAtPos(target)
-  const coords = editor.value.view.coordsAtPos(target)
-  const el = document.elementFromPoint(coords.left, coords.top)?.parentElement
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-}
+// E1: 场景导航已下线（Boss 2026-10-23：没啥用，按钮+快捷键+功能全清）
 
 const contextMenu = ref({ visible: false, x: 0, y: 0 })
 // ponytail: 右键时编辑器会失焦丢选区，打开菜单前缓存
@@ -1959,12 +1926,6 @@ function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === '/') {
     e.preventDefault()
     helpOpen.value = !helpOpen.value
-    return
-  }
-  // E1: Alt+↑/↓ 场景导航
-  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-    e.preventDefault()
-    jumpScene(e.key === 'ArrowDown' ? 1 : -1)
     return
   }
 }

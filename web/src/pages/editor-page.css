@@ -201,7 +201,6 @@
   /* 状态栏：只留核心项，safe-area 底部留白（提防 base 规则在文件后段覆盖） */
   .editor-page .status-bar { gap: 10px; padding: 0 14px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
   .status-bar .voice-select { display: none; }
-  .status-bar .scene-nav-btn { display: none; }
   /* 编辑器右侧面板：移动端改底部抽屉（不全屏盖正文，AI 自动弹出时正文仍可见）。加 .editor-page 提权防 base 覆盖 */
   .editor-page .context-panel, .editor-page .reference-panel {
     position: fixed;
@@ -1545,13 +1544,7 @@
   background: var(--accent, #007aff);
 }
 
-/* E1: 场景导航按钮 */
-.scene-nav-btn {
-  font-size: 12px;
-  padding: 2px 6px !important;
-  opacity: 0.7;
-}
-.scene-nav-btn:hover { opacity: 1; }
+/* E1: 场景导航按钮已下线（2026-10-23） */
 
 /* E2: 音色选择 */
 .voice-select {
