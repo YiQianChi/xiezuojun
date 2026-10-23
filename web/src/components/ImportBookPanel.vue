@@ -125,9 +125,9 @@ const importPct = computed(() =>
   totalChaptersToImport.value > 0 ? Math.min(100, Math.round(importedChapters.value / totalChaptersToImport.value * 100)) : 0)
 
 // 章节/卷标题行识别：整行匹配且限制长度，防止误吃正文里提到「第三章」的句子
-// 三种现实格式：①第X章/节/回 ②行首纯数字序号「752.标题」（很多老书后半段省略「章」字）③特殊章
+// 四种现实格式：①第X章/节/回 ②行首纯数字序号「752.标题」（很多老书后半段省略「章」字）③「第050.标题」省略「章」字带「第」④特殊章
 const VOLUME_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*卷[^\n]{0,40}|卷\s*[0-9零一二三四五六七八九十百千万两]+[^\n]{0,30})[ \t　]*$/
-const CHAPTER_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回话][^\n]{0,40}|序章|序|楔子|引子|尾声|终章|番外[^\n]{0,30}|Chapter\s+\d+[^\n]{0,40}|[0-9]{1,4}[、.．]\s*[^\s第][^\n]{0,38})[ \t　]*$/
+const CHAPTER_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回话][^\n]{0,40}|第\s*[0-9]{1,4}\s*[、.．]\s*[^\s第][^\n]{0,78}|序章|序|楔子|引子|尾声|终章|番外[^\n]{0,30}|Chapter\s+\d+[^\n]{0,40}|[0-9]{1,4}[、.．]\s*[^\s第][^\n]{0,38})[ \t　]*$/
 
 const totalChapters = computed(() => volumes.value.reduce((n, v) => n + v.chapters.length, 0))
 const totalChars = computed(() =>
@@ -228,6 +228,11 @@ function normalizeChapterTitle(raw: string): string {
   const numMatch = t.match(/^([0-9]{1,4})\s*[、.．]\s*(.+)$/)
   if (numMatch) {
     return `第${numMatch[1]}章 ${numMatch[2].trim()}`
+  }
+  // 「第050.标题」（省略「章」字）→ 第50章 标题
+  const diMatch = t.match(/^第\s*([0-9]{1,4})\s*[、.．]\s*(.+)$/)
+  if (diMatch) {
+    return `第${diMatch[1]}章 ${diMatch[2].trim()}`
   }
   // 「第752章.标题」「第 752 章 标题」→ 第752章 标题（序号与名字之间统一空格）
   const cnMatch = t.match(/^(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回话])\s*[.．、:：]?\s*(.*)$/)
