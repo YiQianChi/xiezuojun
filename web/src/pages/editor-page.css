@@ -739,6 +739,29 @@
   height: 0;
 }
 
+/* 段落行号（显示设置开关，默认关）：
+   counter 已在 .ProseMirror 上 reset；开关只控制序号是否显示+左侧留白。
+   规则放 base 段落规则之后且选择器更特异，防止被后面的 base 覆盖（本文件的教训） */
+.editor-wrapper.show-line-numbers .tiptap-container {
+  padding-left: 76px;
+}
+.editor-wrapper.show-line-numbers .tiptap-container :deep(.ProseMirror p) {
+  position: relative;
+}
+.editor-wrapper.show-line-numbers .tiptap-container :deep(.ProseMirror p)::before {
+  counter-increment: para;
+  content: counter(para);
+  position: absolute;
+  left: -44px;
+  top: 0.35em;
+  font-size: 12px;
+  font-family: var(--font-sans, sans-serif);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* AI 工具栏 */
 .ai-toolbar {
   position: absolute;

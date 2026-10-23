@@ -36,20 +36,35 @@
       </div>
       <div class="ds-hint">打字时文字行保持在屏幕的这个高度，眼睛不用追着屏幕底部跑</div>
 
+      <div class="ds-row ds-toggle-row">
+        <span class="ds-label">段落行号</span>
+        <label class="ds-switch">
+          <input type="checkbox" :checked="lineNumbers" @change="toggleLineNumbers($event)" />
+          <span class="ds-slider"></span>
+        </label>
+        <span class="ds-value">{{ lineNumbers ? '开' : '关' }}</span>
+      </div>
+
       <button class="ds-reset" @click="reset">恢复默认</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 // 只把「用户改过的项」透传给编辑器（CSS 变量），没改的不下发——
 // 这样专注模式/移动端的默认排版行为完全不受影响
-const props = defineProps<{ overrides: Record<string, number> }>()
-const emit = defineEmits<{ update: [key: string, value: number | undefined] }>()
+const props = defineProps<{ overrides: Record<string, number>, lineNumbers?: boolean }>()
+const emit = defineEmits<{ update: [key: string, value: number | undefined], 'toggle-line-numbers': [on: boolean] }>()
 
 const open = ref(false)
+
+// 段落行号开关（独立于 overrides，布尔型；默认关）
+const lineNumbers = computed(() => props.lineNumbers === true)
+function toggleLineNumbers(e: Event) {
+  emit('toggle-line-numbers', (e.target as HTMLInputElement).checked)
+}
 
 // 展示用默认值（与 editor-page.css 的各端默认值一致；视线位置两端一致）
 const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
@@ -141,6 +156,46 @@ function reset() {
   color: var(--text-tertiary);
   line-height: 1.5;
   padding: 2px 0 4px;
+}
+/* 段落行号开关 */
+.ds-toggle-row { padding-top: 8px; }
+.ds-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.ds-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.ds-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border, #e0e0e0);
+  border-radius: 20px;
+  transition: background .15s;
+}
+.ds-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  top: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.ds-switch input:checked + .ds-slider {
+  background: var(--accent, #007aff);
+}
+.ds-switch input:checked + .ds-slider::before {
+  transform: translateX(16px);
 }
 @media (max-width: 720px) {
   .ds-popup { position: fixed; left: 16px; right: 16px; bottom: 64px; width: auto; }

@@ -94,7 +94,7 @@
         <div v-else-if="!activeDocId" class="editor-empty">
           <p>👈 请选择或新建一个章节</p>
         </div>
-        <div v-else class="editor-wrapper" @contextmenu.prevent="openContextMenu">
+        <div v-else class="editor-wrapper" :class="{ 'show-line-numbers': lineNumbers }" @contextmenu.prevent="openContextMenu">
           <div class="tiptap-container">
             <editor-content v-if="editor" :editor="editor" />
           </div>
@@ -293,7 +293,7 @@
       <button class="status-item scene-nav-btn" @click="jumpScene(1)" title="下一个场景 (Alt+↓)">⬇️</button>
 
       <!-- 显示设置：字号/行距/字距/底部留白 -->
-      <DisplaySettings :overrides="displayOverrides" @update="onDisplaySetting" />
+      <DisplaySettings :overrides="displayOverrides" :line-numbers="lineNumbers" @update="onDisplaySetting" @toggle-line-numbers="onToggleLineNumbers" />
 
       <!-- 工具箱：低频功能收起来 -->
       <div class="toolbox-trigger" :class="{ open: toolboxOpen }">
@@ -896,10 +896,19 @@ async function confirmSettingsInit() {
 //        + 打字时光标低于视线线就把容器向上滚
 const DS_KEY = 'xzj-display-settings'
 const displayOverrides = ref<Record<string, number>>({})
+// 段落行号显示（默认关，localStorage 独立键）
+const LN_KEY = 'xzj-line-numbers'
+const lineNumbers = ref(false)
 try {
   displayOverrides.value = JSON.parse(localStorage.getItem(DS_KEY) || '{}')
   delete displayOverrides.value.bottomPad // 旧版「底部留白」已并入视线位置，清掉残留
 } catch {}
+try { lineNumbers.value = localStorage.getItem(LN_KEY) === '1' } catch {}
+
+function onToggleLineNumbers(on: boolean) {
+  lineNumbers.value = on
+  try { localStorage.setItem(LN_KEY, on ? '1' : '0') } catch {}
+}
 
 const eyeLineRatio = computed(() => (displayOverrides.value.eyeLine ?? 45) / 100)
 const typewriterPad = ref(60)
