@@ -329,6 +329,10 @@
               <span class="tool-icon">🔗</span>
               <span class="tool-label">关系图</span>
             </button>
+            <button class="tool-btn" @click="oneClickFormat(); toolboxOpen = false">
+              <span class="tool-icon">🧹</span>
+              <span class="tool-label">一键排版</span>
+            </button>
             <button class="tool-btn" @click="helpOpen = true; toolboxOpen = false">
               <span class="tool-icon">⌨️</span>
               <span class="tool-label">快捷键</span>
@@ -1316,6 +1320,58 @@ function getEditorText(ed = editor.value) {
 // ponytail: save/load as HTML to preserve marks (highlight etc.)
 function getEditorHTML(ed = editor.value) {
   return ed ? ed.getHTML() : ''
+}
+
+// —— 一键排版 ——
+// 处理"内容写好了但排版乱"：①去掉每段首尾的空白字符（含手打的全角空格缩进）②删除空段落
+// ③每段统一首行缩进两个全角空格 ④段落之间不留空行（网文排版习惯：段间靠 CSS margin 隔开）。
+// 标题(h1-h3)、表格、代码块等非段落节点原样保留；文字的 marks（高亮等）通过保留 inline 内容不动而保住。
+// 单个 ProseMirror 事务完成，Ctrl+Z 一步可撤销。
+function oneClickFormat() {
+  const ed = editor.value
+  if (!ed) return
+  const { state, view } = ed
+  const { tr } = state
+  const INDENT = '\u3000\u3000' // 两个全角空格
+
+  // 从后往前处理，位置映射才不会互相干扰
+  const paras: { pos: number; node: any }[] = []
+  state.doc.forEach((node: any, offset: number) => {
+    if (node.type.name === 'paragraph') paras.push({ pos: offset, node })
+  })
+
+  let changed = 0
+  for (let i = paras.length - 1; i >= 0; i--) {
+    const { pos, node } = paras[i]
+    const text = node.textContent
+    const cleaned = text.replace(/^[\s\u3000]+|[\s\u3000]+$/g, '')
+    // 空段落（或只有空白）：删掉整个段落
+    if (!cleaned) {
+      tr.delete(pos, pos + node.nodeSize)
+      changed++
+      continue
+    }
+    // 已是标准缩进且无首尾空白：跳过
+    if (text === INDENT + cleaned) continue
+    const newText = INDENT + cleaned
+    // 重建段落：保留 marks 的做法是复制首个 text node 的 marks 应用到新文本
+    const firstText = node.content.firstChild
+    const marks = firstText?.marks ?? []
+    const paraType = state.schema.nodes.paragraph
+    const newPara = paraType.create(null, state.schema.text(newText, marks))
+    tr.replaceWith(pos, pos + node.nodeSize, newPara)
+    changed++
+  }
+
+  if (changed > 0) {
+    // 只把光标放回文档开头附近，避免位置失效
+    tr.setSelection(state.selection.constructor.near(tr.doc.resolve(Math.min(state.selection.from, tr.doc.content.size))))
+    view.dispatch(tr)
+    autoSave()
+    toast.success(`已整理 ${changed} 个段落`)
+  } else {
+    toast.info('排版已经很整齐，无需整理')
+  }
 }
 
 async function loadBranches() {
