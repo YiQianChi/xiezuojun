@@ -39,8 +39,23 @@
         <div class="stat-row">
           识别到 <strong>{{ volumes.length }}</strong> 卷 / <strong>{{ totalChapters }}</strong> 章，共 <strong>{{ totalChars }}</strong> 字
         </div>
+        <!-- 标题格式不一致 → 询问是否统一（默认保留原格式，确认后才统一） -->
+        <div v-if="needsNormalize" class="unify-box">
+          <div class="unify-title">⚠️ 检测到章节标题格式不一致</div>
+          <div v-for="ex in normalizeExamples" :key="ex.raw" class="unify-ex">
+            <span class="ex-raw">{{ ex.raw }}</span> → <span class="ex-norm">{{ ex.norm }}</span>
+          </div>
+          <label class="radio-row">
+            <input type="radio" v-model="unifyTitles" :value="true" />
+            统一为「第N章 标题」格式
+          </label>
+          <label class="radio-row">
+            <input type="radio" v-model="unifyTitles" :value="false" />
+            保留原格式导入
+          </label>
+        </div>
         <div class="chapter-preview">
-          <div v-for="(v, vi) in volumes" :key="vi" class="pv-vol">
+          <div v-for="(v, vi) in effectiveVolumes" :key="vi" class="pv-vol">
             <div class="pv-vol-title">📁 {{ v.title || '第一卷' }}</div>
             <div v-for="(ch, ci) in v.chapters" :key="ci" class="pv-ch">
               <span class="pv-ch-title">📄 {{ ch.title }}</span>
@@ -99,6 +114,8 @@ const rawText = ref('')
 const volumes = ref<ParsedVolume[]>([])
 const fallbackMode = ref<'single' | 'split'>('split')
 const splitSize = ref(3000)
+// 标题格式统一：默认保留原格式，用户确认后才统一
+const unifyTitles = ref(false)
 const importing = ref(false)
 // 分批导入进度
 const importStatus = ref('')
@@ -118,12 +135,41 @@ const totalChars = computed(() =>
 const canSubmit = computed(() =>
   bookName.value.trim().length > 0 && (volumes.value.length > 0 ? totalChapters.value > 0 : rawText.value.trim().length > 0))
 
+// —— 标题格式一致性检测 ——
+// 有一章归一后和原标题不一样 = 全书存在格式不一致，提示用户选择（默认保留原格式）
+const needsNormalize = computed(() =>
+  volumes.value.some(v => v.chapters.some(c => normalizeChapterTitle(c.title) !== c.title)))
+
+// 不一致时展示 3 个「原样 → 统一后」对照示例（每行去重）
+const normalizeExamples = computed(() => {
+  const seen = new Set<string>()
+  const list: { raw: string; norm: string }[] = []
+  for (const v of volumes.value) {
+    for (const c of v.chapters) {
+      const norm = normalizeChapterTitle(c.title)
+      if (norm !== c.title && !seen.has(c.title)) {
+        seen.add(c.title)
+        list.push({ raw: c.title, norm })
+        if (list.length >= 3) return list
+      }
+    }
+  }
+  return list
+})
+
+// 用户选了统一 → 预览和导入都用归一后的标题；否则用原始标题
+const effectiveVolumes = computed(() => volumes.value.map(v => ({
+  title: v.title,
+  chapters: v.chapters.map(c => ({ ...c, title: unifyTitles.value ? normalizeChapterTitle(c.title) : c.title })),
+})))
+
 // 外部（新建弹窗关闭时）调用来重置面板
 function reset() {
   step.value = 'pick'
   bookName.value = ''
   rawText.value = ''
   volumes.value = []
+  unifyTitles.value = false
   importing.value = false
 }
 defineExpose({ reset })
@@ -174,6 +220,45 @@ async function loadFile(file: File) {
   step.value = 'preview'
 }
 
+// 标题归一：把「752.标题」「第752章.标题」等杂式统一成「第752章 标题」，
+// 和全书前面的章节格式保持一致（Boss 2026-10-23：752 这样的也都改成统一格式）
+function normalizeChapterTitle(raw: string): string {
+  const t = raw.trim()
+  // 行首纯数字序号：752.标题 / 752、标题 / 752．标题 → 第752章 标题
+  const numMatch = t.match(/^([0-9]{1,4})\s*[、.．]\s*(.+)$/)
+  if (numMatch) {
+    return `第${numMatch[1]}章 ${numMatch[2].trim()}`
+  }
+  // 「第752章.标题」「第 752 章 标题」→ 第752章 标题（序号与名字之间统一空格）
+  const cnMatch = t.match(/^(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回话])\s*[.．、:：]?\s*(.*)$/)
+  if (cnMatch) {
+    const name = cnMatch[2].trim()
+    // 序号统一用阿拉伯数字（「第七百五十二章」→「第752章」；中文数字转不了就原样保留）
+    const numStr = chineseToArabic(cnMatch[1])
+    return name ? `第${numStr}章 ${name}` : `第${numStr}章`
+  }
+  return t
+}
+
+// 中文数字序号 → 阿拉伯数字（只处理到万级，章节号够用）
+function chineseToArabic(prefix: string): string {
+  const m = prefix.match(/^第\s*([0-9]+|[零一二三四五六七八九十百千万两]+)\s*[章节回话]$/)
+  if (!m) return prefix.replace(/^第\s*|\s*[章节回话]$/g, '')
+  const s = m[1]
+  if (/^[0-9]+$/.test(s)) return s
+  const digit: Record<string, number> = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 }
+  let total = 0, section = 0, num = 0
+  for (const ch of s) {
+    if (digit[ch] !== undefined) { num = digit[ch] }
+    else if (ch === '十') { section += (num || 1) * 10; num = 0 }
+    else if (ch === '百') { section += (num || 1) * 100; num = 0 }
+    else if (ch === '千') { section += (num || 1) * 1000; num = 0 }
+    else if (ch === '万') { total += (section + num) * 10000; section = 0; num = 0 }
+  }
+  const result = total + section + num
+  return result > 0 ? String(result) : s
+}
+
 function parseVolumes(text: string): ParsedVolume[] {
   interface RawChapter { title: string; body: string[] }
   interface RawVolume { title: string; chapters: RawChapter[] }
@@ -199,6 +284,7 @@ function parseVolumes(text: string): ParsedVolume[] {
     }
     if (t && t.length <= 50 && CHAPTER_RE.test(t)) {
       foundChapter = true
+      // 存原始标题：是否归一成「第N章 标题」由用户在预览时决定
       curCh = { title: t, body: [] }
       ensureVol().chapters.push(curCh)
       continue
@@ -256,7 +342,7 @@ async function doImport() {
   step.value = 'importing'
   importStatus.value = '准备导入…'
   try {
-    let vols = volumes.value
+    let vols = effectiveVolumes.value
     if (vols.length === 0) {
       vols = fallbackMode.value === 'single'
         ? [{ title: '', chapters: [{ title: '全文', content: rawText.value.trim() }] }]
@@ -410,6 +496,26 @@ async function doImport() {
   padding: 10px 14px;
   margin-bottom: 12px;
 }
+/* 标题格式不一致提示框 */
+.unify-box {
+  font-size: 13px;
+  color: #b45309;
+  background: rgba(245,158,11,.08);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+.unify-box .radio-row { color: var(--text-primary); }
+.unify-title { font-weight: 600; margin-bottom: 6px; }
+.unify-ex {
+  font-size: 12px;
+  margin: 2px 0 8px;
+  padding-left: 4px;
+  word-break: break-all;
+}
+.ex-raw { color: var(--text-secondary); text-decoration: line-through; }
+.ex-norm { color: #b45309; font-weight: 500; }
 .radio-row {
   display: flex;
   align-items: center;
