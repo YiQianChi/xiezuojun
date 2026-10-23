@@ -25,19 +25,23 @@ export function stripChapterPrefix(title: string): string {
   return String(title || '').replace(CHAPTER_PREFIX_RE, '').trim()
 }
 
-/** 章节在同级（同卷/同父级）中的序号，从 1 开始；找不到返回 0 */
+/** 章节在同级（同卷/同父级）中的序号，从 1 开始；找不到返回 0。序章/番外类不占序号位 */
 export function chapterOrdinal(doc: any, allDocs: any[]): number {
   const siblings = allDocs
-    .filter((d: any) => d.type === 'chapter' && (d.parent_id || null) === (doc.parent_id || null))
+    .filter((d: any) => d.type === 'chapter'
+      && (d.parent_id || null) === (doc.parent_id || null)
+      && !NO_NUMBER_RE.test(String(d.title || '').trim()))
     .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
   return siblings.findIndex((d: any) => d.id === doc.id) + 1
 }
 
 /** 章节显示标题：「第一章 雨夜」；序章/番外类保持原名 */
 export function chapterDisplayTitle(doc: any, allDocs: any[]): string {
-  const raw = stripChapterPrefix(doc?.title)
-  if (NO_NUMBER_RE.test(raw)) return raw
+  const rawTitle = String(doc?.title || '').trim()
+  if (NO_NUMBER_RE.test(rawTitle)) return rawTitle
+  // 作者/导入原稿自带的「第X章」编号优先，原样显示（导入保真 + 作者明确指定）
+  if (CHAPTER_PREFIX_RE.test(rawTitle)) return rawTitle
   const ord = chapterOrdinal(doc, allDocs)
   if (ord <= 0) return doc?.title || ''
-  return raw ? `第${numToChinese(ord)}章 ${raw}` : `第${numToChinese(ord)}章`
+  return rawTitle ? `第${numToChinese(ord)}章 ${rawTitle}` : `第${numToChinese(ord)}章`
 }
