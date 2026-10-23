@@ -281,13 +281,14 @@ function parseVolumes(text: string): ParsedVolume[] {
 
   for (const line of lines) {
     const t = line.trim()
-    if (t && t.length <= 50 && VOLUME_RE.test(t)) {
+    if (t && t.length <= 60 && VOLUME_RE.test(t)) {
       curVol = { title: t, chapters: [] }
       vols.push(curVol)
       curCh = null
       continue
     }
-    if (t && t.length <= 50 && CHAPTER_RE.test(t)) {
+    // 「第N.标题+正文粘一行」这类格式可到 90+ 字（如第194章那行 60 字），长度上限交给 CHAPTER_RE 各分支自己管
+    if (t && t.length <= 95 && CHAPTER_RE.test(t)) {
       foundChapter = true
       // 存原始标题：是否归一成「第N章 标题」由用户在预览时决定
       curCh = { title: t, body: [] }
