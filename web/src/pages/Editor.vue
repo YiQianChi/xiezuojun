@@ -247,6 +247,8 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </span>
         </div>
+        <div class="ctx-sep"></div>
+        <div @click="contextAction('oneClickFormat')">🧹 一键排版</div>
       </div>
 
       <!-- 文档树右键菜单 -->
@@ -1863,6 +1865,12 @@ function closeContextMenu() {
 
 function contextAction(action: string, color?: string) {
   if (!editor.value) return
+  // 一键排版作用于整篇，不需要选区
+  if (action === 'oneClickFormat') {
+    contextMenu.value.visible = false
+    oneClickFormat()
+    return
+  }
   const sel = cachedSelection || getSelection()
   cachedSelection = null
   if (!sel.text && action !== 'paste') return
