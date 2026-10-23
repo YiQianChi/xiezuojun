@@ -17,6 +17,17 @@
       <input ref="fileInput" type="file" accept=".txt,text/plain" hidden @change="onPick" />
     </template>
 
+    <!-- 第三步：导入进度 -->
+    <template v-else-if="step === 'importing'">
+      <div class="import-progress-box">
+        <div class="ip-text">{{ importStatus }}</div>
+        <div class="ip-bar">
+          <div class="ip-fill" :style="{ width: importPct + '%' }"></div>
+        </div>
+        <div class="ip-count">{{ importedChapters }} / {{ totalChaptersToImport }} 章</div>
+      </div>
+    </template>
+
     <!-- 第二步：预览分章 -->
     <template v-else>
       <div class="form-group">
@@ -74,12 +85,13 @@ import { toast } from '../composables/useToast'
 
 const emit = defineEmits<{
   imported: [projectId: number]
+  'update:modelValue': [v: boolean]
 }>()
 
 interface ParsedChapter { title: string; content: string }
 interface ParsedVolume { title: string; chapters: ParsedChapter[] }
 
-const step = ref<'pick' | 'preview'>('pick')
+const step = ref<'pick' | 'preview' | 'importing'>('pick')
 const dragover = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const bookName = ref('')
@@ -88,6 +100,12 @@ const volumes = ref<ParsedVolume[]>([])
 const fallbackMode = ref<'single' | 'split'>('split')
 const splitSize = ref(3000)
 const importing = ref(false)
+// 分批导入进度
+const importStatus = ref('')
+const importedChapters = ref(0)
+const totalChaptersToImport = ref(0)
+const importPct = computed(() =>
+  totalChaptersToImport.value > 0 ? Math.min(100, Math.round(importedChapters.value / totalChaptersToImport.value * 100)) : 0)
 
 // 章节/卷标题行识别：整行匹配且限制长度，防止误吃正文里提到「第三章」的句子
 const VOLUME_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*卷[^\n]{0,40}|卷\s*[0-9零一二三四五六七八九十百千万两]+[^\n]{0,30})[ \t　]*$/
@@ -234,6 +252,8 @@ function splitBySize(text: string, size: number): ParsedVolume[] {
 async function doImport() {
   if (!canSubmit.value || importing.value) return
   importing.value = true
+  step.value = 'importing'
+  importStatus.value = '准备导入…'
   try {
     let vols = volumes.value
     if (vols.length === 0) {
@@ -241,12 +261,47 @@ async function doImport() {
         ? [{ title: '', chapters: [{ title: '全文', content: rawText.value.trim() }] }]
         : splitBySize(rawText.value.trim(), Math.max(500, splitSize.value || 3000))
     }
-    const res = await projectApi.importBook({ name: bookName.value.trim(), volumes: vols })
-    const data = res.data?.data || res.data
-    toast.success(`导入完成：${data.chapters} 章已上架`)
-    emit('imported', data.project_id)
+
+    // 摊平成章流再按 500 章一批切（跨卷的批允许同批带多个卷，后端按卷名归并）
+    const chapterStream: { volTitle: string; chapter: ParsedChapter }[] = []
+    for (const v of vols) {
+      const vt = v.title || ''
+      for (const ch of v.chapters) chapterStream.push({ volTitle: vt, chapter: ch })
+    }
+    totalChaptersToImport.value = chapterStream.length
+    importedChapters.value = 0
+
+    const BATCH = 500
+    let projectId: number | null = null
+    let firstBatch = true
+
+    for (let i = 0; i < chapterStream.length; i += BATCH) {
+      const slice = chapterStream.slice(i, i + BATCH)
+      // 聚成卷结构
+      const batchVols: { title: string; chapters: ParsedChapter[] }[] = []
+      for (const item of slice) {
+        const last = batchVols[batchVols.length - 1]
+        if (last && last.title === item.volTitle) last.chapters.push(item.chapter)
+        else batchVols.push({ title: item.volTitle, chapters: [item.chapter] })
+      }
+
+      importStatus.value = firstBatch ? '创建书籍并导入第一批…' : `导入中（第 ${Math.floor(i / BATCH) + 1} 批）…`
+      const res: any = firstBatch
+        ? await projectApi.importBook({ name: bookName.value.trim(), volumes: batchVols })
+        : await projectApi.importBookBatch({ project_id: projectId!, name: bookName.value.trim(), volumes: batchVols })
+      const data = res.data?.data || res.data
+      projectId = data.project_id ?? projectId
+      importedChapters.value = Math.min(i + slice.length, totalChaptersToImport.value)
+      firstBatch = false
+    }
+
+    importStatus.value = '导入完成'
+    toast.success(`导入完成：${importedChapters.value} 章已上架`)
+    emit('update:modelValue', false)
+    emit('imported', projectId!)
   } catch (e: any) {
     toast.error(e.response?.data?.error || '导入失败，请重试')
+    step.value = 'preview'
   } finally {
     importing.value = false
   }
@@ -262,6 +317,29 @@ async function doImport() {
   cursor: pointer;
   color: var(--text-secondary);
   transition: all .15s;
+}
+
+/* 导入进度 */
+.import-progress-box { padding: 30px 10px 24px; }
+.ip-text { font-size: 14px; color: var(--text-primary); margin-bottom: 14px; }
+.ip-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border, #e5e5ea);
+  overflow: hidden;
+}
+.ip-fill {
+  height: 100%;
+  background: var(--accent, #007aff);
+  border-radius: 4px;
+  transition: width .4s ease;
+}
+.ip-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-top: 10px;
+  font-variant-numeric: tabular-nums;
 }
 .drop-zone:hover, .drop-zone.dragover {
   border-color: var(--accent, #007aff);

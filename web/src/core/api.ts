@@ -147,6 +147,9 @@ export const projectApi = {
     // 大书（几百万字）传输+落库要几分钟，全局 10s 超时会掐断 → 单独放宽
     return api.post('/projects/import', data, { timeout: 600000 })
   },
+  importBookBatch(data: { project_id: number; name: string; volumes: { title: string; chapters: { title: string; content: string }[] }[] }) {
+    return api.post('/projects/import/batch', data, { timeout: 600000 })
+  },
   update(id: string | number, data: { name?: string; description?: string }) {
     return api.patch(`/projects/${id}`, data)
   },

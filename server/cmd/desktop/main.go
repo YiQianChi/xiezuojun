@@ -158,6 +158,7 @@ func main() {
 	authd.GET("/projects", projectHandler.ListProjects)
 	authd.POST("/projects", projectHandler.CreateProject)
 	authd.POST("/projects/import", projectHandler.ImportBook)
+	authd.POST("/projects/import/batch", projectHandler.ImportBookBatch)
 	authd.GET("/projects/search", projectHandler.SearchProjects)
 	authd.GET("/projects/:id/search", projectHandler.SearchDocuments)
 	authd.GET("/projects/:id", projectHandler.GetProject)

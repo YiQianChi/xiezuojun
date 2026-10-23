@@ -27,6 +27,7 @@ type importVolumeReq struct {
 const (
 	importMaxChapters = 3000
 	importMaxBytes    = 30 << 20 // 30MB 纯文本，约 1500 万字，够用且防呆
+	importBatchSize   = 500      // 前端分批提交的单批章节数
 )
 
 // ImportBook POST /api/projects/import
