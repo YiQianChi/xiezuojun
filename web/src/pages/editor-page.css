@@ -625,7 +625,8 @@
   counter-increment: para;
 }
 
-/* 行号只在开启开关时显示（Boss 2026-10-23：收进显示设置，默认不显示） */
+/* 行号只在开启开关时显示（Boss 2026-10-23：收进显示设置，默认不显示）
+   定位用固定 px（不用 em）：行号盒子恒定居中于 76px 宽的左侧 gutter，不随字号漂移 */
 .editor-wrapper.show-line-numbers :deep(.ProseMirror) > p::before,
 .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h1::before,
 .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h2::before,
@@ -636,9 +637,8 @@
 .editor-wrapper.show-line-numbers :deep(.ProseMirror) > pre::before {
   content: counter(para);
   position: absolute;
-  left: -3.5em;
-  top: 1.32em;
-  width: 2.5em;
+  left: -76px;
+  width: 64px;
   text-align: center;
   font-family: var(--font-sans, -apple-system, 'SF Pro', sans-serif);
   font-size: 12px;
