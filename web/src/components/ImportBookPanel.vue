@@ -108,8 +108,9 @@ const importPct = computed(() =>
   totalChaptersToImport.value > 0 ? Math.min(100, Math.round(importedChapters.value / totalChaptersToImport.value * 100)) : 0)
 
 // 章节/卷标题行识别：整行匹配且限制长度，防止误吃正文里提到「第三章」的句子
+// 三种现实格式：①第X章/节/回 ②行首纯数字序号「752.标题」（很多老书后半段省略「章」字）③特殊章
 const VOLUME_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*卷[^\n]{0,40}|卷\s*[0-9零一二三四五六七八九十百千万两]+[^\n]{0,30})[ \t　]*$/
-const CHAPTER_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回话][^\n]{0,40}|序章|序|楔子|引子|尾声|终章|番外[^\n]{0,30}|Chapter\s+\d+[^\n]{0,40})[ \t　]*$/
+const CHAPTER_RE = /^[ \t　]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回话][^\n]{0,40}|序章|序|楔子|引子|尾声|终章|番外[^\n]{0,30}|Chapter\s+\d+[^\n]{0,40}|[0-9]{1,4}[、.．]\s*[^\s第][^\n]{0,38})[ \t　]*$/
 
 const totalChapters = computed(() => volumes.value.reduce((n, v) => n + v.chapters.length, 0))
 const totalChars = computed(() =>
