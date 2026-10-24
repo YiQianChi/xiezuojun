@@ -15,7 +15,8 @@ type User struct {
 	PasswordHash string    `gorm:"size:255" json:"-"` // 兼容旧账号；新登录密码同步写入 identity.credential_hash
 	Avatar       string    `gorm:"size:500" json:"avatar"`
 	Plan         string    `gorm:"size:20;default:'free'" json:"plan"` // free / vip / svip
-	Status       int       `gorm:"default:1" json:"status"`              // 1=正常 0=禁用
+	Status       int       `gorm:"default:1" json:"status"`            // 1=正常 0=禁用
+	IsAdmin      bool      `gorm:"default:false" json:"is_admin"`      // 后台管理员标记
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

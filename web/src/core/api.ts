@@ -343,3 +343,24 @@ export const buddyApi = {
     return api.get('/buddy/state', { params: { consume_cheer: 1 } })
   },
 }
+
+// 后台管理（仅 is_admin 账号可用，服务端校验）
+export const adminApi = {
+  statsOverview() { return api.get('/admin/stats/overview') },
+  statsDaily() { return api.get('/admin/stats/daily') },
+  statsAIUsage() { return api.get('/admin/stats/ai-usage') },
+  listUsers(params: { q?: string; page?: number }) { return api.get('/admin/users', { params }) },
+  getUser(userId: string) { return api.get(`/admin/users/${userId}`) },
+  setUserStatus(userId: string, status: number) { return api.patch(`/admin/users/${userId}/status`, { status }) },
+  setUserPlan(userId: string, plan: string) { return api.patch(`/admin/users/${userId}/plan`, { plan }) },
+  resetUserPassword(userId: string, password: string) { return api.post(`/admin/users/${userId}/reset-password`, { password }) },
+  listProjects(params: { q?: string; page?: number }) { return api.get('/admin/projects', { params }) },
+  listProjectDocuments(projectId: number | string) { return api.get(`/admin/projects/${projectId}/documents`) },
+  getDocumentContent(docId: number | string) { return api.get(`/admin/documents/${docId}/content`) },
+  setProjectStatus(projectId: number | string, status: number) { return api.patch(`/admin/projects/${projectId}/status`, { status }) },
+  listAnnouncements() { return api.get('/admin/announcements') },
+  createAnnouncement(data: { title: string; content: string }) { return api.post('/admin/announcements', data) },
+  deleteAnnouncement(id: number) { return api.delete(`/admin/announcements/${id}`) },
+  listFeedbacks(params?: { open?: number }) { return api.get('/admin/feedbacks', { params }) },
+  resolveFeedback(id: number) { return api.patch(`/admin/feedbacks/${id}`, {}) },
+}

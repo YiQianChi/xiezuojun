@@ -33,6 +33,12 @@ const router = createRouter({
       name: 'Editor',
       component: () => import('../pages/Editor.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin',
+      name: 'Admin',
+      component: () => import('../pages/Admin.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })

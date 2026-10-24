@@ -18,6 +18,7 @@ import (
 	"gorm.io/gorm"
 
 	"xiezuojun-server/internal/ai"
+	"xiezuojun-server/internal/admin"
 	"xiezuojun-server/internal/auth"
 	"xiezuojun-server/internal/buddy"
 	"xiezuojun-server/internal/gateway"
@@ -55,8 +56,15 @@ func main() {
 		&model.WordCountLog{},
 		&model.UsageRecord{},
 		&model.StoryThread{},
+		&admin.Announcement{},
+		&admin.Feedback{},
 	); err != nil {
-		log.Fatal("auto migrate failed:", err)
+		log.Fatal("auto migrate failed: ", err)
+	}
+
+	// 首个管理员：ADMIN_EMAIL 环境变量指定的账号自动提权（幂等，可留可删）
+	if adminEmail := os.Getenv("ADMIN_EMAIL"); adminEmail != "" {
+		db.Exec("UPDATE users SET is_admin = 1 WHERE email = ?", adminEmail)
 	}
 
 
@@ -338,6 +346,10 @@ func main() {
 
 	// 搭子（结伴写作）路由
 	buddy.RegisterRoutes(authd)
+
+	// 后台管理路由（用户管理/看板/内容监管/公告/反馈）
+	adminHandler := admin.NewHandler(db)
+	admin.RegisterRoutes(authd, adminHandler)
 
 	// 伏笔/钩子追踪
 	authd.GET("/projects/:id/stats", projectHandler.WritingStats)
