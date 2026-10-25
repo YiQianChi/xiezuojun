@@ -10,6 +10,10 @@
       <button v-if="canInstall" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
       <button class="nav-link" @click="showQQModal = true">QQ问题反馈群</button>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
+      <router-link v-if="isLoggedIn" to="/profile" class="nav-link profile-link" title="个人设置">
+        <span class="nav-avatar">{{ profileAvatar || (profileNickname || '我').slice(0, 1) }}</span>
+        <span class="nav-nick">{{ profileNickname || '我的' }}</span>
+      </router-link>
       <button v-if="isLoggedIn" @click="logout" class="nav-link logout">退出</button>
       <router-link v-else to="/login" class="nav-link">登录</router-link>
     </div>
@@ -56,9 +60,39 @@ const router = useRouter()
 const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
 const isLoggedIn = ref(false)
+// 导航栏头像/昵称（登录后拉取；个人设置页改完派发 xzj-profile-updated 事件刷新）
+const profileNickname = ref('')
+const profileAvatar = ref('')
+async function refreshProfile() {
+  profileNickname.value = ''
+  profileAvatar.value = ''
+  const token = localStorage.getItem('access_token')
+  if (!token) return
+  // 缓存优先（立即显示），再静默拉最新
+  try {
+    profileNickname.value = localStorage.getItem('xzj-nickname') || ''
+    profileAvatar.value = localStorage.getItem('xzj-avatar') || ''
+  } catch {}
+  try {
+    const { userApi } = await import('./core/api')
+    const res = await userApi.me()
+    const u = res.data?.data
+    if (u) {
+      profileNickname.value = u.nickname || ''
+      profileAvatar.value = u.avatar || ''
+      try {
+        localStorage.setItem('xzj-nickname', profileNickname.value)
+        localStorage.setItem('xzj-avatar', profileAvatar.value)
+      } catch {}
+    }
+  } catch {}
+}
+window.addEventListener('xzj-profile-updated', refreshProfile)
 // 登录/登出后路由会跳转，每次导航都重读一次 token，保证导航栏状态实时
 function refreshLoginState() {
+  const was = isLoggedIn.value
   isLoggedIn.value = !!localStorage.getItem('access_token')
+  if (isLoggedIn.value && !was) refreshProfile()
 }
 watch(() => route.fullPath, refreshLoginState)
 const showQQModal = ref(false)
@@ -85,6 +119,7 @@ function onReplayOnboarding() {
 }
 onMounted(() => {
   refreshLoginState()
+  if (isLoggedIn.value) refreshProfile()
   document.addEventListener('contextmenu', (e) => e.preventDefault())
   window.addEventListener('replay-onboarding', onReplayOnboarding)
 })
@@ -92,6 +127,7 @@ onMounted(() => {
 function logout() {
   localStorage.removeItem('access_token')
   localStorage.removeItem('refresh_token')
+  try { localStorage.removeItem('xzj-nickname'); localStorage.removeItem('xzj-avatar') } catch {}
   isLoggedIn.value = false
   router.push('/login')
 }
@@ -164,6 +200,12 @@ function logout() {
   color: var(--text-primary);
 }
 
+.profile-link { display: inline-flex; align-items: center; gap: 6px; }
+.nav-avatar {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--accent, #007aff);
+  color: #fff; font-size: 13px; line-height: 22px; text-align: center; overflow: hidden; flex-shrink: 0;
+}
+.nav-nick { max-width: 6em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .logout {
   font-family: inherit;
 }

@@ -373,6 +373,10 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 
 	updates := map[string]interface{}{"updated_at": time.Now()}
 	if req.Nickname != "" {
+		if len([]rune(req.Nickname)) > 50 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "昵称过长"})
+			return
+		}
 		updates["nickname"] = req.Nickname
 	}
 	if req.Avatar != "" {
@@ -384,6 +388,44 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "updated"})
+}
+
+// ChangePassword 已登录用户改密码（旧密码验证，无需验证码）
+func (h *Handler) ChangePassword(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	var req struct {
+		OldPassword string `json:"old_password" binding:"required"`
+		NewPassword string `json:"new_password" binding:"required,min=6"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误：新密码至少 6 位"})
+		return
+	}
+	var u model.User
+	if err := h.db.Where("user_id = ?", userID).First(&u).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	// 旧密码校验：identity 优先，回退 users.password_hash
+	var identity model.AuthIdentity
+	storedHash := u.PasswordHash
+	if err := h.db.Where("user_id = ? AND provider = 'email'", u.UserID).First(&identity).Error; err == nil && identity.CredentialHash != "" {
+		storedHash = identity.CredentialHash
+	}
+	if storedHash == "" || bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.OldPassword)) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "旧密码不正确"})
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash"})
+		return
+	}
+	h.db.Model(&model.User{}).Where("user_id = ?", u.UserID).Update("password_hash", string(hash))
+	if identity.ID > 0 {
+		h.db.Model(&identity).Update("credential_hash", string(hash))
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "password changed"})
 }
 
 // UsageStats 获取用户用量统计

@@ -158,6 +158,7 @@ func main() {
 
 	authd.GET("/user/me", userHandler.Me)
 	authd.PATCH("/user/me", userHandler.UpdateProfile)
+	authd.POST("/user/change-password", userHandler.ChangePassword)
 	authd.GET("/user/usage", userHandler.UsageStats)
 
 	authd.GET("/projects", projectHandler.ListProjects)
