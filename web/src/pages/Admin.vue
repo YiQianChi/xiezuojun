@@ -64,7 +64,7 @@
           <tr><th>ID</th><th>邮箱</th><th>昵称</th><th>套餐</th><th>状态</th><th>书籍</th><th>注册时间</th><th>操作</th></tr>
           <tr v-for="u in users" :key="u.user_id">
             <td>{{ u.id }}</td>
-            <td>{{ u.email }}<span v-if="u.is_admin" class="tag admin">管理员</span></td>
+            <td><a href="javascript:void(0)" class="email-link" @click="openUser(u)">{{ u.email }}</a><span v-if="u.is_admin" class="tag admin">管理员</span></td>
             <td>{{ u.nickname || '—' }}</td>
             <td>
               <select :value="u.plan" @change="setPlan(u, ($event.target as HTMLSelectElement).value)">
@@ -85,6 +85,70 @@
           <button class="btn sm" :disabled="userPage <= 1" @click="loadUsers(userPage - 1)">上一页</button>
           <span>{{ userPage }} / {{ Math.ceil(userTotal / 20) }}（共 {{ userTotal }} 人）</span>
           <button class="btn sm" :disabled="userPage >= Math.ceil(userTotal / 20)" @click="loadUsers(userPage + 1)">下一页</button>
+        </div>
+
+        <!-- 用户详情抽屉 -->
+        <div v-if="detail && detailData" class="drawer-mask" @click.self="detail = null">
+          <div class="drawer wide">
+            <div class="drawer-head">
+              <span>用户详情</span>
+              <button @click="detail = null">✕</button>
+            </div>
+            <div class="drawer-body">
+              <!-- 统计条 -->
+              <div class="ud-stats">
+                <div><b>{{ fmtNum(detailData.stats.total_words) }}</b><span>累计字数</span></div>
+                <div><b>{{ detailData.stats.active_days }}</b><span>活跃天数</span></div>
+                <div><b>{{ detailData.stats.ai_calls_30d }}</b><span>30日AI调用</span></div>
+                <div><b>{{ fmtNum(detailData.stats.ai_tokens_30d) }}</b><span>30日AI tokens</span></div>
+              </div>
+
+              <!-- 资料编辑 -->
+              <h4 class="ud-sec">基本资料</h4>
+              <div class="ud-form">
+                <label>昵称<input v-model="edit.nickname" class="input" placeholder="昵称" /></label>
+                <label>手机号<input v-model="edit.phone" class="input" placeholder="手机号（可空）" /></label>
+                <label>邮箱<input v-model="edit.email" class="input" /></label>
+                <label>套餐
+                  <select v-model="edit.plan" class="input">
+                    <option value="free">free</option><option value="vip">vip</option><option value="svip">svip</option>
+                  </select>
+                </label>
+                <label>状态
+                  <select v-model="edit.status" class="input">
+                    <option :value="1">正常</option><option :value="0">禁用</option><option :value="-1">注销</option>
+                  </select>
+                </label>
+                <label class="chk-row">
+                  <input type="checkbox" v-model="edit.is_admin" />
+                  管理员权限
+                </label>
+              </div>
+              <div class="ud-actions">
+                <button class="btn primary" @click="saveUser">保存修改</button>
+                <button class="btn" @click="resetPwd(detailData.user)">重置密码</button>
+              </div>
+              <p class="ud-meta">user_id: {{ detailData.user.user_id }} · 注册于 {{ fmtDate(detailData.user.created_at) }}</p>
+
+              <!-- 他的书 -->
+              <h4 class="ud-sec">作品（{{ detailData.projects.length }}）</h4>
+              <div v-for="p in detailData.projects" :key="p.id" class="doc-row">
+                <span class="doc-type">{{ p.genre || '小说' }}</span>
+                <span class="doc-title">{{ p.name }}</span>
+                <span class="doc-words">{{ fmtDate(p.created_at) }}</span>
+              </div>
+              <p v-if="!detailData.projects.length" class="empty">暂无作品</p>
+
+              <!-- 登录设备 -->
+              <h4 class="ud-sec">最近登录设备</h4>
+              <div v-for="(d, i) in detailData.devices" :key="i" class="doc-row">
+                <span class="doc-type">设备</span>
+                <span class="doc-title">{{ d.device_id || d.ip || '未知' }}</span>
+                <span class="doc-words">{{ fmtDate(d.created_at) }}</span>
+              </div>
+              <p v-if="!detailData.devices?.length" class="empty">暂无登录记录</p>
+            </div>
+          </div>
         </div>
       </template>
 
@@ -219,6 +283,10 @@ const userQ = ref('')
 const users = ref<any[]>([])
 const userPage = ref(1)
 const userTotal = ref(0)
+// 详情抽屉
+const detail = ref<any>(null)
+const detailData = ref<any>(null)
+const edit = ref<any>({})
 
 // —— 内容 ——
 const projQ = ref('')
@@ -304,6 +372,32 @@ async function resetPwd(u: any) {
   if (pwd.length < 6) { toast.error('密码至少 6 位'); return }
   await adminApi.resetUserPassword(u.user_id, pwd)
   toast.success('密码已重置')
+}
+
+async function openUser(u: any) {
+  if (!u.user_id) { toast.error('该账号缺 user_id（历史测试数据）'); return }
+  detail.value = u
+  detailData.value = null
+  const res = await adminApi.getUser(u.user_id)
+  detailData.value = res.data?.data
+  const d = detailData.value
+  edit.value = {
+    nickname: d.user.nickname || '', phone: d.user.phone || '',
+    email: d.user.email, plan: d.user.plan, status: d.user.status,
+    is_admin: !!d.user.is_admin,
+  }
+}
+
+async function saveUser() {
+  const u = detailData.value.user
+  try {
+    await adminApi.updateUser(u.user_id, edit.value)
+    toast.success('已保存')
+    openUser(detail.value) // 重载详情
+    loadUsers(userPage.value) // 刷新列表
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '保存失败')
+  }
 }
 
 async function loadProjects(page = 1) {
@@ -474,4 +568,22 @@ watch(tab, t => {
 .fb-item p { font-size: 13px; color: var(--text-primary); margin: 8px 0; }
 .fb-foot { display: flex; justify-content: space-between; align-items: center; }
 .fb-contact { font-size: 12px; color: var(--text-secondary); }
+/* 用户详情抽屉 */
+.email-link { color: var(--accent, #007aff); text-decoration: none; }
+.email-link:hover { text-decoration: underline; }
+.ud-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;
+}
+.ud-stats > div {
+  background: var(--bg-tertiary, #f5f5f7); border-radius: 10px; padding: 10px 6px; text-align: center;
+}
+.ud-stats b { display: block; font-size: 17px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.ud-stats span { font-size: 11px; color: var(--text-tertiary); }
+.ud-sec { font-size: 13px; color: var(--text-secondary); margin: 18px 0 8px; }
+.ud-form { display: flex; flex-direction: column; gap: 8px; }
+.ud-form label { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+.ud-form label .input { flex: 1; }
+.ud-form .chk-row { gap: 6px; }
+.ud-actions { display: flex; gap: 10px; margin-top: 12px; }
+.ud-meta { font-size: 11px; color: var(--text-tertiary); margin: 10px 0 0; }
 </style>

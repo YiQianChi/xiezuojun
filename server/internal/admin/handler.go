@@ -54,6 +54,7 @@ func RegisterRoutes(g *gin.RouterGroup, h *Handler) {
 	// 用户管理
 	adminG.GET("/users", h.ListUsers)
 	adminG.GET("/users/:user_id", h.GetUser)
+	adminG.PATCH("/users/:user_id", h.UpdateUser)
 	adminG.PATCH("/users/:user_id/status", h.SetUserStatus)
 	adminG.PATCH("/users/:user_id/plan", h.SetUserPlan)
 	adminG.POST("/users/:user_id/reset-password", h.ResetUserPassword)
@@ -207,7 +208,112 @@ func (h *Handler) GetUser(c *gin.Context) {
 	}
 	var projects []model.Project
 	h.db.Where("user_id = ? AND status > 0", uid).Order("id DESC").Find(&projects)
-	c.JSON(http.StatusOK, gin.H{"data": gin.H{"user": u, "projects": projects}})
+
+	// 写作统计：总字数增量、活跃天数、最近 30 天字数
+	var totalWords, activeDays int64
+	h.db.Model(&model.WordCountLog{}).Where("user_id = ? AND delta > 0", uid).
+		Select("COALESCE(SUM(delta),0)").Scan(&totalWords)
+	h.db.Model(&model.WordCountLog{}).Where("user_id = ? AND delta > 0", uid).
+		Select("COUNT(DISTINCT DATE(created_at))").Scan(&activeDays)
+
+	// AI 用量：30 天调用数 + tokens
+	var aiCalls, aiTokens int64
+	h.db.Model(&model.UsageRecord{}).Where("user_id = ? AND created_at >= ?", uid, time.Now().AddDate(0, 0, -30)).Count(&aiCalls)
+	h.db.Model(&model.UsageRecord{}).Where("user_id = ? AND created_at >= ?", uid, time.Now().AddDate(0, 0, -30)).
+		Select("COALESCE(SUM(total_tokens),0)").Scan(&aiTokens)
+
+	// 最近登录设备（refresh_tokens 最新 5 条）
+	type deviceRow struct {
+		DeviceID   string    `json:"device_id"`
+		IP         string    `json:"ip"`
+		ExpiresAt  time.Time `json:"expires_at"`
+		CreatedAt  time.Time `json:"created_at"`
+	}
+	var devices []deviceRow
+	h.db.Model(&model.RefreshToken{}).Where("user_id = ?", uid).
+		Order("id DESC").Limit(5).Scan(&devices)
+
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{
+		"user": u, "projects": projects,
+		"stats": gin.H{
+			"total_words": totalWords, "active_days": activeDays,
+			"ai_calls_30d": aiCalls, "ai_tokens_30d": aiTokens,
+		},
+		"devices": devices,
+	}})
+}
+
+// UpdateUser 编辑用户资料（昵称/手机/邮箱/套餐/状态，按提交的字段部分更新）
+func (h *Handler) UpdateUser(c *gin.Context) {
+	var req struct {
+		Nickname *string `json:"nickname"`
+		Phone    *string `json:"phone"`
+		Email    *string `json:"email"`
+		Plan     *string `json:"plan"`
+		Status   *int    `json:"status"`
+		IsAdmin  *bool   `json:"is_admin"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		return
+	}
+	updates := map[string]interface{}{}
+	if req.Nickname != nil {
+		if len([]rune(*req.Nickname)) > 50 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "昵称过长"})
+			return
+		}
+		updates["nickname"] = strings.TrimSpace(*req.Nickname)
+	}
+	if req.Phone != nil {
+		updates["phone"] = strings.TrimSpace(*req.Phone)
+	}
+	if req.Email != nil {
+		e := strings.TrimSpace(*req.Email)
+		if !strings.Contains(e, "@") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱格式不正确"})
+			return
+		}
+		// 邮箱唯一性
+		var cnt int64
+		h.db.Model(&model.User{}).Where("email = ? AND user_id != ?", e, c.Param("user_id")).Count(&cnt)
+		if cnt > 0 {
+			c.JSON(http.StatusConflict, gin.H{"error": "该邮箱已被其它账号使用"})
+			return
+		}
+		updates["email"] = e
+	}
+	if req.Plan != nil {
+		if *req.Plan != "free" && *req.Plan != "vip" && *req.Plan != "svip" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "plan 取值非法"})
+			return
+		}
+		updates["plan"] = *req.Plan
+	}
+	if req.Status != nil {
+		if *req.Status != 0 && *req.Status != 1 && *req.Status != -1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "status 取值非法"})
+			return
+		}
+		updates["status"] = *req.Status
+	}
+	if req.IsAdmin != nil {
+		updates["is_admin"] = *req.IsAdmin
+	}
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "没有要更新的字段"})
+		return
+	}
+	res := h.db.Model(&model.User{}).Where("user_id = ?", c.Param("user_id")).Updates(updates)
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新失败"})
+		return
+	}
+	if res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"ok": true}})
 }
 
 func (h *Handler) SetUserStatus(c *gin.Context) {

@@ -354,6 +354,7 @@ export const adminApi = {
   setUserStatus(userId: string, status: number) { return api.patch(`/admin/users/${userId}/status`, { status }) },
   setUserPlan(userId: string, plan: string) { return api.patch(`/admin/users/${userId}/plan`, { plan }) },
   resetUserPassword(userId: string, password: string) { return api.post(`/admin/users/${userId}/reset-password`, { password }) },
+  updateUser(userId: string, data: Partial<{ nickname: string; phone: string; email: string; plan: string; status: number; is_admin: boolean }>) { return api.patch(`/admin/users/${userId}`, data) },
   listProjects(params: { q?: string; page?: number }) { return api.get('/admin/projects', { params }) },
   listProjectDocuments(projectId: number | string) { return api.get(`/admin/projects/${projectId}/documents`) },
   getDocumentContent(docId: number | string) { return api.get(`/admin/documents/${docId}/content`) },
