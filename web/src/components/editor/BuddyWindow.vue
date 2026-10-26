@@ -271,7 +271,7 @@ function onDragMove(e: MouseEvent) {
 function onDragEnd() { dragging = false }
 
 const elapsedMs = computed(() => {
-  if (state.value === 'running') return accumulatedMs.value + (now.value - sessionStart.value)
+  if (state.value === 'running') return Math.max(0, accumulatedMs.value + (now.value - sessionStart.value))
   return accumulatedMs.value
 })
 const displayTime = computed(() => formatTime(elapsedMs.value))
@@ -525,6 +525,7 @@ function start() {
     msWordLevel = Math.floor(Math.max(0, todayStat.value.words) / MS_WORD_STEP)
     msTimeLevel = Math.floor(Math.max(0, todayStat.value.ms) / MS_TIME_STEP_MS)
   }
+  now.value = Date.now() // 先拨时钟再立 sessionStart，防 stale now 造成首帧回跳/负数
   sessionStart.value = Date.now()
   state.value = 'running'
   if (intervalRef.value) clearInterval(intervalRef.value)
