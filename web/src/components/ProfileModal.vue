@@ -267,6 +267,14 @@ function doLogout() {
 .pen-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 10px; background: rgba(129,187,142,.08); border-radius: 10px; padding: 9px 11px; }
 .pen-ops { display: flex; gap: 8px; margin-top: 8px; }
 .pen-ops .btn { flex: 1; width: auto; margin-top: 0; min-width: 0; }
-.pen-ops .reroll { flex: 0 0 auto; width: auto; }
-.btn.skip { margin-top: 8px; border: none; color: var(--text-tertiary); font-size: 13px; }
+.pen-ops .reroll {
+  flex: 0 0 auto; width: auto; padding: 10px 16px; margin-top: 0;
+  background: rgba(129,187,142,.12); border: none; border-radius: 11px;
+  color: #4d8a5e; font-size: 14px; font-weight: 500;
+  transition: background .15s, transform .1s;
+}
+.pen-ops .reroll:hover { background: rgba(129,187,142,.2); }
+.pen-ops .reroll:active { transform: scale(.96); }
+.btn.skip { margin-top: 10px; border: none; color: var(--text-tertiary); font-size: 13px; padding: 7px 0; }
+.btn.skip:hover { color: var(--text-secondary); background: var(--bg-tertiary, #f5f5f7); }
 </style>
