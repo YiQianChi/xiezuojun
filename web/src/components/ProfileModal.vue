@@ -107,8 +107,8 @@ async function openForPenName() {
 }
 
 function reroll() {
-  const adjs = ['夜行','执笔','听雨','拾光','枕书','踏雪','扶风','衔月','追云','候鸟','拾荒','灯下','山间','窗边','纸上']
-  const nouns = ['墨客','书生','笔者','浪人','行者','说书人','筑梦者','执剑人','织星人','拾贝人','守望者','赶路人','摆渡人','追光者','夜航船']
+  const adjs = ['墨水','熬夜','故事','灵感','断更','催更','柠檬','月亮','布谷','青苔','拾光','听雨','衔月','踏雪','执笔','小饿','打盹','云朵','萤火','薄荷']
+  const nouns = ['菌']
   form.value.nickname = adjs[Math.floor(Math.random()*adjs.length)] + nouns[Math.floor(Math.random()*nouns.length)] + String(Math.floor(Math.random()*90)+10)
 }
 
