@@ -330,6 +330,12 @@ export const buddyApi = {
   stop() {
     return api.post('/buddy/stop')
   },
+  finish(data: { project_id: number; started_at: number; ended_at: number; duration_sec: number; words_delta: number }) {
+    return api.post('/buddy/finish', data)
+  },
+  sessionStats(projectId?: number) {
+    return api.get('/buddy/session-stats', { params: projectId ? { project_id: projectId } : {} })
+  },
   match() {
     return api.post('/buddy/match')
   },

@@ -62,6 +62,7 @@ func main() {
 		&model.User{}, &model.RefreshToken{}, &model.AuthIdentity{},
 		&model.Project{}, &model.StoryBranch{}, &model.Document{}, &model.DocumentVersion{},
 		&model.WordCountLog{}, &model.UsageRecord{}, &model.StoryThread{},
+		&model.WritingSession{},
 	); err != nil {
 		log.Fatal("本地建表失败:", err)
 	}
@@ -248,6 +249,7 @@ func main() {
 	authd.POST("/tts", tts.HandleTTS)
 
 	buddy.RegisterRoutes(authd)
+	buddy.SetDB(db) // 桌面版同款注入：writing_sessions 落库
 
 	authd.GET("/projects/:id/stats", projectHandler.WritingStats)
 	authd.GET("/projects/:id/threads", projectHandler.ListThreads)

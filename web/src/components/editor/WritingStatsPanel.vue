@@ -32,6 +32,13 @@
         <strong>{{ formatNum(stats.total_words) }}</strong>
       </div>
 
+      <!-- 计时写作时长（writing_sessions） -->
+      <div v-if="duration" class="stat-duration-row">
+        <div class="dur-item"><strong>{{ duration.today_min }}</strong><span>今日分钟</span></div>
+        <div class="dur-item"><strong>{{ duration.week_min }}</strong><span>本周分钟</span></div>
+        <div class="dur-item"><strong>{{ fmtHours(duration.total_min) }}</strong><span>累计{{ duration.session_count }}场</span></div>
+      </div>
+
       <!-- 14天柱状图 -->
       <div class="stat-chart" v-if="stats.daily?.length">
         <div class="chart-bars">
@@ -56,7 +63,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { projectApi } from '../../core/api'
+import { projectApi, buddyApi } from '../../core/api'
 
 interface StatsData {
   today_words: number
@@ -67,10 +74,18 @@ interface StatsData {
   daily: { date: string; words: number }[]
 }
 
+interface DurationData {
+  today_min: number
+  week_min: number
+  total_min: number
+  session_count: number
+}
+
 const props = defineProps<{ projectId: number }>()
 
 const loading = ref(false)
 const stats = ref<StatsData | null>(null)
+const duration = ref<DurationData | null>(null)
 
 async function load() {
   loading.value = true
@@ -82,6 +97,11 @@ async function load() {
   } finally {
     loading.value = false
   }
+  try {
+    const d = await buddyApi.sessionStats(props.projectId)
+    const dd = d.data?.data
+    if (dd && (dd.session_count > 0 || dd.total_min > 0)) duration.value = dd
+  } catch { /* 时长面板拿不到就整个隐藏 */ }
 }
 
 // ponytail: reuse on mount + watch projectId
@@ -100,6 +120,10 @@ function isToday(date: string) {
 
 function formatNum(n: number) {
   return n >= 10000 ? `${(n / 10000).toFixed(1)}万` : n.toLocaleString()
+}
+
+function fmtHours(min: number) {
+  return min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? (min % 60) + 'm' : ''}` : `${min}m`
 }
 </script>
 
@@ -164,6 +188,29 @@ function formatNum(n: number) {
 .stat-total-row strong {
   font-size: 16px;
   color: var(--text-primary);
+}
+.stat-duration-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.dur-item {
+  text-align: center;
+  background: rgba(129, 187, 142, 0.1);
+  border-radius: 8px;
+  padding: 8px 4px;
+}
+.dur-item strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: #5c9670;
+  font-variant-numeric: tabular-nums;
+}
+.dur-item span {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
 }
 .stat-chart {
   margin-top: 4px;

@@ -124,6 +124,7 @@ const lastWordCount = ref(0)
 const summaryMs = ref(0)
 const summaryWords = ref(0)
 const now = ref(Date.now())
+const sessionWallStart = ref(0) // 本场墙钟起点（⏹ 结束时随记录落库）
 
 // ---- 里程碑（今日累计口径）：今日字数每 500 字、今日码字时长每 25 分钟 ----
 const MS_WORD_STEP = 500
@@ -465,6 +466,7 @@ function saveSnapshot() {
     state: state.value, accumulatedMs: accumulatedMs.value, sessionStart: sessionStart.value,
     startWordCount: startWordCount.value, lastWordCount: lastWordCount.value,
     settledWords: settledWords.value, curBaseline: curBaseline.value,
+    sessionWallStart: sessionWallStart.value,
     summaryMs: summaryMs.value, summaryWords: summaryWords.value,
     visible: visible.value, win: winPos.value,
   }
@@ -498,6 +500,7 @@ function restoreSnapshot() {
     lastWordCount.value = s.lastWordCount
     if (typeof s.settledWords === 'number') settledWords.value = s.settledWords
     if (typeof s.curBaseline === 'number') curBaseline.value = s.curBaseline
+    if (typeof s.sessionWallStart === 'number' && s.sessionWallStart > 0) sessionWallStart.value = s.sessionWallStart
     summaryMs.value = s.summaryMs
     summaryWords.value = s.summaryWords
     // 恢复运行/暂停态后必须重启心跳，否则配对状态永远不同步、服务端 40s 后判离线
@@ -522,6 +525,7 @@ function start() {
     startWordCount.value = props.currentWordCount
     lastWordCount.value = props.currentWordCount
     resetWordBaseline()
+    sessionWallStart.value = Date.now() // 本场墙钟起点（落库用）
     msWordLevel = Math.floor(Math.max(0, todayStat.value.words) / MS_WORD_STEP)
     msTimeLevel = Math.floor(Math.max(0, todayStat.value.ms) / MS_TIME_STEP_MS)
   }
@@ -552,6 +556,18 @@ function stop() {
   if (intervalRef.value) { clearInterval(intervalRef.value); intervalRef.value = null }
   summaryMs.value = accumulatedMs.value
   summaryWords.value = wordsDelta.value // 跨章口径：已结算 + 当前章节未结算
+  // 本场记录落库（时长=前端累计口径；墙钟跨度兜底防 duration 超墙钟）
+  if (sessionWallStart.value > 0) {
+    const wallSpan = Math.floor((Date.now() - sessionWallStart.value) / 1000)
+    buddyApi.finish({
+      project_id: Number(localStorage.getItem('xzj-active-project') || 0),
+      started_at: sessionWallStart.value,
+      ended_at: Date.now(),
+      duration_sec: Math.max(1, Math.min(summaryMs.value / 1000, wallSpan)),
+      words_delta: summaryWords.value,
+    }).catch(() => { })
+    sessionWallStart.value = 0
+  }
   state.value = 'summary'
   cancelRematch()
   leaveMatch()

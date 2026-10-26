@@ -9,6 +9,9 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+
+	"xiezuojun-server/internal/model"
 )
 
 // Redis 实现：会话/配对/加油全部落 Redis，多实例安全、重启存活。
@@ -48,6 +51,10 @@ const beatTimeout = 40 * time.Second // 心跳超时：会话过期即离线
 
 var rdb *redis.Client
 var rctx = context.Background()
+var db *gorm.DB // SetDB 注入（main 启动时）；桌面版同款注入
+
+// SetDB 注入 GORM 句柄（writing_sessions 落库用）
+func SetDB(d *gorm.DB) { db = d }
 
 const (
 	keySess    = "xzj:buddy:sess:"
@@ -176,6 +183,59 @@ func StopWriting(userID string) {
 	rdb.Del(rctx, sessKey(userID), matchedKey(userID), cheerKey(userID))
 	rdb.ZRem(rctx, keyOnline, userID)
 	rdb.LRem(rctx, keyQueue, 1, userID)
+}
+
+// FinishSession 一场结束：写 writing_sessions 表（时长=前端累计口径，调用方上报）
+func FinishSession(userID string, projectID uint, startedAt, endedAt time.Time, durationSec, wordsDelta int) {
+	if db == nil {
+		return // db 未注入（桌面版异常路径）——不落库但不炸
+	}
+	if endedAt.Before(startedAt) {
+		endedAt = startedAt
+	}
+	db.Create(&model.WritingSession{
+		UserID: userID, ProjectID: projectID,
+		StartedAt: startedAt, EndedAt: endedAt,
+		DurationSec: durationSec, WordsDelta: wordsDelta,
+	})
+}
+
+// SessionStats 时长统计视图（统计面板用）
+type SessionStats struct {
+	TodayMin     int   `json:"today_min"`
+	WeekMin      int   `json:"week_min"`
+	TotalMin     int   `json:"total_min"`
+	SessionCount int64 `json:"session_count"`
+}
+
+// GetSessionStats 时长统计（今天/本周/累计分钟数 + 总场数）
+func GetSessionStats(userID string, projectID uint) SessionStats {
+	if db == nil {
+		return SessionStats{}
+	}
+	now := time.Now()
+	loc := now.Location()
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	startOfWeek := startOfToday.AddDate(0, 0, -6)
+	st := SessionStats{}
+	scope := func() *gorm.DB {
+		q := db.Model(&model.WritingSession{}).Where("user_id = ?", userID)
+		if projectID > 0 {
+			q = q.Where("project_id = ?", projectID)
+		}
+		return q.Session(&gorm.Session{NewDB: true})
+	}
+	var sec int64
+	scope().Select("COALESCE(SUM(duration_sec),0)").Where("started_at >= ?", startOfToday).Scan(&sec)
+	st.TodayMin = int(sec / 60)
+	sec = 0
+	scope().Select("COALESCE(SUM(duration_sec),0)").Where("started_at >= ?", startOfWeek).Scan(&sec)
+	st.WeekMin = int(sec / 60)
+	sec = 0
+	scope().Select("COALESCE(SUM(duration_sec),0)").Scan(&sec)
+	st.TotalMin = int(sec / 60)
+	scope().Count(&st.SessionCount)
+	return st
 }
 
 // GetToday 今日写作统计（总结/刻度条用）

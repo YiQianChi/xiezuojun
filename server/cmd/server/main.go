@@ -54,6 +54,7 @@ func main() {
 		&model.Document{},
 		&model.DocumentVersion{},
 		&model.WordCountLog{},
+		&model.WritingSession{},
 		&model.UsageRecord{},
 		&model.StoryThread{},
 		&admin.Announcement{},
@@ -347,6 +348,7 @@ func main() {
 
 	// 搭子（结伴写作）路由
 	buddy.RegisterRoutes(authd)
+	buddy.SetDB(db) // writing_sessions 落库用（timer 一场结束记录）
 
 	// 后台管理路由（用户管理/看板/内容监管/公告/反馈）
 	adminHandler := admin.NewHandler(db)

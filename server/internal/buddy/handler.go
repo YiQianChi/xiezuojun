@@ -12,6 +12,8 @@ import (
 func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/buddy/heartbeat", handleHeartbeat)
 	rg.POST("/buddy/stop", handleStop)
+	rg.POST("/buddy/finish", handleFinishSession) // 计时结束：本场记录落库
+	rg.GET("/buddy/session-stats", handleSessionStats) // 时长统计（统计面板用）
 	rg.POST("/buddy/match", handleMatch)
 	rg.POST("/buddy/leave-match", handleLeaveMatch)
 	rg.POST("/buddy/cheer", handleCheer)
@@ -47,6 +49,37 @@ func handleStop(c *gin.Context) {
 	uid := c.GetString("userID")
 	StopWriting(uid)
 	c.JSON(http.StatusOK, gin.H{"data": "stopped"})
+}
+
+func handleFinishSession(c *gin.Context) {
+	uid := c.GetString("userID")
+	var req struct {
+		ProjectID   uint   `json:"project_id"`
+		StartedAt   int64  `json:"started_at"`   // ms 时间戳
+		EndedAt     int64  `json:"ended_at"`     // ms 时间戳
+		DurationSec int    `json:"duration_sec"` // 纯码字秒数（暂停不计时）
+		WordsDelta  int    `json:"words_delta"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.StartedAt <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+	if req.EndedAt <= 0 {
+		req.EndedAt = time.Now().UnixMilli()
+	}
+	// 基本合理性：单场不超过 24h、duration 不超过墙钟跨度
+	if req.DurationSec < 0 || req.DurationSec > 86400 || req.EndedAt-req.StartedAt > 86400*1000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unreasonable session"})
+		return
+	}
+	FinishSession(uid, req.ProjectID, time.UnixMilli(req.StartedAt), time.UnixMilli(req.EndedAt), req.DurationSec, req.WordsDelta)
+	c.JSON(http.StatusOK, gin.H{"data": "saved"})
+}
+
+func handleSessionStats(c *gin.Context) {
+	uid := c.GetString("userID")
+	pid, _ := strconv.ParseUint(c.Query("project_id"), 10, 64)
+	c.JSON(http.StatusOK, gin.H{"data": GetSessionStats(uid, uint(pid))})
 }
 
 func handleMatch(c *gin.Context) {
