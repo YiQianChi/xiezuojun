@@ -12,7 +12,7 @@
         <span class="bw-title">
           <span class="pulse-dot" v-if="state === 'running'"></span>
           {{ displayTime }}
-          <span class="bw-delta" v-if="state !== 'idle'" :class="{ negative: wordsDelta < 0 }">{{ wordsDelta >= 0 ? '+' : '' }}{{ wordsDelta }}</span>
+          <span v-if="state !== 'idle'" class="me-chip" :class="{ negative: wordsDelta < 0, zero: wordsDelta === 0 }">✍ {{ wordsDelta >= 0 ? '+' : '' }}{{ wordsDelta }}</span>
         </span>
         <span class="bw-actions">
           <button v-if="state === 'idle'" class="bw-btn play" @click="start" title="开始计时">▶</button>
@@ -35,7 +35,7 @@
             <div class="bw-peer">
               <div class="bw-avatar">{{ (peer.nickname || '友')[0] }}</div>
               <div class="bw-peer-info">
-                <div class="bw-peer-name">{{ peer.nickname || '写作搭子' }}</div>
+                <div class="bw-peer-name"><span class="who ta">TA</span>{{ peer.nickname || '写作搭子' }}</div>
                 <div class="bw-peer-stat">
                   <span class="bw-peer-time">{{ peerTime }}<span v-if="peerPaused" class="peer-paused-tag">⏸ 已暂停</span></span>
                   <span class="bw-peer-words" v-if="peer.words_delta > 0">+{{ peer.words_delta }} 字</span>
@@ -635,8 +635,14 @@ onBeforeUnmount(() => {
 .bw-head:active { cursor: grabbing; }
 .bw-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary, #333); }
 .pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #007aff); animation: bfab 1.5s infinite; }
-.bw-delta { font-size: 11px; font-weight: 500; color: #30d158; }
-.bw-delta.negative { color: var(--text-tertiary, #999); }
+/* 我的字数=绿胶囊（阵营色：我绿 / TA 蓝） */
+.me-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 10.5px; font-weight: 600; color: #2f9e44;
+  background: rgba(48, 209, 88, 0.13); padding: 1px 7px; border-radius: 99px;
+  font-variant-numeric: tabular-nums;
+}
+.me-chip.negative, .me-chip.zero { color: var(--text-tertiary, #999); background: var(--bg-hover, rgba(0,0,0,0.06)); }
 .bw-actions { display: flex; gap: 2px; }
 .bw-btn {
   width: 22px; height: 22px; border: none; border-radius: 6px; background: transparent;
@@ -657,9 +663,13 @@ onBeforeUnmount(() => {
 }
 .bw-peer-info { flex: 1; min-width: 0; }
 .bw-peer-name { font-size: 12px; font-weight: 600; color: var(--text-primary, #333); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { font-size: 9px; color: #fff; background: #81bb8e; border-radius: 4px; padding: 0 4px; margin-right: 4px; vertical-align: 1px; }
+.who.ta { background: #4a9bf5; }
 .bw-peer-stat { display: flex; gap: 6px; font-size: 10.5px; color: var(--text-tertiary, #999); font-variant-numeric: tabular-nums; }
-.bw-peer-words { color: #30d158; }
-.bw-peer-words.revise { color: var(--text-tertiary, #999); }
+/* TA 侧=蓝色系（阵营色），时间加粗、字数胶囊 */
+.bw-peer-time { color: var(--accent, #007aff); font-weight: 600; }
+.bw-peer-words { color: var(--accent, #007aff); background: rgba(0, 122, 255, 0.1); padding: 1px 6px; border-radius: 99px; }
+.bw-peer-words.revise { color: var(--text-tertiary, #999); background: var(--bg-hover, rgba(0,0,0,0.06)); }
 .peer-paused-tag { margin-left: 4px; font-size: 9px; color: var(--text-tertiary, #999); }
 .bw-today-line {
   margin-top: 5px; padding-top: 6px; border-top: 1px dashed var(--border-subtle, rgba(0,0,0,0.06));
@@ -762,5 +772,7 @@ onBeforeUnmount(() => {
 @media (prefers-color-scheme: dark) {
   .buddy-window, .buddy-fab { background: #2c2c2e; color: #e5e5ea; }
   .bw-title, .bw-peer-name { color: #e5e5ea; }
+  .me-chip { background: rgba(48, 209, 88, 0.2); }
+  .bw-peer-words { background: rgba(0, 122, 255, 0.25); }
 }
 </style>
