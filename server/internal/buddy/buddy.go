@@ -3,6 +3,7 @@ package buddy
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -198,6 +199,105 @@ func FinishSession(userID string, projectID uint, startedAt, endedAt time.Time, 
 		StartedAt: startedAt, EndedAt: endedAt,
 		DurationSec: durationSec, WordsDelta: wordsDelta,
 	})
+}
+
+// ReportData 分享战报数据（今日口径，跨项目全量——发圈晒的是今天所有写作）
+type ReportData struct {
+	Date        string `json:"date"`         // 10月26日 · 星期一
+	TodayWords  int64  `json:"today_words"`  // 今日字数（word_count_logs 净增）
+	TodayMin    int    `json:"today_min"`    // 今日码字分钟
+	Rate        string `json:"rate"`         // 字/分钟（今日，1 位小数）
+	StreakDays  int    `json:"streak_days"`  // 连续写作天数（跨项目）
+	Trend       []TrendPoint `json:"trend"`  // 近 14 天字数
+}
+
+// TrendPoint 每日字数
+type TrendPoint struct {
+	Date  string `json:"date"`
+	Words int64  `json:"words"`
+}
+
+var weekdays = [...]string{"日", "一", "二", "三", "四", "五", "六"}
+
+// GetReport 分享战报聚合
+func GetReport(userID string) ReportData {
+	rp := ReportData{}
+	if db == nil {
+		return rp
+	}
+	now := time.Now()
+	rp.Date = fmt.Sprintf("%d月%d日 · 星期%s", now.Month(), now.Day(), weekdays[now.Weekday()])
+	loc := now.Location()
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	start14 := startOfToday.AddDate(0, 0, -13)
+
+	// 今日字数 + 14 天趋势（word_count_logs 全项目净增）
+	var words int64
+	db.Model(&model.WordCountLog{}).
+		Where("user_id = ? AND created_at >= ?", userID, startOfToday).
+		Select("COALESCE(SUM(delta),0)").Scan(&words)
+	rp.TodayWords = words
+
+	type row struct {
+		Date  string
+		Words int64
+	}
+	var rows []row
+	db.Model(&model.WordCountLog{}).
+		Select("DATE(created_at) as date, COALESCE(SUM(delta),0) as words").
+		Where("user_id = ? AND created_at >= ?", userID, start14).
+		Group("DATE(created_at)").Scan(&rows)
+	m := make(map[string]int64, len(rows))
+	for _, r := range rows {
+		if r.Words < 0 {
+			r.Words = 0
+		}
+		m[r.Date] = r.Words
+	}
+	for i := 0; i < 14; i++ {
+		d := start14.AddDate(0, 0, i).Format("2006-01-02")
+		rp.Trend = append(rp.Trend, TrendPoint{Date: d, Words: m[d]})
+	}
+
+	// 今日时长（writing_sessions）
+	var sec int64
+	db.Model(&model.WritingSession{}).
+		Where("user_id = ? AND started_at >= ?", userID, startOfToday).
+		Select("COALESCE(SUM(duration_sec),0)").Scan(&sec)
+	rp.TodayMin = int(sec / 60)
+
+	// 速率：今日字数 ÷ 今日纯码字分钟（有 10 分钟以上才算，否则空）
+	if rp.TodayMin >= 10 {
+		rp.Rate = fmt.Sprintf("%.1f", float64(rp.TodayWords)/float64(rp.TodayMin))
+	}
+
+	// 连续天数（跨项目）
+	var drows []row
+	db.Model(&model.WordCountLog{}).
+		Select("DISTINCT DATE(created_at) as date").
+		Where("user_id = ?", userID).Scan(&drows)
+	set := make(map[string]bool, len(drows))
+	for _, r := range drows {
+		set[r.Date] = true
+	}
+	cur := startOfToday
+	for {
+		if set[cur.Format("2006-01-02")] {
+			rp.StreakDays++
+			cur = cur.AddDate(0, 0, -1)
+			continue
+		}
+		if rp.StreakDays == 0 { // 今天没写从昨天算
+			cur = cur.AddDate(0, 0, -1)
+			if set[cur.Format("2006-01-02")] {
+				rp.StreakDays++
+				cur = cur.AddDate(0, 0, -1)
+				continue
+			}
+		}
+		break
+	}
+	return rp
 }
 
 // SessionStats 时长统计视图（统计面板用）

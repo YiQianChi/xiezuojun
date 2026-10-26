@@ -336,6 +336,9 @@ export const buddyApi = {
   sessionStats(projectId?: number) {
     return api.get('/buddy/session-stats', { params: projectId ? { project_id: projectId } : {} })
   },
+  report() {
+    return api.get('/buddy/report')
+  },
   match() {
     return api.post('/buddy/match')
   },

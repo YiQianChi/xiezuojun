@@ -14,6 +14,7 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/buddy/stop", handleStop)
 	rg.POST("/buddy/finish", handleFinishSession) // 计时结束：本场记录落库
 	rg.GET("/buddy/session-stats", handleSessionStats) // 时长统计（统计面板用）
+	rg.GET("/buddy/report", handleReport)               // 分享战报数据（发圈卡）
 	rg.POST("/buddy/match", handleMatch)
 	rg.POST("/buddy/leave-match", handleLeaveMatch)
 	rg.POST("/buddy/cheer", handleCheer)
@@ -80,6 +81,11 @@ func handleSessionStats(c *gin.Context) {
 	uid := c.GetString("userID")
 	pid, _ := strconv.ParseUint(c.Query("project_id"), 10, 64)
 	c.JSON(http.StatusOK, gin.H{"data": GetSessionStats(uid, uint(pid))})
+}
+
+func handleReport(c *gin.Context) {
+	uid := c.GetString("userID")
+	c.JSON(http.StatusOK, gin.H{"data": GetReport(uid)})
 }
 
 func handleMatch(c *gin.Context) {

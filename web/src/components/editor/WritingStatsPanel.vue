@@ -2,6 +2,7 @@
   <div class="stats-panel">
     <div class="stats-header">
       <span>📊 写作统计</span>
+      <button class="share-btn" @click="shareOpen = true">📢 战报</button>
     </div>
     <div v-if="loading" class="stats-loading">加载中...</div>
     <div v-else-if="!stats" class="stats-empty">暂无数据</div>
@@ -58,12 +59,14 @@
         </div>
       </div>
     </template>
+    <ShareReportModal v-model:open="shareOpen" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { projectApi, buddyApi } from '../../core/api'
+import ShareReportModal from './ShareReportModal.vue'
 
 interface StatsData {
   today_words: number
@@ -86,6 +89,7 @@ const props = defineProps<{ projectId: number }>()
 const loading = ref(false)
 const stats = ref<StatsData | null>(null)
 const duration = ref<DurationData | null>(null)
+const shareOpen = ref(false)
 
 async function load() {
   loading.value = true
@@ -142,7 +146,16 @@ function fmtHours(min: number) {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
+.share-btn {
+  border: none; cursor: pointer; border-radius: 8px; padding: 5px 12px;
+  background: rgba(129, 187, 142, 0.14); color: #5c9670;
+  font-size: 12px; font-weight: 600;
+}
+.share-btn:hover { background: rgba(129, 187, 142, 0.25); }
 .stats-loading, .stats-empty {
   text-align: center;
   color: var(--text-tertiary);
