@@ -17,7 +17,7 @@
         <span class="bw-actions">
           <button v-if="state === 'idle'" class="bw-btn play" @click="start" title="开始计时">▶</button>
           <button v-else-if="state === 'running'" class="bw-btn" @click="pause" title="暂停">⏸</button>
-          <button v-else class="bw-btn play" @click="start" title="继续">▶</button>
+          <button v-else class="bw-btn play" @click="start" :title="state === 'summary' ? '开始新一场' : '继续'">▶</button>
           <button v-if="state !== 'idle'" class="bw-btn" @click="stop" title="结束">⏹</button>
           <button class="bw-btn close" @click="visible = false" title="收起">—</button>
         </span>
@@ -37,8 +37,9 @@
               <div class="bw-peer-info">
                 <div class="bw-peer-name">{{ peer.nickname || '写作搭子' }}</div>
                 <div class="bw-peer-stat">
-                  <span class="bw-peer-time">{{ peerTime }}</span>
+                  <span class="bw-peer-time">{{ peerTime }}<span v-if="peerPaused" class="peer-paused-tag">⏸ 已暂停</span></span>
                   <span class="bw-peer-words" v-if="peer.words_delta > 0">+{{ peer.words_delta }} 字</span>
+                  <span class="bw-peer-words revise" v-else-if="peer.words_delta < 0">{{ peer.words_delta }} 字 · 改稿中</span>
                 </div>
               </div>
               <button class="bw-cheer" @click="cheer" :class="{ sent: cheerJustSent }">👏 加油</button>
@@ -60,6 +61,12 @@
               <button class="bw-btn cancel" @click="leaveMatch">取消</button>
             </div>
           </template>
+          <template v-else-if="rematchCountdown > 0">
+            <div class="bw-waiting">
+              <span>搭子已离开，{{ rematchCountdown }}s 后自动再找</span>
+              <button class="bw-btn cancel" @click="onCancelRematchClick">不找了</button>
+            </div>
+          </template>
           <template v-else>
             <button class="bw-match-btn" @click="match">🔍 找个搭子</button>
           </template>
@@ -72,14 +79,17 @@
           <span class="sum-words" :class="{ negative: summaryWords < 0 }">{{ summaryWords >= 0 ? '+' : '' }}{{ summaryWords }} 字</span>
           <span class="sum-close">✕</span>
         </div>
+        <div v-if="state === 'summary' && todayStat.words + todayStat.ms > 0" class="bw-today-line">
+          今日累计 {{ formatTime(todayStat.ms) }} · {{ todayStat.words >= 0 ? '+' : '' }}{{ todayStat.words }} 字
+        </div>
 
-        <!-- 本次里程碑刻度条 -->
-        <div v-if="milestoneTicks.total > 0 && state !== 'summary'" class="bw-ms-strip">
+        <!-- 今日里程碑刻度条（今日累计口径：字数每 500 / 时长每 25 分钟） -->
+        <div v-if="state !== 'summary' && state !== 'idle'" class="bw-ms-strip">
           <span
             v-for="i in 6" :key="i"
             class="ms-tick" :class="{ on: i <= milestoneTicks.done, now: i === milestoneTicks.done + 1 }"
           ></span>
-          <span class="ms-next">{{ milestoneTicks.nextLabel }}</span>
+          <span class="ms-next">今日 {{ milestoneTicks.done }} 档 · {{ milestoneTicks.nextLabel }}</span>
         </div>
       </div>
     </div>
@@ -115,24 +125,35 @@ const summaryMs = ref(0)
 const summaryWords = ref(0)
 const now = ref(Date.now())
 
-// ---- 里程碑（正反馈）：字数每 500 字、时长每 25 分钟 ----
+// ---- 里程碑（今日累计口径）：今日字数每 500 字、今日码字时长每 25 分钟 ----
 const MS_WORD_STEP = 500
 const MS_TIME_STEP_MS = 25 * 60 * 1000
 const myMilestoneFlash = ref<{ title: string; sub: string } | null>(null)
 const peerMilestoneFlash = ref('')
-let msWordLevel = 0    // 已达成的字数档（500 的倍数）
-let msTimeLevel = 0    // 已达成的时长档（25 分钟的倍数）
+let msWordLevel = 0 // 已达成的今日字数档（500 的倍数，来源服务端今日统计）
+let msTimeLevel = 0 // 已达成的今日时长档（25 分钟的倍数）；字数档由服务端今日统计推
 let msFlashTimer: ReturnType<typeof setTimeout> | null = null
 let peerMsTimer: ReturnType<typeof setTimeout> | null = null
 
+// 今日累计（服务端 Redis，净增口径；跨日自然清零）
+const todayStat = ref<{ words: number; ms: number }>({ words: 0, ms: 0 })
+function applyToday(d: any) {
+  const t = d?.today
+  if (t && typeof t.words === 'number' && typeof t.ms === 'number') {
+    todayStat.value = { words: t.words, ms: t.ms }
+  }
+}
+async function refreshToday() {
+  try { applyToday((await buddyApi.today()).data?.data) } catch { }
+}
+
 const milestoneTicks = computed(() => {
-  const wordLv = Math.max(0, Math.floor(wordsDelta.value / MS_WORD_STEP))
-  const timeLv = Math.floor(elapsedMs.value / MS_TIME_STEP_MS)
+  const wordLv = Math.max(0, Math.floor(todayStat.value.words / MS_WORD_STEP))
+  const timeLv = Math.floor(Math.max(0, todayStat.value.ms) / MS_TIME_STEP_MS)
   const done = wordLv + timeLv
-  if (done <= 0) return { total: 0, done: 0, nextLabel: '' }
   const nextWord = (wordLv + 1) * MS_WORD_STEP
   const nextTimeMin = ((timeLv + 1) * MS_TIME_STEP_MS) / 60000
-  const nextLabel = (nextWord - wordsDelta.value) <= (nextTimeMin * 60 - elapsedMs.value / 1000) * 14
+  const nextLabel = (nextWord - todayStat.value.words) <= (nextTimeMin * 60 - todayStat.value.ms / 1000) * 14
     ? `下一个 ${nextWord} 字`
     : `下一个 ${nextTimeMin} 分钟`
   return { total: done, done, nextLabel }
@@ -140,14 +161,14 @@ const milestoneTicks = computed(() => {
 
 function checkMilestones() {
   if (state.value !== 'running') return
-  const wordLv = Math.floor(Math.max(0, wordsDelta.value) / MS_WORD_STEP)
-  const timeLv = Math.floor(elapsedMs.value / MS_TIME_STEP_MS)
+  const timeLv = Math.floor(Math.max(0, todayStat.value.ms) / MS_TIME_STEP_MS)
+  const wordLv = Math.floor(Math.max(0, todayStat.value.words) / MS_WORD_STEP)
   if (wordLv > msWordLevel) {
     msWordLevel = wordLv
-    fireMyMilestone(`又破 ${wordLv * MS_WORD_STEP} 字！`, milestoneSub())
+    fireMyMilestone(`今日破 ${wordLv * MS_WORD_STEP} 字！`, milestoneSub())
   } else if (timeLv > msTimeLevel) {
     msTimeLevel = timeLv
-    fireMyMilestone(`连续 ${timeLv * 25} 分钟！`, milestoneSub())
+    fireMyMilestone(`今日 ${timeLv * 25} 分钟！`, milestoneSub())
   }
 }
 function milestoneSub(): string {
@@ -168,11 +189,32 @@ function flashPeerMilestone(text: string) {
 }
 
 // 搭子状态
-interface PeerSession { user_id: string; nickname: string; started_at: string; words_delta: number }
+interface PeerSession {
+  user_id: string; nickname: string; started_at: string
+  words_delta: number; elapsed_sec?: number; timer_state?: string
+}
 const peer = ref<PeerSession | null>(null)
 const waiting = ref(false)
 const peerCheerFlash = ref(false)
 const cheerJustSent = ref(false)
+let clockOffset = 0 // 本机钟偏（server_time - Date.now()），校准对方时长
+const peerElapsedBase = ref(0) // 最近一次快照时对方的累计码字毫秒
+const peerPaused = computed(() => peer.value?.timer_state === 'paused')
+// 对方时长：快照值 + running 时本地续滚（一秒一跳，暂停即停，钟偏已校准；依赖 now 每秒重算）
+const peerTime = computed(() => {
+  if (!peer.value) return ''
+  const ms = peerElapsedBase.value + (peerPaused.value ? 0 : (now.value + clockOffset - peerSnapAt.value))
+  return formatTime(Math.max(0, ms))
+})
+const peerSnapAt = ref(0) // 快照时刻（按服务器钟）
+
+// 应用对方会话快照（心跳/SSE/matched 都走这里，保证口径一致）
+function applyPeer(p: PeerSession | null) {
+  if (!p) { peer.value = null; return }
+  peer.value = p
+  peerElapsedBase.value = (p.elapsed_sec || 0) * 1000
+  peerSnapAt.value = Date.now() + clockOffset
+}
 
 // ---- 快捷互动（方案A）：预设 4 种，60s 冷却，只在对方窗内闪一条 4s 提示 ----
 const NUDGES = [
@@ -237,15 +279,10 @@ const wordsDelta = computed(() => lastWordCount.value - startWordCount.value)
 
 // 字数跟随编辑器实时更新（没有它 words_delta 永远上报 0）
 watch(() => props.currentWordCount, (n) => { lastWordCount.value = n })
-const peerTime = computed(() => {
-  if (!peer.value) return ''
-  const ms = Date.now() - new Date(peer.value.started_at).getTime()
-  return formatTime(Math.max(0, ms))
-})
 
 function tick() {
   now.value = Date.now()
-  checkMilestones()
+  if (state.value === 'running') checkMilestones()
   saveSnapshot()
 }
 
@@ -265,7 +302,13 @@ async function heartbeat() {
       nickname: myNickname.value,
       project_id: Number(localStorage.getItem('xzj-active-project') || 0),
       words_delta: wordsDelta.value,
+      elapsed_sec: Math.floor(elapsedMs.value / 1000),
+      timer_state: state.value,
     })
+    if (res.data?.data?.server_time) {
+      clockOffset = res.data.data.server_time - Date.now()
+    }
+    applyToday(res.data?.data)
     applyState(res.data?.data)
   } catch { /* 网络断就下一拍再试 */ }
 }
@@ -274,7 +317,7 @@ function applyState(d: any) {
   if (!d) return
   const s = d.state || {}
   waiting.value = !!s.waiting
-  peer.value = s.peer || null
+  applyPeer(s.peer || null)
   // 排队等待时加快轮询（3s），配上/取消后回到 15s
   if (state.value === 'running' || state.value === 'paused') {
     scheduleBeat(waiting.value ? 3000 : 15000)
@@ -290,16 +333,17 @@ async function match() {
     const res = await buddyApi.match()
     if (res.data?.data?.matched) {
       waiting.value = false
-      peer.value = res.data.data.peer
+      applyPeer(res.data.data.peer)
     } else {
       waiting.value = true
     }
   } catch { }
 }
 async function leaveMatch() {
+  cancelRematch()
   try { await buddyApi.leaveMatch() } catch { }
   waiting.value = false
-  peer.value = null
+  applyPeer(null)
 }
 async function cheer() {
   try {
@@ -350,16 +394,18 @@ function handleEvent(ev: any) {
   if (!ev || !ev.type) return
   if (ev.type === 'matched') {
     waiting.value = false
-    if (ev.peer) peer.value = ev.peer
+    cancelRematch(false)
+    if (ev.peer) applyPeer(ev.peer)
     scheduleBeat(15000)
   } else if (ev.type === 'peer_left') {
-    peer.value = null
+    applyPeer(null)
+    scheduleRematch()
   } else if (ev.type === 'cheer') {
     peerCheerFlash.value = true
     setTimeout(() => { peerCheerFlash.value = false }, 4000)
   } else if (ev.type === 'peer_milestone') {
-    if (ev.peer?.nickname) peer.value = { ...peer.value!, ...ev.peer }
-    flashPeerMilestone(`${ev.peer?.nickname || '搭子'} 又破 ${ev.milestone} 字了！`)
+    if (ev.peer) applyPeer({ ...peer.value!, ...ev.peer })
+    flashPeerMilestone(`${ev.peer?.nickname || '搭子'} 今日破 ${ev.milestone} 字了！`)
   } else if (ev.type === 'peer_nudge') {
     const icon = NUDGE_ICONS[ev.nudge] || '✦'
     peerNudgeFlash.value = `${icon} ${ev.from || '搭子'} ${NUDGE_RECV[ev.nudge] || '戳了戳你'}`
@@ -367,6 +413,29 @@ function handleEvent(ev: any) {
     peerNudgeTimer = setTimeout(() => { peerNudgeFlash.value = '' }, 4000)
   }
 }
+
+// ---- 对方离开后自动重排队（P1）：30s 倒计时，可取消；只在计时中生效 ----
+const rematchCountdown = ref(0)
+let rematchTimer: ReturnType<typeof setInterval> | null = null
+function scheduleRematch() {
+  if (state.value !== 'running' && state.value !== 'paused') return
+  cancelRematch(false)
+  rematchCountdown.value = 30
+  rematchTimer = setInterval(() => {
+    rematchCountdown.value -= 1
+    if (rematchCountdown.value <= 0) {
+      cancelRematch(false)
+      waiting.value = true
+      match()
+    }
+  }, 1000)
+}
+function cancelRematch(clearUI = true) {
+  if (rematchTimer) { clearInterval(rematchTimer); rematchTimer = null }
+  if (clearUI) rematchCountdown.value = 0
+}
+// 模板点击入口（事件对象误传进 clearUI）
+const onCancelRematchClick = () => cancelRematch(true)
 
 // ---- 计时器逻辑（同 WritingTimer，含持久化） ----
 function saveSnapshot() {
@@ -411,18 +480,24 @@ function restoreSnapshot() {
       scheduleBeat(15000)
       heartbeat()
       openEvents()
+      refreshToday().then(() => {
+        // 里程碑档位以服务端今日统计为基线，防止恢复后重复弹花
+        msWordLevel = Math.floor(Math.max(0, todayStat.value.words) / MS_WORD_STEP)
+        msTimeLevel = Math.floor(Math.max(0, todayStat.value.ms) / MS_TIME_STEP_MS)
+      })
     }
   } catch { }
 }
 function clearSnapshot() { try { localStorage.removeItem(STORAGE_KEY) } catch { } }
 
 function start() {
-  if (state.value === 'idle') {
+  if (state.value === 'idle' || state.value === 'summary') {
+    // 新一场：从 00:00 开始（总结态点 ▶ 也是新一场，不再续旧时长）
     accumulatedMs.value = 0
     startWordCount.value = props.currentWordCount
     lastWordCount.value = props.currentWordCount
-    msWordLevel = 0
-    msTimeLevel = 0
+    msWordLevel = Math.floor(Math.max(0, todayStat.value.words) / MS_WORD_STEP)
+    msTimeLevel = Math.floor(Math.max(0, todayStat.value.ms) / MS_TIME_STEP_MS)
   }
   sessionStart.value = Date.now()
   state.value = 'running'
@@ -431,6 +506,7 @@ function start() {
   scheduleBeat(15000)
   heartbeat()
   openEvents()
+  refreshToday()
   saveSnapshot()
 }
 function pause() {
@@ -450,10 +526,12 @@ function stop() {
   summaryMs.value = accumulatedMs.value
   summaryWords.value = props.currentWordCount - startWordCount.value
   state.value = 'summary'
+  cancelRematch()
   leaveMatch()
   if (beatRef.value) { clearInterval(beatRef.value); beatRef.value = null; beatMs = 0 }
   closeEvents()
   buddyApi.stop().catch(() => { })
+  refreshToday() // 总结条带今日累计
   saveSnapshot()
 }
 function reset() {
@@ -463,8 +541,6 @@ function reset() {
   lastWordCount.value = 0
   summaryMs.value = 0
   summaryWords.value = 0
-  msWordLevel = 0
-  msTimeLevel = 0
   myMilestoneFlash.value = null
   peerMilestoneFlash.value = ''
   clearSnapshot()
@@ -496,6 +572,7 @@ onBeforeUnmount(() => {
   if (intervalRef.value) clearInterval(intervalRef.value)
   if (beatRef.value) clearInterval(beatRef.value)
   if (nudgeTick) clearInterval(nudgeTick)
+  if (rematchTimer) clearInterval(rematchTimer)
   if (msFlashTimer) clearTimeout(msFlashTimer)
   if (peerMsTimer) clearTimeout(peerMsTimer)
   if (peerNudgeTimer) clearTimeout(peerNudgeTimer)
@@ -554,6 +631,12 @@ onBeforeUnmount(() => {
 .bw-peer-name { font-size: 12px; font-weight: 600; color: var(--text-primary, #333); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bw-peer-stat { display: flex; gap: 6px; font-size: 10.5px; color: var(--text-tertiary, #999); font-variant-numeric: tabular-nums; }
 .bw-peer-words { color: #30d158; }
+.bw-peer-words.revise { color: var(--text-tertiary, #999); }
+.peer-paused-tag { margin-left: 4px; font-size: 9px; color: var(--text-tertiary, #999); }
+.bw-today-line {
+  margin-top: 5px; padding-top: 6px; border-top: 1px dashed var(--border-subtle, rgba(0,0,0,0.06));
+  text-align: center; font-size: 10.5px; color: var(--text-tertiary, #999); font-variant-numeric: tabular-nums;
+}
 .bw-cheer {
   border: none; border-radius: 8px; padding: 5px 8px; cursor: pointer; flex-shrink: 0;
   background: rgba(255,204,0,0.15); color: #b8860b; font-size: 11px; font-weight: 600;

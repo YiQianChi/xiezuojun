@@ -324,7 +324,7 @@ export const threadApi = {
 
 // 搭子（结伴写作）
 export const buddyApi = {
-  heartbeat(data: { nickname?: string; project_id: number; words_delta: number }) {
+  heartbeat(data: { nickname?: string; project_id: number; words_delta: number; elapsed_sec?: number; timer_state?: string }) {
     return api.post('/buddy/heartbeat', data)
   },
   stop() {
@@ -344,6 +344,9 @@ export const buddyApi = {
   },
   state() {
     return api.get('/buddy/state', { params: { consume_cheer: 1 } })
+  },
+  today() {
+    return api.get('/buddy/today')
   },
 }
 

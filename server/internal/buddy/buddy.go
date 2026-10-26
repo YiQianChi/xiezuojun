@@ -19,6 +19,11 @@ import (
 //   xzj:buddy:queue         → LIST 等待匹配队列
 //   xzj:buddy:cheer:{uid}   → 收到的加油计数，TTL=5min
 //   xzj:buddy:online        → ZSET，score=最后心跳时间戳（统计在线数）
+//   xzj:buddy:daily:2006-01-02 → HASH{w:今日净增字数, ms:今日净码字毫秒}，TTL=48h（里程碑按今日口径）
+//
+// 计时口径（2026-10-26 重构）：时长以「前端累计、暂停不计时」为准——
+// 心跳上报 elapsed_sec（本端累计秒数）+ timer_state，对方卡片直接展示该值并本地续滚；
+// started_at 仅保留作会话起点参考，不再用于对方时长计算（旧口径含暂停/挂机时间）。
 
 // Session 一个正在写作的用户会话
 type Session struct {
@@ -28,7 +33,15 @@ type Session struct {
 	StartedAt  time.Time `json:"started_at"`
 	LastBeat   time.Time `json:"last_beat"`
 	WordsDelta int       `json:"words_delta"`
-	Matched    string    `json:"matched,omitempty"` // 配对的搭子 userID；空=未配对
+	ElapsedSec int       `json:"elapsed_sec,omitempty"`  // 本端累计码字秒数（暂停不计时，新一场归零）
+	TimerState string    `json:"timer_state,omitempty"` // running | paused
+	Matched    string    `json:"matched,omitempty"`     // 配对的搭子 userID；空=未配对
+}
+
+// TodayStat 今日写作统计（净增口径：删字/新一场回退都如实减）
+type TodayStat struct {
+	Words int   `json:"words"`
+	Ms    int64 `json:"ms"`
 }
 
 const beatTimeout = 40 * time.Second // 心跳超时：会话过期即离线
@@ -42,6 +55,7 @@ const (
 	keyQueue   = "xzj:buddy:queue"
 	keyCheer   = "xzj:buddy:cheer:"
 	keyOnline  = "xzj:buddy:online"
+	keyDaily   = "xzj:buddy:daily:" // + uid + ":" + 2006-01-02（按日分键，跨日自然清零）
 )
 
 func init() {
@@ -77,36 +91,68 @@ func envInt(k string, def int) int {
 func sessKey(uid string) string    { return keySess + uid }
 func matchedKey(uid string) string { return keyMatched + uid }
 func cheerKey(uid string) string   { return keyCheer + uid }
+func dailyKey(uid string) string {
+	return keyDaily + uid + ":" + time.Now().In(time.Local).Format("2006-01-02")
+}
 
-// Heartbeat 上报/刷新会话
-func Heartbeat(userID, nickname string, projectID uint, wordsDelta int) *Session {
+// updateDaily 今日净增统计：单调增量（新-旧>=0）直接累计，回退（新<旧，删字/换章/新一场回退）如实减
+func updateDaily(userID string, words, elapsedMs int64) TodayStat {
+	key := dailyKey(userID)
+	pipe := rdb.Pipeline()
+	wCmd := pipe.HIncrBy(rctx, key, "w", words)
+	msCmd := pipe.HIncrBy(rctx, key, "ms", elapsedMs)
+	pipe.Expire(rctx, key, 48*time.Hour)
+	_, _ = pipe.Exec(rctx)
+	return TodayStat{Words: int(wCmd.Val()), Ms: msCmd.Val()}
+}
+
+// readDaily 读今日统计（没有=零值）
+func readDaily(userID string) TodayStat {
+	m, err := rdb.HGetAll(rctx, dailyKey(userID)).Result()
+	if err != nil || len(m) == 0 {
+		return TodayStat{}
+	}
+	w, _ := strconv.ParseInt(m["w"], 10, 64)
+	ms, _ := strconv.ParseInt(m["ms"], 10, 64)
+	return TodayStat{Words: int(w), Ms: ms}
+}
+
+// Heartbeat 上报/刷新会话。timerState: running|paused；elapsedSec 为前端累计码字秒数（暂停不计时）
+func Heartbeat(userID, nickname string, projectID uint, wordsDelta, elapsedSec int, timerState string) *Session {
 	now := time.Now()
 	s := readSession(userID)
 	prevDelta := 0
+	prevElapsed := 0
 	if s != nil {
 		prevDelta = s.WordsDelta
+		prevElapsed = s.ElapsedSec
 	} else {
 		s = &Session{UserID: userID, StartedAt: now}
 	}
 	s.Nickname = nickname
 	s.ProjectID = projectID
 	s.WordsDelta = wordsDelta
+	s.ElapsedSec = elapsedSec
+	s.TimerState = timerState
 	s.LastBeat = now
 	writeSession(s)
-	// 在线表登记 + 配对键双向续期
+	// 在线表登记
 	rdb.ZAdd(rctx, keyOnline, redis.Z{Score: float64(now.Unix()), Member: userID})
+	// 今日累计（净增口径，仅 running 时累计，防暂停期间心跳刷出重复时间）
+	var today TodayStat
+	prevToday := readDaily(userID)
+	if timerState == "running" {
+		today = updateDaily(userID, int64(wordsDelta-prevDelta), int64(elapsedSec-prevElapsed)*1000)
+	} else {
+		today = prevToday
+	}
 	if peer, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
 		rdb.Expire(rctx, matchedKey(userID), beatTimeout)
 		rdb.Expire(rctx, matchedKey(peer), beatTimeout)
 		s.Matched = peer
-		// 里程碑：字数跨 500 的倍数 → 实时推给搭子（负数按 0 算，删字不触发）
-		oldLv, newLv := prevDelta/500, wordsDelta/500
-		if oldLv < 0 {
-			oldLv = 0
-		}
-		if newLv < 0 {
-			newLv = 0
-		}
+		// 里程碑：今日字数每跨 500 的倍数 → 实时推给搭子（负数按 0 算，删字/回退不触发）
+		oldLv := max0(prevToday.Words) / 500
+		newLv := max0(today.Words) / 500
 		if newLv > oldLv {
 			publishEvent(peer, Event{Type: "peer_milestone", Peer: s, Milestone: newLv * 500})
 		}
@@ -114,7 +160,14 @@ func Heartbeat(userID, nickname string, projectID uint, wordsDelta int) *Session
 	return s
 }
 
-// StopWriting 主动结束
+func max0(n int) int {
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+// StopWriting 主动结束（会话清掉；今日统计已在心跳里累计，15s 心跳粒度内的尾差可接受）
 func StopWriting(userID string) {
 	if peer, err := rdb.Get(rctx, matchedKey(userID)).Result(); err == nil {
 		rdb.Del(rctx, matchedKey(peer))
@@ -123,6 +176,11 @@ func StopWriting(userID string) {
 	rdb.Del(rctx, sessKey(userID), matchedKey(userID), cheerKey(userID))
 	rdb.ZRem(rctx, keyOnline, userID)
 	rdb.LRem(rctx, keyQueue, 1, userID)
+}
+
+// GetToday 今日写作统计（总结/刻度条用）
+func GetToday(userID string) TodayStat {
+	return readDaily(userID)
 }
 
 func readSession(uid string) *Session {
