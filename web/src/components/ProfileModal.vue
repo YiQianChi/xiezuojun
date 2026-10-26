@@ -15,7 +15,7 @@
         <div class="pdlg-head"><span>{{ penNameMode ? '起个笔名' : '修改信息' }}</span><button @click="editOpen = false">✕</button></div>
         <div class="pdlg-body">
           <div class="avatar-row">
-            <div class="avatar" :style="avatarStyle">{{ initials }}</div>
+            <div class="avatar" :style="avatarStyle">{{ form.avatar || initials }}</div>
             <div class="avatar-ops">
               <div class="emoji-picker">
                 <button v-for="e in EMOJIS" :key="e" class="emoji-btn" :class="{ on: form.avatar === e }" @click="form.avatar = e">{{ e }}</button>
