@@ -1,7 +1,9 @@
 package user
 
 import (
+	crand "crypto/rand"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -98,6 +100,19 @@ type RegisterReq struct {
 	Code     string `json:"code" binding:"required,len=6"`
 }
 
+
+// randomPenName 随机笔名：形容词+名词+数字，注册默认昵称——防邮箱直接当昵称在搭子等场景泄露
+var penAdjs = []string{"夜行", "执笔", "听雨", "拾光", "枕书", "踏雪", "扶风", "衔月", "追云", "候鸟", "拾荒", "灯下", "山间", "窗边", "纸上"}
+var penNouns = []string{"墨客", "书生", "笔者", "浪人", "行者", "说书人", "筑梦者", "执剑人", "织星人", "拾贝人", "守望者", "赶路人", "摆渡人", "追光者", "夜航船"}
+
+func randomPenName() string {
+	// crypto 级随机，防可预测
+	var b [2]byte
+	_, _ = crand.Read(b[:])
+	suffix := int(b[0])%90 + 10
+	return penAdjs[int(b[0])%len(penAdjs)] + penNouns[int(b[1])%len(penNouns)] + strconv.Itoa(suffix)
+}
+
 // Register 用户注册
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterReq
@@ -128,7 +143,7 @@ func (h *Handler) Register(c *gin.Context) {
 		UserID:       uuid.New().String(),
 		Email:        req.Email,
 		PasswordHash: string(hash),
-		Nickname:     req.Email,
+		Nickname:     randomPenName(),
 		Plan:         "free",
 	}
 	if err := h.db.Create(&user).Error; err != nil {
@@ -356,7 +371,14 @@ func (h *Handler) Me(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": user})
+	needsPenName := user.Nickname == "" || strings.Contains(user.Nickname, "@")
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{
+		"id": user.ID, "user_id": user.UserID, "email": user.Email, "phone": user.Phone,
+		"nickname": user.Nickname, "avatar": user.Avatar, "plan": user.Plan,
+		"status": user.Status, "is_admin": user.IsAdmin,
+		"created_at": user.CreatedAt, "updated_at": user.UpdatedAt,
+		"needs_pen_name": needsPenName,
+	}})
 }
 
 // UpdateProfile 更新用户资料

@@ -9,10 +9,10 @@
       <button class="pmenu-item danger" @click="doLogout">退出登录</button>
     </div>
 
-    <!-- 修改信息弹窗 -->
+    <!-- 修改信息/起笔名 弹窗 -->
     <div v-if="editOpen" class="pdlg-overlay" @click.self="editOpen = false">
       <div class="pdlg">
-        <div class="pdlg-head"><span>修改信息</span><button @click="editOpen = false">✕</button></div>
+        <div class="pdlg-head"><span>{{ penNameMode ? '起个笔名' : '修改信息' }}</span><button @click="editOpen = false">✕</button></div>
         <div class="pdlg-body">
           <div class="avatar-row">
             <div class="avatar" :style="avatarStyle">{{ initials }}</div>
@@ -23,12 +23,17 @@
               </div>
             </div>
           </div>
+          <p v-if="penNameMode" class="pen-hint">写作菌里大家用笔名相称——搭子配对时对方只能看到你的笔名，邮箱等隐私不会展示。已为你随机生成一个，可以直接用或改成自己的。</p>
           <label class="field">
-            <span>昵称</span>
+            <span>笔名</span>
             <input v-model="form.nickname" class="input" placeholder="给自己起个笔名" maxlength="20" @keyup.enter="saveProfile" />
           </label>
-          <div class="meta-row"><span>邮箱</span><b>{{ me.email }}</b></div>
-          <button class="btn primary" @click="saveProfile" :disabled="saving">{{ saving ? '保存中…' : '保存' }}</button>
+          <div class="pen-ops">
+            <button class="btn reroll" @click="reroll">🎲 换一个</button>
+            <button class="btn primary" @click="saveProfile" :disabled="saving">{{ saving ? '保存中…' : (penNameMode ? '就用这个' : '保存') }}</button>
+          </div>
+          <button v-if="penNameMode" class="btn skip" @click="editOpen = false">先跳过</button>
+          <div v-else class="meta-row"><span>邮箱</span><b>{{ me.email }}</b></div>
         </div>
       </div>
     </div>
@@ -69,9 +74,10 @@ function openMenu(anchor: HTMLElement) {
   menuOpen.value = true
 }
 function closeMenu() { menuOpen.value = false }
-defineExpose({ openMenu })
+defineExpose({ openMenu, openForPenName })
 
 const editOpen = ref(false)
+const penNameMode = ref(false)  // 首次起笔名模式（needs_pen_name 触发）
 const pwdOpen = ref(false)
 const me = ref<any>({})
 const form = ref({ nickname: '', avatar: '' })
@@ -88,8 +94,27 @@ const avatarStyle = computed(() => form.value.avatar
   ? { background: 'var(--bg-tertiary, #f0f0f3)', fontSize: '26px', lineHeight: '52px' }
   : { background: 'var(--accent, #007aff)', color: '#fff', fontSize: '22px', fontWeight: 700, lineHeight: '52px' })
 
+// 注册后首启：拉到 needs_pen_name=true 时调用（由 App.vue 触发）
+async function openForPenName() {
+  penNameMode.value = true
+  editOpen.value = true
+  try {
+    const res = await userApi.me()
+    me.value = res.data?.data || {}
+    form.value.nickname = me.value.nickname || ''
+    form.value.avatar = me.value.avatar || ''
+  } catch {}
+}
+
+function reroll() {
+  const adjs = ['夜行','执笔','听雨','拾光','枕书','踏雪','扶风','衔月','追云','候鸟','拾荒','灯下','山间','窗边','纸上']
+  const nouns = ['墨客','书生','笔者','浪人','行者','说书人','筑梦者','执剑人','织星人','拾贝人','守望者','赶路人','摆渡人','追光者','夜航船']
+  form.value.nickname = adjs[Math.floor(Math.random()*adjs.length)] + nouns[Math.floor(Math.random()*nouns.length)] + String(Math.floor(Math.random()*90)+10)
+}
+
 async function openEdit() {
   closeMenu()
+  penNameMode.value = false
   editOpen.value = true
   try {
     const res = await userApi.me()
@@ -122,6 +147,7 @@ async function saveProfile() {
     } catch {}
     window.dispatchEvent(new CustomEvent('xzj-profile-updated'))
     editOpen.value = false
+    penNameMode.value = false
   } catch (e: any) {
     toast.error(e?.response?.data?.error || '保存失败')
   } finally {
@@ -215,4 +241,9 @@ function doLogout() {
 }
 .btn.primary { background: var(--accent, #007aff); color: #fff; border-color: var(--accent, #007aff); }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
+.pen-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 10px; background: var(--bg-tertiary, #f5f5f7); border-radius: 8px; padding: 8px 10px; }
+.pen-ops { display: flex; gap: 8px; margin-top: 8px; }
+.pen-ops .btn { flex: 1; margin-top: 0; }
+.pen-ops .reroll { flex: 0 0 auto; }
+.btn.skip { margin-top: 8px; border: none; color: var(--text-tertiary); font-size: 13px; }
 </style>

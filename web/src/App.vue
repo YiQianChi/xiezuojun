@@ -62,7 +62,7 @@ const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login'
 
 const isLoggedIn = ref(false)
 // 导航栏头像/昵称（登录后拉取；个人设置页改完派发 xzj-profile-updated 事件刷新）
-const profileRef = ref<{ openMenu: (a: HTMLElement) => void } | null>(null)
+const profileRef = ref<{ openMenu: (a: HTMLElement) => void; openForPenName: () => void } | null>(null)
 const profileNickname = ref('')
 const profileAvatar = ref('')
 async function refreshProfile() {
@@ -86,6 +86,11 @@ async function refreshProfile() {
         localStorage.setItem('xzj-nickname', profileNickname.value)
         localStorage.setItem('xzj-avatar', profileAvatar.value)
       } catch {}
+      // 昵称是邮箱/空 → 弹「起个笔名」（搭子配对只展示笔名，保护邮箱）
+      if (u.needs_pen_name && !sessionStorage.getItem('xzj-penname-asked')) {
+        try { sessionStorage.setItem('xzj-penname-asked', '1') } catch {}
+        profileRef.value?.openForPenName()
+      }
     }
   } catch {}
 }
