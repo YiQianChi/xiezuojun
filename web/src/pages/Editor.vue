@@ -1146,7 +1146,7 @@ function initEditor() {
     onUpdate: ({ editor: ed }) => {
       if (isSettingContent.value) return
       const plainText = getEditorText(ed)
-      wordCount.value = plainText.length
+      wordCount.value = countWords(plainText)
       saveStatus.value = '编辑中...'
       // ponytail: write localStorage draft on every keystroke window so
       // browser crash / tab close in the 1.5s debounce gap doesn't lose data.
@@ -1293,6 +1293,11 @@ function getEditorText(ed = editor.value) {
     blocks.push(node.textContent || '')
   })
   return blocks.join('\n')
+}
+
+// 字数=去掉换行符后的字符数——回车分段不算字（否则每按一次回车 +1，空段落也 +1）
+function countWords(text: string): number {
+  return text.replace(/\n/g, '').length
 }
 
 // ponytail: save/load as HTML to preserve marks (highlight etc.)
@@ -1510,7 +1515,7 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
       } else {
         editor.value.commands.setContent(editorContentFromText(content), { emitUpdate: false })
       }
-      wordCount.value = getEditorText().length
+      wordCount.value = countWords(getEditorText())
       saveStatus.value = fromCache ? '📡 离线读取' : '已保存'
       setTimeout(() => { isSettingContent.value = false }, 100)
 
@@ -1575,7 +1580,7 @@ function restoreDraft() {
   if (!draftBanner.value || !editor.value) return
   isSettingContent.value = true
   editor.value.commands.setContent(draftBanner.value.text, { emitUpdate: false })
-  wordCount.value = getEditorText().length
+  wordCount.value = countWords(getEditorText())
   saveStatus.value = '编辑中...'
   setTimeout(() => {
     isSettingContent.value = false
