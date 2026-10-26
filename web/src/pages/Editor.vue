@@ -346,7 +346,7 @@
       </div>
     </div>
 
-    <BuddyWindow :current-word-count="wordCount" />
+    <BuddyWindow :current-word-count="wordCount" :active-doc-id="activeDocId" />
 
     <!-- 工具箱面板：记忆/伏笔/回收站/统计/AI对话（从状态栏触发，弹窗位置统一） -->
     <div v-if="memoryOpen" class="panel-popup memory-popup" @click.stop>

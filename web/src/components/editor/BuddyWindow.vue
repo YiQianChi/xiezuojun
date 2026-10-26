@@ -107,7 +107,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, shallowRef } from 'vue'
 import { buddyApi, userApi } from '../../core/api'
 
-const props = defineProps<{ currentWordCount: number }>()
+const props = defineProps<{ currentWordCount: number; activeDocId?: string | number | null }>()
 
 type TimerState = 'idle' | 'running' | 'paused' | 'summary'
 const STORAGE_KEY = 'xzj-buddy-timer'
@@ -275,10 +275,32 @@ const elapsedMs = computed(() => {
   return accumulatedMs.value
 })
 const displayTime = computed(() => formatTime(elapsedMs.value))
-const wordsDelta = computed(() => lastWordCount.value - startWordCount.value)
+
+// ---- 字数增量按章节折叠：切换章节只重置基线，不把章节间字数差算成写作量 ----
+// settledWords = 已结算的旧章节增量；curBaseline = 当前章节基线；
+// 总增量 = settledWords + (当前章节字数 - 基线)，切章瞬间结算不跳变
+const settledWords = ref(0)
+const curBaseline = ref(0)
+const wordsDelta = computed(() => settledWords.value + (lastWordCount.value - curBaseline.value))
 
 // 字数跟随编辑器实时更新（没有它 words_delta 永远上报 0）
-watch(() => props.currentWordCount, (n) => { lastWordCount.value = n })
+watch(() => props.currentWordCount, (n) => {
+  // 基线还没初始化（刚开计时/刚切章）先立基线，不产生增量
+  if (curBaseline.value < 0) { curBaseline.value = n }
+  lastWordCount.value = n
+})
+// 切章/切文档：结算当前章节未落账的增量，基线重置为待初始化（下一拍字数进来时立新基线）
+watch(() => props.activeDocId, () => {
+  if (curBaseline.value >= 0) {
+    settledWords.value += lastWordCount.value - curBaseline.value
+    curBaseline.value = -1
+  }
+})
+
+function resetWordBaseline() {
+  settledWords.value = 0
+  curBaseline.value = props.currentWordCount
+}
 
 function tick() {
   now.value = Date.now()
@@ -442,6 +464,7 @@ function saveSnapshot() {
   const snap = {
     state: state.value, accumulatedMs: accumulatedMs.value, sessionStart: sessionStart.value,
     startWordCount: startWordCount.value, lastWordCount: lastWordCount.value,
+    settledWords: settledWords.value, curBaseline: curBaseline.value,
     summaryMs: summaryMs.value, summaryWords: summaryWords.value,
     visible: visible.value, win: winPos.value,
   }
@@ -473,6 +496,8 @@ function restoreSnapshot() {
     } else { return }
     startWordCount.value = s.startWordCount
     lastWordCount.value = s.lastWordCount
+    if (typeof s.settledWords === 'number') settledWords.value = s.settledWords
+    if (typeof s.curBaseline === 'number') curBaseline.value = s.curBaseline
     summaryMs.value = s.summaryMs
     summaryWords.value = s.summaryWords
     // 恢复运行/暂停态后必须重启心跳，否则配对状态永远不同步、服务端 40s 后判离线
@@ -496,6 +521,7 @@ function start() {
     accumulatedMs.value = 0
     startWordCount.value = props.currentWordCount
     lastWordCount.value = props.currentWordCount
+    resetWordBaseline()
     msWordLevel = Math.floor(Math.max(0, todayStat.value.words) / MS_WORD_STEP)
     msTimeLevel = Math.floor(Math.max(0, todayStat.value.ms) / MS_TIME_STEP_MS)
   }
@@ -524,7 +550,7 @@ function stop() {
   }
   if (intervalRef.value) { clearInterval(intervalRef.value); intervalRef.value = null }
   summaryMs.value = accumulatedMs.value
-  summaryWords.value = props.currentWordCount - startWordCount.value
+  summaryWords.value = wordsDelta.value // 跨章口径：已结算 + 当前章节未结算
   state.value = 'summary'
   cancelRematch()
   leaveMatch()
@@ -539,6 +565,8 @@ function reset() {
   accumulatedMs.value = 0
   startWordCount.value = 0
   lastWordCount.value = 0
+  settledWords.value = 0
+  curBaseline.value = 0
   summaryMs.value = 0
   summaryWords.value = 0
   myMilestoneFlash.value = null
