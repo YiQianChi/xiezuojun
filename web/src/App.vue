@@ -10,10 +10,10 @@
       <button v-if="canInstall" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
       <button class="nav-link" @click="showQQModal = true">QQ问题反馈群</button>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
-      <router-link v-if="isLoggedIn" to="/profile" class="nav-link profile-link" title="个人设置">
+      <button v-if="isLoggedIn" class="nav-link profile-link" title="个人设置" @click="profileOpen = true">
         <span class="nav-avatar">{{ profileAvatar || (profileNickname || '我').slice(0, 1) }}</span>
         <span class="nav-nick">{{ profileNickname || '我的' }}</span>
-      </router-link>
+      </button>
       <button v-if="isLoggedIn" @click="logout" class="nav-link logout">退出</button>
       <router-link v-else to="/login" class="nav-link">登录</router-link>
     </div>
@@ -45,6 +45,7 @@
       </div>
     </div>
   </Teleport>
+  <ProfileModal v-model:open="profileOpen" />
   <OnboardingTour ref="onboardingRef" />
 </template>
 
@@ -54,6 +55,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { toasts, toast } from './composables/useToast'
 import { usePwaInstall } from './composables/usePwaInstall'
 import OnboardingTour from './components/OnboardingTour.vue'
+import ProfileModal from './components/ProfileModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,6 +63,7 @@ const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login'
 
 const isLoggedIn = ref(false)
 // 导航栏头像/昵称（登录后拉取；个人设置页改完派发 xzj-profile-updated 事件刷新）
+const profileOpen = ref(false)
 const profileNickname = ref('')
 const profileAvatar = ref('')
 async function refreshProfile() {
