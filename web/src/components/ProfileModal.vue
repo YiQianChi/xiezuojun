@@ -207,10 +207,14 @@ function doLogout() {
   display: flex; align-items: center; justify-content: center; padding: 16px;
 }
 .pdlg {
-  width: 340px; max-width: 100%; max-height: 88vh; overflow-y: auto;
+  width: 340px; max-width: 100%; max-height: 88dvh;
+  display: flex; flex-direction: column;
   background: var(--bg-secondary, #fff); border-radius: 16px;
   box-shadow: 0 16px 48px rgba(0,0,0,.22);
+  overflow: hidden;
 }
+.pdlg-head { flex-shrink: 0; }
+.pdlg-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .pdlg-head {
   display: flex; justify-content: space-between; align-items: center;
   padding: 13px 16px; border-bottom: 1px solid var(--border, #eee); font-weight: 600; font-size: 15px;
@@ -218,7 +222,7 @@ function doLogout() {
 .pdlg-head button { border: none; background: none; cursor: pointer; font-size: 15px; color: var(--text-tertiary); }
 .pdlg-body { padding: 14px 16px 16px; }
 
-.big-avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 14px; }
+.big-avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-bottom: 12px; }
 .big-avatar {
   width: 68px; height: 68px; border-radius: 50%; text-align: center; overflow: hidden;
   cursor: pointer; user-select: none; transition: transform .12s;
