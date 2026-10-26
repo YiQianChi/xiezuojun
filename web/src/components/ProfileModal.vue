@@ -248,7 +248,7 @@ function doLogout() {
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .pen-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 10px; background: var(--bg-tertiary, #f5f5f7); border-radius: 8px; padding: 8px 10px; }
 .pen-ops { display: flex; gap: 8px; margin-top: 8px; }
-.pen-ops .btn { flex: 1; margin-top: 0; }
-.pen-ops .reroll { flex: 0 0 auto; }
+.pen-ops .btn { flex: 1; width: auto; margin-top: 0; min-width: 0; }
+.pen-ops .reroll { flex: 0 0 auto; width: auto; }
 .btn.skip { margin-top: 8px; border: none; color: var(--text-tertiary); font-size: 13px; }
 </style>
