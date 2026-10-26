@@ -88,7 +88,7 @@ const initials = computed(() => {
 })
 const avatarStyle = computed(() => form.value.avatar
   ? { background: 'var(--bg-tertiary, #f0f0f3)', fontSize: '34px', lineHeight: '64px' }
-  : { background: 'linear-gradient(135deg, #8fc59b, #6aa877)', color: '#fff', fontSize: '28px', fontWeight: 700, lineHeight: '66px' })
+  : { background: 'var(--accent, #007aff)', color: '#fff', fontSize: '28px', fontWeight: 700, lineHeight: '66px' })
 
 // 注册后首启：拉到 needs_pen_name=true 时调用（由 App.vue 触发）
 async function openForPenName() {
@@ -190,7 +190,7 @@ function doLogout() {
 .pmenu {
   position: fixed; z-index: 201; min-width: 156px;
   background: var(--bg-secondary, #fff); border-radius: 14px;
-  box-shadow: 0 16px 48px rgba(31, 60, 40, .18), 0 2px 8px rgba(0,0,0,.05); padding: 6px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.05); padding: 6px;
   border: 1px solid rgba(0,0,0,.04);
 }
 .pmenu-item {
@@ -211,7 +211,7 @@ function doLogout() {
   width: 340px; max-width: 100%; max-height: 88dvh;
   display: flex; flex-direction: column;
   background: var(--bg-secondary, #fff); border-radius: 20px;
-  box-shadow: 0 24px 64px rgba(31, 60, 40, .22), 0 2px 8px rgba(0,0,0,.06);
+  box-shadow: 0 24px 64px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.06);
   overflow: hidden;
 }
 .pdlg-head { flex-shrink: 0; }
@@ -230,15 +230,15 @@ function doLogout() {
 .big-avatar-wrap {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   margin: 4px -16px 14px; padding: 18px 0 14px;
-  background: linear-gradient(180deg, rgba(129,187,142,.14), rgba(129,187,142,0));
+  background: linear-gradient(180deg, var(--bg-tertiary, #f5f5f7), transparent);
 }
 .big-avatar {
   width: 72px; height: 72px; border-radius: 50%; text-align: center; overflow: hidden;
   cursor: pointer; user-select: none; transition: transform .15s ease, box-shadow .15s ease;
-  box-shadow: 0 4px 16px rgba(95,154,112,.35);
-  border: 3px solid #fff; outline: 1px solid rgba(129,187,142,.45);
+  box-shadow: 0 4px 16px rgba(0,122,255,.22);
+  border: 3px solid #fff; outline: 1px solid var(--border, #e0e0e0);
 }
-.big-avatar:hover { transform: scale(1.06); box-shadow: 0 6px 22px rgba(95,154,112,.45); }
+.big-avatar:hover { transform: scale(1.06); box-shadow: 0 6px 22px rgba(0,122,255,.3); }
 .big-avatar:active { transform: scale(.97); }
 .big-avatar-tip { font-size: 11px; color: var(--text-tertiary); }
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
@@ -248,7 +248,7 @@ function doLogout() {
   font-size: 14px; outline: none; background: var(--bg-secondary, #fff); color: var(--text-primary);
   transition: border-color .15s, box-shadow .15s;
 }
-.input:focus { border-color: #81bb8e; box-shadow: 0 0 0 3px rgba(129,187,142,.15); }
+.input:focus { border-color: var(--accent, #007aff); box-shadow: 0 0 0 3px rgba(0,122,255,.12); }
 .meta-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
 .meta-row span { color: var(--text-secondary); }
 .meta-row b { color: var(--text-primary); font-weight: 500; }
@@ -258,22 +258,22 @@ function doLogout() {
   transition: transform .1s ease, box-shadow .15s ease, opacity .15s;
 }
 .btn.primary {
-  background: linear-gradient(135deg, #8fc59b, #6aa877); color: #fff; border: none; font-weight: 500;
-  box-shadow: 0 3px 12px rgba(106,168,119,.35);
+  background: var(--accent, #007aff); color: #fff; border: none; font-weight: 500;
+  box-shadow: 0 3px 12px rgba(0,122,255,.25);
 }
-.btn.primary:hover { box-shadow: 0 5px 18px rgba(106,168,119,.45); }
+.btn.primary:hover { box-shadow: 0 5px 18px rgba(0,122,255,.35); }
 .btn.primary:active { transform: scale(.98); }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
-.pen-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 10px; background: rgba(129,187,142,.08); border-radius: 10px; padding: 9px 11px; }
+.pen-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 10px; background: var(--bg-tertiary, #f5f5f7); border-radius: 10px; padding: 9px 11px; }
 .pen-ops { display: flex; gap: 8px; margin-top: 8px; }
 .pen-ops .btn { flex: 1; width: auto; margin-top: 0; min-width: 0; }
 .pen-ops .reroll {
   flex: 0 0 auto; width: auto; padding: 10px 16px; margin-top: 0;
-  background: rgba(129,187,142,.12); border: none; border-radius: 11px;
-  color: #4d8a5e; font-size: 14px; font-weight: 500;
+  background: var(--bg-tertiary, #f0f0f3); border: none; border-radius: 11px;
+  color: var(--text-secondary); font-size: 14px; font-weight: 500;
   transition: background .15s, transform .1s;
 }
-.pen-ops .reroll:hover { background: rgba(129,187,142,.2); }
+.pen-ops .reroll:hover { background: var(--border, #e0e0e0); }
 .pen-ops .reroll:active { transform: scale(.96); }
 .btn.skip { margin-top: 10px; border: none; color: var(--text-tertiary); font-size: 13px; padding: 7px 0; }
 .btn.skip:hover { color: var(--text-secondary); background: var(--bg-tertiary, #f5f5f7); }
