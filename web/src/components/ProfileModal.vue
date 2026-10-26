@@ -9,27 +9,23 @@
       <button class="pmenu-item danger" @click="doLogout">退出登录</button>
     </div>
 
-    <!-- 修改信息/起笔名 弹窗 -->
+    <!-- 修改信息/起笔名 弹窗（极简版：大头像+笔名，头像后续接上传） -->
     <div v-if="editOpen" class="pdlg-overlay" @click.self="editOpen = false">
       <div class="pdlg">
         <div class="pdlg-head"><span>{{ penNameMode ? '起个笔名' : '修改信息' }}</span><button @click="editOpen = false">✕</button></div>
         <div class="pdlg-body">
-          <div class="avatar-row">
-            <div class="avatar" :style="avatarStyle">{{ form.avatar || initials }}</div>
-            <div class="avatar-ops">
-              <div class="emoji-picker">
-                <button v-for="e in EMOJIS" :key="e" class="emoji-btn" :class="{ on: form.avatar === e }" @click="form.avatar = e">{{ e }}</button>
-                <button v-if="form.avatar" class="emoji-btn emoji-clear" @click="form.avatar = ''">✕</button>
-              </div>
-            </div>
+          <!-- 大头像（居中，点击=随机换 emoji；后续这里接上传） -->
+          <div class="big-avatar-wrap">
+            <div class="big-avatar" :style="avatarStyle" @click="cycleAvatar" :title="'点头像换一个'">{{ form.avatar || initials }}</div>
+            <span class="big-avatar-tip">{{ form.avatar ? '点头像换' : '点头像选一个' }}</span>
           </div>
-          <p v-if="penNameMode" class="pen-hint">写作菌里大家用笔名相称——搭子配对时对方只能看到你的笔名，邮箱等隐私不会展示。已为你随机生成一个，可以直接用或改成自己的。</p>
+          <p v-if="penNameMode" class="pen-hint">写作菌里大家用笔名相称——搭子配对时对方只能看到你的笔名，邮箱不会展示。</p>
           <label class="field">
             <span>笔名</span>
             <input v-model="form.nickname" class="input" placeholder="给自己起个笔名" maxlength="20" @keyup.enter="saveProfile" />
           </label>
           <div class="pen-ops">
-            <button class="btn reroll" @click="reroll">🎲 换一个</button>
+            <button class="btn reroll" @click="reroll">🎲 笔名</button>
             <button class="btn primary" @click="saveProfile" :disabled="saving">{{ saving ? '保存中…' : (penNameMode ? '就用这个' : '保存') }}</button>
           </div>
           <button v-if="penNameMode" class="btn skip" @click="editOpen = false">先跳过</button>
@@ -91,8 +87,8 @@ const initials = computed(() => {
   return n.slice(0, 1).toUpperCase()
 })
 const avatarStyle = computed(() => form.value.avatar
-  ? { background: 'var(--bg-tertiary, #f0f0f3)', fontSize: '26px', lineHeight: '52px' }
-  : { background: 'var(--accent, #007aff)', color: '#fff', fontSize: '22px', fontWeight: 700, lineHeight: '52px' })
+  ? { background: 'var(--bg-tertiary, #f0f0f3)', fontSize: '34px', lineHeight: '64px' }
+  : { background: 'var(--accent, #81bb8e)', color: '#fff', fontSize: '28px', fontWeight: 700, lineHeight: '64px' })
 
 // 注册后首启：拉到 needs_pen_name=true 时调用（由 App.vue 触发）
 async function openForPenName() {
@@ -104,6 +100,13 @@ async function openForPenName() {
     form.value.nickname = me.value.nickname || ''
     form.value.avatar = me.value.avatar || ''
   } catch {}
+}
+
+// 点大头像循环换 emoji（简单方案；后续接用户上传后此入口换成"上传/换头像"）
+function cycleAvatar() {
+  const cur = form.value.avatar
+  const idx = cur ? EMOJIS.indexOf(cur) : -1
+  form.value.avatar = EMOJIS[(idx + 1) % EMOJIS.length]
 }
 
 function reroll() {
@@ -215,16 +218,14 @@ function doLogout() {
 .pdlg-head button { border: none; background: none; cursor: pointer; font-size: 15px; color: var(--text-tertiary); }
 .pdlg-body { padding: 14px 16px 16px; }
 
-.avatar-row { display: flex; gap: 14px; align-items: center; margin-bottom: 12px; }
-.avatar { width: 52px; height: 52px; border-radius: 50%; text-align: center; flex-shrink: 0; overflow: hidden; }
-.avatar-ops { flex: 1; min-width: 0; }
-.emoji-picker { display: flex; flex-wrap: wrap; gap: 5px; }
-.emoji-btn {
-  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border, #e5e5ea);
-  background: var(--bg-secondary, #fff); font-size: 16px; cursor: pointer; padding: 0;
+.big-avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 14px; }
+.big-avatar {
+  width: 68px; height: 68px; border-radius: 50%; text-align: center; overflow: hidden;
+  cursor: pointer; user-select: none; transition: transform .12s;
+  box-shadow: 0 3px 12px rgba(129,187,142,.35); border: 2px solid rgba(129,187,142,.5);
 }
-.emoji-btn.on { border-color: var(--accent, #007aff); background: rgba(0,122,255,.08); }
-.emoji-clear { font-size: 12px; color: var(--text-tertiary); }
+.big-avatar:hover { transform: scale(1.05); }
+.big-avatar-tip { font-size: 11px; color: var(--text-tertiary); }
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
 .field span { font-size: 12px; color: var(--text-secondary); }
 .input {
