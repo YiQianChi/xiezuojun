@@ -41,7 +41,17 @@
 
     <!-- 小传：就是文档正文，走同一个编辑器 -->
     <div class="cc-body">
-      <div class="cc-body-label">小传<span class="hint">打「## 性格」回车可加小节标题 · 自由写作</span></div>
+      <div class="cc-body-label">小传</div>
+      <div class="cc-section-chips">
+        <button class="sec-chip" @click="insertSection('性格')">＋ 性格</button>
+        <button class="sec-chip" @click="insertSection('能力')">＋ 能力</button>
+        <button class="sec-chip" @click="insertSection('经历')">＋ 经历</button>
+        <button class="sec-chip" @click="insertSection('外貌')">＋ 外貌</button>
+        <template v-if="customAdding">
+          <span class="sec-chip sec-chip-input" contenteditable ref="customInputEl" @keydown.enter.prevent="commitCustom" @blur="commitCustom"></span>
+        </template>
+        <button v-else class="sec-chip more" @click="startCustomAdd">＋ 小节…</button>
+      </div>
       <slot></slot>
     </div>
   </div>
@@ -52,6 +62,7 @@ import { ref, computed, nextTick } from 'vue'
 
 const props = defineProps<{
   doc: any // character 类型文档（含 meta 字符串）
+  editor?: any // 父组件传入的 tiptap 编辑器实例（小节插入用 tiptap 命令，绕开 DOM 模拟）
 }>()
 const emit = defineEmits<{
   (e: 'update-meta', meta: Record<string, any>): void
@@ -149,6 +160,50 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
   const rels = meta.value.rels.map((r: any, x: number) => x === i ? { ...r, [field]: v } : r)
   pushMeta({ rels })
 }
+
+// ---- 小传小节：点击插入 h2 标题（零学习成本，不教 markdown） ----
+const customAdding = ref(false)
+const customInputEl = ref<HTMLElement | null>(null)
+
+function insertSection(name: string) {
+  // 优先走 tiptap 命令通道（props.editor 来自父组件）：文末插 h2 小节 + 空段落，光标落到小节下
+  const ed = props.editor
+  if (ed) {
+    ed.commands.focus('end')
+    ed.commands.insertContent({
+      type: 'paragraph',
+      content: [],
+    })
+    ed.commands.insertContent({
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text: name }],
+    })
+    ed.commands.insertContent({ type: 'paragraph', content: [] })
+    return
+  }
+  // 兜底（无 editor 实例）：DOM 通道模拟手打「## name」——tiptap inputRule 转 h2
+  const pm = document.querySelector('.cc-body .ProseMirror') as HTMLElement | null
+  if (!pm) return
+  pm.focus()
+  const sel = window.getSelection()
+  if (!sel) return
+  const range = document.createRange()
+  range.selectNodeContents(pm)
+  range.collapse(false)
+  sel.removeAllRanges()
+  sel.addRange(range)
+  document.execCommand('insertText', false, `\n## ${name}\n`)
+}
+function startCustomAdd() {
+  customAdding.value = true
+  nextTick(() => customInputEl.value?.focus())
+}
+function commitCustom() {
+  const t = customInputEl.value?.textContent?.trim()
+  customAdding.value = false
+  if (t) insertSection(t)
+}
 </script>
 
 <style scoped>
@@ -231,6 +286,15 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
   color: #3f7a52;
   margin: 0.4em 0 0.6em;
 }
-.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 4px; display: flex; }
-.cc-body-label .hint { margin-left: auto; font-size: 10px; color: #c3cfc5; }
+.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 8px; display: flex; }
+/* 小节快捷 chips：点击即插入，零学习 */
+.cc-section-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.sec-chip {
+  border: 1px dashed #bcd8c4; background: transparent; border-radius: 99px;
+  padding: 3px 11px; font-size: 11px; color: #5c9670; cursor: pointer;
+  transition: background .15s;
+}
+.sec-chip:hover { background: rgba(129,187,142,.12); border-style: solid; }
+.sec-chip.more { color: #9ab9a2; }
+.sec-chip-input { min-width: 70px; outline: none; background: #f7fbf8; border-style: solid; }
 </style>

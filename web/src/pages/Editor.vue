@@ -98,6 +98,7 @@
           <CharacterCardView
             v-if="activeDoc && activeDoc.type === 'character'"
             :doc="activeDoc"
+            :editor="editor"
             @update-meta="onCharMetaUpdate"
             @update-title="onCharTitleUpdate"
           >
