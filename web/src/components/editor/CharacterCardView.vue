@@ -41,16 +41,23 @@
 
     <!-- 小传：就是文档正文，走同一个编辑器 -->
     <div class="cc-body">
-      <div class="cc-body-label">小传</div>
-      <div class="cc-section-chips">
-        <button class="sec-chip" @click="insertSection('性格')">＋ 性格</button>
-        <button class="sec-chip" @click="insertSection('能力')">＋ 能力</button>
-        <button class="sec-chip" @click="insertSection('经历')">＋ 经历</button>
-        <button class="sec-chip" @click="insertSection('外貌')">＋ 外貌</button>
-        <template v-if="customAdding">
-          <span class="sec-chip sec-chip-input" contenteditable ref="customInputEl" @keydown.enter.prevent="commitCustom" @blur="commitCustom"></span>
-        </template>
-        <button v-else class="sec-chip more" @click="startCustomAdd">＋ 小节…</button>
+      <div class="cc-body-label">小传
+        <button class="sec-add-inline" @click="showSectionMenu = !showSectionMenu" title="添加小节">＋ 小节</button>
+        <div v-if="showSectionMenu" class="sec-menu" @click.stop>
+          <button v-for="s in SECTION_PRESETS" :key="s" class="sec-opt" @click="pickSection(s)">{{ s }}</button>
+          <div class="sec-custom-row">
+            <input
+              v-if="customAdding"
+              ref="customInputRef"
+              v-model="customSection"
+              class="sec-custom-input"
+              placeholder="小节名，回车添加"
+              @keydown.enter.prevent="commitCustom"
+              @blur="commitCustom"
+            />
+            <button v-else class="sec-opt custom" @click="startCustomAdd">自定义…</button>
+          </div>
+        </div>
       </div>
       <slot></slot>
     </div>
@@ -161,9 +168,33 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
   pushMeta({ rels })
 }
 
-// ---- 小传小节：点击插入 h2 标题（零学习成本，不教 markdown） ----
+// ---- 小传小节：收进「＋小节」下拉（常驻只有一个低调小按钮） ----
+const SECTION_PRESETS = ['性格', '能力', '经历', '外貌', '弱点', '人际关系']
+const showSectionMenu = ref(false)
 const customAdding = ref(false)
-const customInputEl = ref<HTMLElement | null>(null)
+const customSection = ref('')
+const customInputRef = ref<HTMLInputElement | null>(null)
+
+function pickSection(name: string) {
+  showSectionMenu.value = false
+  insertSection(name)
+}
+function startCustomAdd() {
+  customAdding.value = true
+  customSection.value = ''
+  nextTick(() => customInputRef.value?.focus())
+}
+function commitCustom() {
+  const t = customSection.value.trim()
+  customAdding.value = false
+  if (t && !committed) {
+    committed = true
+    showSectionMenu.value = false
+    insertSection(t)
+    setTimeout(() => { committed = false }, 100)
+  }
+}
+let committed = false // enter+blur 双触发防重
 
 function insertSection(name: string) {
   // 优先走 tiptap 命令通道（props.editor 来自父组件）：文末插 h2 小节 + 空段落，光标落到小节下
@@ -194,15 +225,6 @@ function insertSection(name: string) {
   sel.removeAllRanges()
   sel.addRange(range)
   document.execCommand('insertText', false, `\n## ${name}\n`)
-}
-function startCustomAdd() {
-  customAdding.value = true
-  nextTick(() => customInputEl.value?.focus())
-}
-function commitCustom() {
-  const t = customInputEl.value?.textContent?.trim()
-  customAdding.value = false
-  if (t) insertSection(t)
 }
 </script>
 
@@ -286,15 +308,30 @@ function commitCustom() {
   color: #3f7a52;
   margin: 0.4em 0 0.6em;
 }
-.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 8px; display: flex; }
-/* 小节快捷 chips：点击即插入，零学习 */
-.cc-section-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-.sec-chip {
-  border: 1px dashed #bcd8c4; background: transparent; border-radius: 99px;
-  padding: 3px 11px; font-size: 11px; color: #5c9670; cursor: pointer;
-  transition: background .15s;
+.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; position: relative; }
+/* 「＋小节」低调小按钮 + 展开菜单 */
+.sec-add-inline {
+  border: none; background: transparent; color: #9ab9a2; font-size: 10.5px;
+  cursor: pointer; padding: 1px 8px; border-radius: 99px;
 }
-.sec-chip:hover { background: rgba(129,187,142,.12); border-style: solid; }
-.sec-chip.more { color: #9ab9a2; }
-.sec-chip-input { min-width: 70px; outline: none; background: #f7fbf8; border-style: solid; }
+.sec-add-inline:hover { background: rgba(129,187,142,.12); color: #5c9670; }
+.sec-menu {
+  position: absolute; top: 100%; left: 0; z-index: 30;
+  background: #fff; border-radius: 12px; padding: 6px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.05);
+  display: grid; grid-template-columns: repeat(3, auto); gap: 2px;
+  min-width: 180px;
+}
+.sec-opt {
+  border: none; background: transparent; border-radius: 8px;
+  padding: 6px 12px; font-size: 12px; color: #444; cursor: pointer; text-align: left;
+}
+.sec-opt:hover { background: rgba(129,187,142,.12); color: #3f7a52; }
+.sec-opt.custom { color: #9ab9a2; }
+.sec-custom-row { grid-column: 1 / -1; }
+.sec-custom-input {
+  width: 100%; border: 1px solid #e0e8e2; border-radius: 8px;
+  padding: 6px 10px; font-size: 12px; outline: none;
+}
+.sec-custom-input:focus { border-color: #81bb8e; }
 </style>
