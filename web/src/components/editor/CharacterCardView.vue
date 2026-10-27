@@ -39,26 +39,9 @@
       </div>
     </div>
 
-    <!-- 小传：就是文档正文，走同一个编辑器 -->
+    <!-- 小传：就是文档正文，走同一个编辑器（demo 形态：干净无按钮） -->
     <div class="cc-body">
-      <div class="cc-body-label">小传
-        <button class="sec-add-inline" @click="showSectionMenu = !showSectionMenu" title="添加小节">＋ 小节</button>
-        <div v-if="showSectionMenu" class="sec-menu" @click.stop>
-          <button v-for="s in SECTION_PRESETS" :key="s" class="sec-opt" @click="pickSection(s)">{{ s }}</button>
-          <div class="sec-custom-row">
-            <input
-              v-if="customAdding"
-              ref="customInputRef"
-              v-model="customSection"
-              class="sec-custom-input"
-              placeholder="小节名，回车添加"
-              @keydown.enter.prevent="commitCustom"
-              @blur="commitCustom"
-            />
-            <button v-else class="sec-opt custom" @click="startCustomAdd">自定义…</button>
-          </div>
-        </div>
-      </div>
+      <div class="cc-body-label">小传</div>
       <slot></slot>
     </div>
   </div>
@@ -167,65 +150,6 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
   const rels = meta.value.rels.map((r: any, x: number) => x === i ? { ...r, [field]: v } : r)
   pushMeta({ rels })
 }
-
-// ---- 小传小节：收进「＋小节」下拉（常驻只有一个低调小按钮） ----
-const SECTION_PRESETS = ['性格', '能力', '经历', '外貌', '弱点', '人际关系']
-const showSectionMenu = ref(false)
-const customAdding = ref(false)
-const customSection = ref('')
-const customInputRef = ref<HTMLInputElement | null>(null)
-
-function pickSection(name: string) {
-  showSectionMenu.value = false
-  insertSection(name)
-}
-function startCustomAdd() {
-  customAdding.value = true
-  customSection.value = ''
-  nextTick(() => customInputRef.value?.focus())
-}
-function commitCustom() {
-  const t = customSection.value.trim()
-  customAdding.value = false
-  if (t && !committed) {
-    committed = true
-    showSectionMenu.value = false
-    insertSection(t)
-    setTimeout(() => { committed = false }, 100)
-  }
-}
-let committed = false // enter+blur 双触发防重
-
-function insertSection(name: string) {
-  // 优先走 tiptap 命令通道（props.editor 来自父组件）：文末插 h2 小节 + 空段落，光标落到小节下
-  const ed = props.editor
-  if (ed) {
-    ed.commands.focus('end')
-    ed.commands.insertContent({
-      type: 'paragraph',
-      content: [],
-    })
-    ed.commands.insertContent({
-      type: 'heading',
-      attrs: { level: 2 },
-      content: [{ type: 'text', text: name }],
-    })
-    ed.commands.insertContent({ type: 'paragraph', content: [] })
-    return
-  }
-  // 兜底（无 editor 实例）：DOM 通道模拟手打「## name」——tiptap inputRule 转 h2
-  const pm = document.querySelector('.cc-body .ProseMirror') as HTMLElement | null
-  if (!pm) return
-  pm.focus()
-  const sel = window.getSelection()
-  if (!sel) return
-  const range = document.createRange()
-  range.selectNodeContents(pm)
-  range.collapse(false)
-  sel.removeAllRanges()
-  sel.addRange(range)
-  document.execCommand('insertText', false, `\n## ${name}\n`)
-}
 </script>
 
 <style scoped>
@@ -308,30 +232,5 @@ function insertSection(name: string) {
   color: #3f7a52;
   margin: 0.4em 0 0.6em;
 }
-.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; position: relative; }
-/* 「＋小节」低调小按钮 + 展开菜单 */
-.sec-add-inline {
-  border: none; background: transparent; color: #9ab9a2; font-size: 10.5px;
-  cursor: pointer; padding: 1px 8px; border-radius: 99px;
-}
-.sec-add-inline:hover { background: rgba(129,187,142,.12); color: #5c9670; }
-.sec-menu {
-  position: absolute; top: 100%; left: 0; z-index: 30;
-  background: #fff; border-radius: 12px; padding: 6px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.05);
-  display: grid; grid-template-columns: repeat(3, auto); gap: 2px;
-  min-width: 180px;
-}
-.sec-opt {
-  border: none; background: transparent; border-radius: 8px;
-  padding: 6px 12px; font-size: 12px; color: #444; cursor: pointer; text-align: left;
-}
-.sec-opt:hover { background: rgba(129,187,142,.12); color: #3f7a52; }
-.sec-opt.custom { color: #9ab9a2; }
-.sec-custom-row { grid-column: 1 / -1; }
-.sec-custom-input {
-  width: 100%; border: 1px solid #e0e8e2; border-radius: 8px;
-  padding: 6px 10px; font-size: 12px; outline: none;
-}
-.sec-custom-input:focus { border-color: #81bb8e; }
+.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 8px; display: flex; }
 </style>
