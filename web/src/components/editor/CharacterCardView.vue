@@ -14,9 +14,13 @@
 
     <!-- 字段区：身份 / 标签 / 关系 -->
     <div class="cc-fields">
-      <div class="cc-row" v-if="meta.identity || meta.identity === ''">
+      <div class="cc-row" v-if="meta.identity">
         <span class="cc-label">身份</span>
         <div class="cc-input" contenteditable :data-ph="'点这里写身份'" @blur="onFieldBlur('identity', $event)">{{ meta.identity }}</div>
+      </div>
+      <div class="cc-row" v-else>
+        <span class="cc-label"></span>
+        <div class="cc-input cc-input-ghost" contenteditable :data-ph="'＋ 身份（可选）'" @blur="onFieldBlur('identity', $event)"></div>
       </div>
       <div class="cc-row">
         <span class="cc-label">标签</span>
@@ -187,12 +191,13 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
 }
 .cc-input:focus { background: #f4f8f5; box-shadow: 0 0 0 2px rgba(129,187,142,.35); }
 .cc-input:empty::before { content: attr(data-ph); color: #c3cfc5; }
+.cc-input-ghost { font-size: 12px; color: #9ab9a2; }
 .cc-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .cc-tag {
   font-size: 11px; color: #5c9670; background: rgba(129,187,142,.13); border-radius: 99px;
-  padding: 2px 10px; display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 10px; display: inline-flex; align-items: center; gap: 6px;
 }
-.cc-tag .tx { color: #b3c9b8; cursor: pointer; font-size: 10px; }
+.cc-tag .tx { color: #b3c9b8; cursor: pointer; font-size: 10px; line-height: 1; }
 .cc-tag .tx:hover { color: #d98a7a; }
 .cc-tag-add {
   font-size: 11px; color: #9ab9a2; border: 1px dashed #bcd8c4; border-radius: 99px;
@@ -219,18 +224,15 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
 .cc-rel-add:hover { background: #f7fbf8; color: #5c9670; }
 
 .cc-body { border-top: 1px solid var(--border-subtle, #f0f3f0); padding-top: 14px; }
-/* 小传里的标题（## 性格 / ## 能力…）：绿色强调，和卡片头部呼应 */
+/* 小传里的标题（## 性格 / ## 能力…）：绿色强调+足够对比（正文17px→标题23px），和卡片头部呼应 */
 .cc-body :deep(.ProseMirror h2) {
-  font-size: 1.15em;
+  font-size: 1.35em;
   font-weight: 700;
   color: #3f7a52;
-  margin: 1em 0 0.5em;
+  margin: 1.1em 0 0.5em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid rgba(129, 187, 142, 0.25);
 }
-.cc-body :deep(.ProseMirror h1) {
-  font-size: 1.45em;
-  font-weight: 700;
-  color: #3f7a52;
-  margin: 0.4em 0 0.6em;
-}
+.cc-body :deep(.ProseMirror h1) { display: none; } /* 卡头已有大名字，正文 h1 冗余（老卡里已存在的也不显） */
 .cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 8px; display: flex; }
 </style>

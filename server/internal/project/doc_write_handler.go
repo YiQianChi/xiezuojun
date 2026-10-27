@@ -92,7 +92,8 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 			doc.Meta = `{"role":"","desc":"","tags":[],"rels":[],"avatar":"` + firstRune(req.Title) + `"}`
 		}
 		if strings.TrimSpace(req.Content) == "" {
-			req.Content = "# " + req.Title + "\n\n## 性格\n\n\n## 能力\n\n\n## 经历\n\n"
+			// 不带 # 名字（卡头已有大名字，正文重复）；每节只留一个空段（作者走查：空行噪音）
+			req.Content = "## 性格\n\n## 能力\n\n## 经历\n"
 			doc.SearchText = req.Content
 			doc.WordCount = countWords(req.Content)
 		}
