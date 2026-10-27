@@ -95,9 +95,21 @@
           <p>👈 请选择或新建一个章节</p>
         </div>
         <div v-else class="editor-wrapper" :class="{ 'show-line-numbers': lineNumbers }" @contextmenu.prevent="openContextMenu">
-          <div class="tiptap-container">
-            <editor-content v-if="editor" :editor="editor" />
-          </div>
+          <CharacterCardView
+            v-if="activeDoc && activeDoc.type === 'character'"
+            :doc="activeDoc"
+            @update-meta="onCharMetaUpdate"
+            @update-title="onCharTitleUpdate"
+          >
+            <div class="tiptap-container">
+              <editor-content v-if="editor" :editor="editor" />
+            </div>
+          </CharacterCardView>
+          <template v-else>
+            <div class="tiptap-container">
+              <editor-content v-if="editor" :editor="editor" />
+            </div>
+          </template>
         </div>
         <SearchPanel
           :visible="searchVisible"
@@ -537,6 +549,7 @@ import TrashPanel from '../components/editor/TrashPanel.vue'
 import StoryboardView from '../components/editor/StoryboardView.vue'
 import WritingStatsPanel from '../components/editor/WritingStatsPanel.vue'
 import BuddyWindow from '../components/editor/BuddyWindow.vue'
+import CharacterCardView from '../components/editor/CharacterCardView.vue'
 import DisplaySettings from '../components/editor/DisplaySettings.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
 import FolderPropsModal from '../components/editor/FolderPropsModal.vue'
@@ -559,6 +572,8 @@ const branches = ref<any[]>([])
 const activeBranchId = ref<number | null>(null)
 const activeDocId = ref<number | null>(null)
 const currentDocName = ref('')
+// 当前打开的文档对象（角色卡视图判断用）
+const activeDoc = computed(() => documents.value.find((x: any) => x.id === activeDocId.value) || null)
 // 顶栏章节名和侧栏一致：第N章 + 作者写的名字（序号自动）
 const currentDocDisplayName = computed(() => {
   const d = documents.value.find((x: any) => x.id === activeDocId.value)
@@ -1634,8 +1649,8 @@ async function createDoc(folderType?: string) {
     newDocName.value = ''
     await loadDocs()
     const newDoc = res.data?.data || res.data
-    if (newDoc && actualType === 'chapter') {
-      openDoc(newDoc)
+    if (newDoc && (actualType === 'chapter' || actualType === 'character')) {
+      openDoc(newDoc) // 角色卡建完直接进卡开始写小传
     }
   } catch (e: any) {
     toast.error(e.response?.data?.error || '创建失败')
@@ -1673,6 +1688,11 @@ function createSettingAtRoot() {
 
 // ponytail: 文件夹内+按钮，根据文件夹类型决定子文档类型
 function createDocInFolder(folder: any) {
+  // 人物节点：+ = 新建角色卡（起名即建，字段全在卡上就地编辑）
+  if (folder.type === 'characters') {
+    openCreateDocModal(folder.id, 'character')
+    return
+  }
   const type = isChapterType(folder.type) ? 'chapter' : 'note'
   openCreateDocModal(folder.id, type)
 }
@@ -1692,10 +1712,29 @@ function newDocUnder(type: 'volume' | 'chapter') {
   closeDocContextMenu()
 }
 
+// ponytail: 角色卡——meta/名字就地编辑落库（documents.meta + title）
+async function onCharMetaUpdate(m: Record<string, any>) {
+  const d = activeDoc.value
+  if (!d) return
+  d.meta = JSON.stringify(m) // 本地先更新（树徽标/头像即时刷新）
+  try {
+    await documentApi.update(d.id, { meta: d.meta })
+  } catch { toast.error('角色卡保存失败') }
+}
+async function onCharTitleUpdate(title: string) {
+  const d = activeDoc.value
+  if (!d) return
+  d.title = title
+  currentDocName.value = title
+  try {
+    await documentApi.update(d.id, { title })
+  } catch { toast.error('名字保存失败') }
+}
+
 // ponytail: 判断是否文件夹容器——folder=设定文件夹, volume=文章文件夹, 其他设定类型也可展开
-// ponytail: 设定区平铺后只有卷是容器；设定文档是纯文件（Boss 2026-10-22：设定下面不要有文件夹）
+// ponytail: 设定区平铺后卷+characters（人物）是容器——角色卡挂人物下（2026-10-27）
 function isFolderNode(doc: any): boolean {
-  return doc.type === 'volume'
+  return doc.type === 'volume' || doc.type === 'characters'
 }
 
 // 右键文件夹 → 属性

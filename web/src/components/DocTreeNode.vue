@@ -19,7 +19,8 @@
 
       <!-- 章节不显示序号——标题自带「第X章」，数字是冗余噪音 -->
       <span v-if="node.type !== 'chapter'" class="node-index">{{ index }}</span>
-      <span class="node-icon">{{ nodeIcon }}</span>
+      <span class="node-icon" :class="{ 'char-avatar': node.type === 'character' }">{{ nodeIcon }}</span>
+      <span v-if="charRole" class="char-role-tag" :style="{ background: charRole.bg }">{{ charRole.label }}</span>
       <span
         v-if="!isFolder"
         class="status-dot"
@@ -91,12 +92,14 @@ const children = computed(() => {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 })
 
-// ponytail: 设定区平铺后只有卷是容器（设定文档=纯文件，不可再挂子文档）
-const isFolder = computed(() => props.node.type === 'volume')
+// ponytail: 设定区平铺后只有卷是容器；characters（人物）是第二个容器——角色卡（character 类型）挂它下面
+const isFolder = computed(() => props.node.type === 'volume' || props.node.type === 'characters')
 
 const nodeIcon = computed(() => {
   // ponytail: 用户自选图标优先，否则按 type 默认
   if (props.node.icon) return props.node.icon
+  // 角色卡：meta.avatar（首字或 emoji）优先
+  if (props.node.type === 'character') return charAvatar.value
   const map: Record<string, string> = {
     volume: '📁',
     folder: '📂',
@@ -110,6 +113,21 @@ const nodeIcon = computed(() => {
   }
   return map[props.node.type] || '📄'
 })
+
+// 角色卡 meta（无则空对象）
+const charMeta = computed<Record<string, any>>(() => {
+  if (props.node.type !== 'character' || !props.node.meta) return {}
+  try { return JSON.parse(props.node.meta) } catch { return {} }
+})
+const charAvatar = computed(() => charMeta.value.avatar || '🧑')
+// 角色徽标（主/配/反/路人）
+const ROLE_STYLES: Record<string, { label: string; bg: string }> = {
+  main: { label: '主', bg: '#81bb8e' },
+  support: { label: '配', bg: '#8fa9c9' },
+  villain: { label: '反', bg: '#d98a7a' },
+  extra: { label: '众', bg: '#b3bfb5' },
+}
+const charRole = computed(() => ROLE_STYLES[charMeta.value.role] || null)
 
 // ponytail: 章节标题 = 自动序号 + 作者写的名字（位置变序号自动跟随）
 const displayTitle = computed(() =>
@@ -129,6 +147,7 @@ const titleSizeClass = computed(() => {
 const childLabel = computed(() => {
   const t = props.node.type
   if (t === 'volume') return '章节'
+  if (t === 'characters') return '角色'
   return '设定'
 })
 
@@ -284,6 +303,18 @@ const progressColor = computed(() => {
   font-size: 14px;
   opacity: 0.9;
   flex-shrink: 0;
+}
+/* 角色卡头像（首字/emoji）：品牌绿渐变小方块 */
+.node-icon.char-avatar {
+  width: 20px; height: 20px; border-radius: 6px;
+  background: linear-gradient(135deg, #a8ceb2, #7fb28d);
+  color: #fff; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  opacity: 1;
+}
+.char-role-tag {
+  font-size: 9px; color: #fff; border-radius: 4px; padding: 0 4px;
+  flex-shrink: 0; line-height: 14px;
 }
 
 .node-index {

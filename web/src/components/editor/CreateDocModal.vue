@@ -52,6 +52,7 @@ const TITLE_MAP: Record<string, [string, string]> = {
   volume: ['新建卷', '卷名，如：第一卷'],
   setting: ['新建设定', '设定名称'],
   note: ['新建文档', '文档名'],
+  character: ['新建角色', '角色名，如：李逍遥（身份标签进卡再补）'],
 }
 const dialogTitle = computed(() => TITLE_MAP[props.docType]?.[0] || '新建文档')
 const inputPlaceholder = computed(() => TITLE_MAP[props.docType]?.[1] || '文档名')

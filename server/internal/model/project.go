@@ -43,7 +43,7 @@ type Document struct {
 	ProjectID  uint      `gorm:"index" json:"project_id"`
 	BranchID   *uint     `gorm:"index" json:"branch_id"` // nil=全故事线共享资料；有值=属于某条故事线
 	ParentID   *uint     `gorm:"index" json:"parent_id"` // 支持卷/章嵌套
-	Type       string    `gorm:"size:20" json:"type"`    // volume | chapter | note | outline | characters | worldbuilding | storyline | chapter_outline
+	Type       string    `gorm:"size:20" json:"type"`    // volume | chapter | note | outline | characters | character | worldbuilding | storyline | chapter_outline
 
 	Icon       string    `gorm:"size:10" json:"icon"`     // 用户自选 emoji 图标，空则按 type 默认
 	Title      string    `gorm:"size:200" json:"title"`
@@ -51,6 +51,7 @@ type Document struct {
 	WordCount  int       `gorm:"default:0" json:"word_count"`
 	SearchText string    `gorm:"type:mediumtext" json:"-"` // 搜索缓存；正文权威源仍是文件
 	AIInclude  *bool     `gorm:"default:true" json:"ai_include"` // 是否参与 AI 上下文（设定文档用），nil=true
+	Meta       string    `gorm:"type:text" json:"meta"`          // 角色卡结构化元数据 JSON（doc_type=character 用；其他类型空）
 	Status     int       `gorm:"default:1" json:"status"`
 	DocStatus  string    `gorm:"size:20;default:draft" json:"doc_status"` // 章节写作状态: draft | revising | final
 	WordGoal   int       `gorm:"default:0" json:"word_goal"`              // 目标字数，0=未设置

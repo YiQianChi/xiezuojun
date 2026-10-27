@@ -201,7 +201,7 @@ export const documentApi = {
   get(id: string | number) {
     return api.get(`/documents/${id}`)
   },
-  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string; ai_include?: boolean; icon?: string; doc_status?: string; word_goal?: number }) {
+  update(id: string | number, data: { title?: string; content?: string; create_version?: boolean; version_label?: string; ai_include?: boolean; icon?: string; doc_status?: string; word_goal?: number; meta?: string }) {
     return api.patch(`/documents/${id}`, data)
   },
   listVersions(id: string | number) {

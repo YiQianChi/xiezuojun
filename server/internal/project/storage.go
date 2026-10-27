@@ -173,6 +173,14 @@ func (ds *DocStore) trashMove(userID string, projectID uint, projectName string,
 	return store.TrashMove(path, meta)
 }
 
+// firstRune 取首字符（角色卡默认头像字）
+func firstRune(s string) string {
+	for _, r := range s {
+		return string(r)
+	}
+	return "友"
+}
+
 // countWords 统计字数
 func countWords(s string) int {
 	return len([]rune(s))

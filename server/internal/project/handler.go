@@ -34,6 +34,7 @@ type documentUpdateRequest struct {
 	Icon               string `json:"icon"`         // 用户自选图标
 	DocStatus          string `json:"doc_status"`   // 空字符串=不更新
 	WordGoal           *int   `json:"word_goal"`    // nil=不更新（指针区分 0 和未传）
+	Meta               string `json:"meta"`         // 角色卡元数据 JSON；空=不更新
 	HasContent         bool   `json:"-"`
 }
 

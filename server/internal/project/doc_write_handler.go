@@ -22,7 +22,8 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		SortOrder int    `json:"sort_order"`
 		Content   string `json:"content"`
 
-		Icon      string `json:"icon"`
+		Icon string `json:"icon"`
+		Meta string `json:"meta"` // 角色卡结构化元数据 JSON
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -37,7 +38,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		ProjectID: req.ProjectID, BranchID: req.BranchID, ParentID: req.ParentID,
 		Type: req.Type, Title: req.Title, SortOrder: req.SortOrder,
 		WordCount: countWords(req.Content), SearchText: req.Content, Status: 1,
-		Icon: req.Icon,
+		Icon: req.Icon, Meta: req.Meta,
 	}
 
 	// 章节没带内容时自动给标题头模板：# 第N章 名称（N=同父级章节数+1，与树/顶栏的自动编号一致）
@@ -66,12 +67,33 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		}
 	}
 
-	// 设定区平铺后只有卷（volume）能当父级；设定文档是纯文件，不能挂子文档
+	// 设定区平铺后只有卷（volume）能当父级；character 例外——只许挂在 characters（人物）节点下
 	if req.ParentID != nil && *req.ParentID > 0 {
 		var parent model.Document
-		if err := h.db.First(&parent, *req.ParentID).Error; err == nil && parent.Type != "volume" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "只有卷下面才能新建内容"})
-			return
+		if err := h.db.First(&parent, *req.ParentID).Error; err == nil {
+			if req.Type == "character" && parent.Type != "characters" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "角色卡只能建在「人物」下"})
+				return
+			}
+			if req.Type != "character" && parent.Type != "volume" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "只有卷下面才能新建内容"})
+				return
+			}
+		}
+	}
+	if req.Type == "character" && (req.ParentID == nil || *req.ParentID == 0) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "角色卡需要建在「人物」节点下"})
+		return
+	}
+
+	// 角色卡默认 meta（结构化字段空着，作者就地编辑补）+ 小传空模板
+	if req.Type == "character" {
+		if doc.Meta == "" {
+			doc.Meta = `{"role":"","desc":"","tags":[],"rels":[],"avatar":"` + firstRune(req.Title) + `"}`
+		}
+		if strings.TrimSpace(req.Content) == "" {
+			req.Content = "# " + req.Title + "\n\n"
+			doc.SearchText = req.Content
 		}
 	}
 
@@ -156,6 +178,9 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	}
 	if req.DocStatus != "" {
 		updates["doc_status"] = req.DocStatus
+	}
+	if req.Meta != "" {
+		updates["meta"] = req.Meta // 角色卡元数据（就地编辑的字段）——空串不更新，清空字段走完整 JSON
 	}
 	if req.WordGoal != nil {
 		updates["word_goal"] = *req.WordGoal
