@@ -41,7 +41,7 @@
 
     <!-- 小传：就是文档正文，走同一个编辑器 -->
     <div class="cc-body">
-      <div class="cc-body-label">小传<span class="hint">自由写作 · 同正文编辑器</span></div>
+      <div class="cc-body-label">小传<span class="hint">打「## 性格」回车可加小节标题 · 自由写作</span></div>
       <slot></slot>
     </div>
   </div>
@@ -218,6 +218,19 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
 .cc-rel-add:hover { background: #f7fbf8; color: #5c9670; }
 
 .cc-body { border-top: 1px solid var(--border-subtle, #f0f3f0); padding-top: 14px; }
+/* 小传里的标题（## 性格 / ## 能力…）：绿色强调，和卡片头部呼应 */
+.cc-body :deep(.ProseMirror h2) {
+  font-size: 1.15em;
+  font-weight: 700;
+  color: #3f7a52;
+  margin: 1em 0 0.5em;
+}
+.cc-body :deep(.ProseMirror h1) {
+  font-size: 1.45em;
+  font-weight: 700;
+  color: #3f7a52;
+  margin: 0.4em 0 0.6em;
+}
 .cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 4px; display: flex; }
 .cc-body-label .hint { margin-left: auto; font-size: 10px; color: #c3cfc5; }
 </style>

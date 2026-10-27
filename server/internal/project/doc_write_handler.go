@@ -86,14 +86,15 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		return
 	}
 
-	// 角色卡默认 meta（结构化字段空着，作者就地编辑补）+ 小传空模板
+	// 角色卡默认 meta（结构化字段空着，作者就地编辑补）+ 小传骨架（## 性格/## 能力 与正文标题同体系）
 	if req.Type == "character" {
 		if doc.Meta == "" {
 			doc.Meta = `{"role":"","desc":"","tags":[],"rels":[],"avatar":"` + firstRune(req.Title) + `"}`
 		}
 		if strings.TrimSpace(req.Content) == "" {
-			req.Content = "# " + req.Title + "\n\n"
+			req.Content = "# " + req.Title + "\n\n## 性格\n\n\n## 能力\n\n\n## 经历\n\n"
 			doc.SearchText = req.Content
+			doc.WordCount = countWords(req.Content)
 		}
 	}
 

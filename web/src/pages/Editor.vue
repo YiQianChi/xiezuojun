@@ -1292,6 +1292,17 @@ function editorContentFromText(content: string) {
         continue
       }
     }
+    // markdown 标题行：# → h1、## → h2、### → h3（角色卡骨架/导入文本里的标题都能正确渲染）
+    const hm = /^(#{1,3})\s+(.*)$/.exec(line)
+    if (hm) {
+      blocks.push({
+        type: 'heading',
+        attrs: { level: hm[1].length },
+        content: hm[2] ? [{ type: 'text', text: hm[2] }] : [],
+      })
+      i++
+      continue
+    }
     blocks.push({
       type: 'paragraph',
       content: line ? [{ type: 'text', text: line }] : []
