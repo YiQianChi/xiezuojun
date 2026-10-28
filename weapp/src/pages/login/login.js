@@ -1,3 +1,4 @@
+// 壳登录页：微信一键登录 + 邮箱登录；登录成功 token 落 storage 后跳 index（web-view）
 Page({
   data: {
     email: '',
@@ -7,7 +8,14 @@ Page({
   },
   onEmail(e) { this.setData({ email: e.detail.value }) },
   onPwd(e) { this.setData({ password: e.detail.value }) },
-  // 微信一键登录：wx.login 拿 code → 后端换 openid 建号/登录 → 存 token 进 web-view
+
+  saveTokens(d) {
+    if (d.access_token) wx.setStorageSync('xzj_token', d.access_token)
+    if (d.refresh_token) wx.setStorageSync('xzj_rt', d.refresh_token)
+    wx.redirectTo({ url: '/pages/index/index' })
+  },
+
+  // 微信一键登录：wx.login 拿 code → 后端换 openid 建号/登录
   async onWxLogin() {
     if (this.data.wxLoading) return
     this.setData({ wxLoading: true })
@@ -28,9 +36,7 @@ Page({
       })
       const d = res.data && res.data.data
       if (res.statusCode === 200 && d && d.access_token) {
-        wx.setStorageSync('xzj_token', d.access_token)
-        if (d.refresh_token) wx.setStorageSync('xzj_rt', d.refresh_token)
-        wx.redirectTo({ url: '/pages/index/index' })
+        this.saveTokens(d)
         return
       }
       wx.showToast({ title: (res.data && res.data.error) || '微信登录失败，试试邮箱登录', icon: 'none' })
@@ -39,6 +45,7 @@ Page({
     }
     this.setData({ wxLoading: false })
   },
+
   async onLogin() {
     const { email, password } = this.data
     if (!email || !password) {
@@ -57,18 +64,18 @@ Page({
           fail: reject
         })
       })
-      if (res.statusCode === 200 && res.data && res.data.token) {
-        wx.setStorageSync('xzj_token', res.data.token)
-        if (res.data.refresh_token) wx.setStorageSync('xzj_rt', res.data.refresh_token)
-        wx.redirectTo({ url: '/pages/index/index' })
-      } else {
-        wx.showToast({ title: (res.data && res.data.error) || '邮箱或密码错误', icon: 'none' })
+      const d = res.data && res.data.data
+      if (res.statusCode === 200 && d && d.access_token) {
+        this.saveTokens(d)
+        return
       }
+      wx.showToast({ title: (res.data && res.data.error) || '邮箱或密码错误', icon: 'none' })
     } catch (e) {
       wx.showToast({ title: '网络错误，请重试', icon: 'none' })
     }
     this.setData({ loading: false })
   },
+
   goRegister() {
     // 注册/找回密码去网页版处理。注：不用剪贴板（隐私接口，需隐私指引+授权弹窗，壳保持零隐私接口）
     wx.showModal({
