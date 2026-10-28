@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/login/login"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#f7f9f4",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "写作菌",
+    "backgroundColor": "#f7f9f4"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

@@ -1,0 +1,13 @@
+{
+  "compileType": "miniprogram",
+  "libVersion": "3.8.0",
+  "appid": "wxf49c97a20a588960",
+  "projectname": "xiezuojun-weapp",
+  "miniprogramRoot": "src/",
+  "setting": {
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "urlCheck": false
+  }
+}

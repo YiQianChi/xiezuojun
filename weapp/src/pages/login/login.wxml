@@ -1,0 +1,15 @@
+<view class="login">
+  <view class="logo">写作菌</view>
+  <view class="slogan">一个写故事的地方</view>
+
+  <view class="form">
+    <input class="input" type="text" value="{{email}}" bindinput="onEmail"
+           placeholder="邮箱" placeholder-class="ph" />
+    <input class="input" type="text" password value="{{password}}" bindinput="onPwd"
+           placeholder="密码" placeholder-class="ph" />
+    <button class="btn {{loading ? 'btn-loading' : ''}}" bindtap="onLogin" disabled="{{loading}}">
+      {{loading ? '登录中…' : '登录'}}
+    </button>
+    <view class="reg" bindtap="goRegister">没有账号？去注册 →</view>
+  </view>
+</view>

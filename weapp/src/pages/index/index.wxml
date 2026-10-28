@@ -1,0 +1,8 @@
+<web-view wx:if="{{url}}" src="{{url}}" binderror="onError"></web-view>
+
+<view wx:if="{{loadFailed}}" class="fail">
+  <view class="fail-icon">📡</view>
+  <view class="fail-title">连接不上服务器</view>
+  <view class="fail-desc">请检查网络后重试</view>
+  <button class="fail-btn" bindtap="onRetry">重试</button>
+</view>

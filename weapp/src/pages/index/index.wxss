@@ -1,0 +1,19 @@
+.fail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 12rpx;
+}
+.fail-icon { font-size: 80rpx; }
+.fail-title { font-size: 32rpx; font-weight: 600; color: #333; }
+.fail-desc { font-size: 26rpx; color: #999; }
+.fail-btn {
+  margin-top: 24rpx;
+  background: linear-gradient(135deg, #8fc59b, #6aa877);
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 28rpx;
+  padding: 0 64rpx;
+}

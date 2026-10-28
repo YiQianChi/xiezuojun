@@ -1,0 +1,46 @@
+.login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 160rpx;
+}
+.logo {
+  font-size: 56rpx;
+  font-weight: 700;
+  color: #4a7a58;
+}
+.slogan {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #9aa89c;
+}
+.form {
+  width: 600rpx;
+  margin-top: 96rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+.input {
+  background: #fff;
+  border: 2rpx solid #e4ebe2;
+  border-radius: 20rpx;
+  padding: 26rpx 32rpx;
+  font-size: 30rpx;
+}
+.ph { color: #c0c8c2; }
+.btn {
+  background: linear-gradient(135deg, #8fc59b, #6aa877);
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+}
+.btn-loading { opacity: .7; }
+.reg {
+  text-align: center;
+  font-size: 26rpx;
+  color: #6aa877;
+  padding: 16rpx;
+}

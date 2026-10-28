@@ -12,3 +12,6 @@ harmony/oh-package-lock.json5
 
 harmony/signing/
 server/desktop
+
+# 小程序上传密钥（绝不进库）
+weapp/keys/
