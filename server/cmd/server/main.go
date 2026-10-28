@@ -151,6 +151,8 @@ func main() {
 	api.POST("/auth/register", userHandler.Register)
 	api.POST("/auth/login", userHandler.Login)
 	api.POST("/auth/wx-login", userHandler.WxLogin)
+	api.GET("/auth/wx-oauth/start", userHandler.WxOauthStart)
+	api.GET("/auth/wx-oauth/callback", userHandler.WxOauthCallback)
 	api.POST("/auth/refresh", userHandler.Refresh)
 	api.POST("/auth/reset-password", userHandler.ResetPassword)
 

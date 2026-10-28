@@ -6,6 +6,11 @@
         <p class="subtitle">登录账号继续创作</p>
       </div>
 
+      <div v-if="!showReset && isWechat" class="wx-login-block">
+        <button type="button" class="btn wx-btn" @click="handleWxLogin">微信一键登录</button>
+        <div class="wx-divider">或邮箱登录</div>
+      </div>
+
       <div v-if="!showReset" class="login-tabs">
         <button :class="{ active: mode === 'password' }" @click="mode = 'password'; errorMsg = ''">密码登录</button>
         <button :class="{ active: mode === 'code' }" @click="mode = 'code'; errorMsg = ''">验证码登录</button>
@@ -81,6 +86,11 @@ import { userApi } from '../core/api'
 
 type LoginMode = 'password' | 'code'
 const router = useRouter()
+// 微信内置浏览器才显示微信登录（OAuth 网页授权链路，开放平台网站应用审核通过后点亮）
+const isWechat = /MicroMessenger/i.test(navigator.userAgent)
+const handleWxLogin = () => {
+  window.location.href = '/api/auth/wx-oauth/start?redirect=' + encodeURIComponent(window.location.origin + '/login')
+}
 const mode = ref<LoginMode>('password')
 const email = ref('')
 const password = ref('')
@@ -255,5 +265,16 @@ async function handleReset() {
 .success-msg { color:#248a3d; background:rgba(52,199,89,.10); border:1px solid rgba(52,199,89,.18); }
 .auth-submit { width:100%; padding:12px; font-size:15px; margin-top:8px; }
 .auth-submit:disabled,.code-btn:disabled { opacity:.5; cursor:not-allowed; }
+.wx-login-block { margin-bottom:16px; }
+.wx-btn {
+  width:100%; padding:12px; font-size:15px; font-weight:600;
+  background:#07c160; color:#fff; border:none; border-radius:10px; cursor:pointer;
+}
+.wx-btn:active { opacity:.85; }
+.wx-divider {
+  display:flex; align-items:center; justify-content:center; gap:12px;
+  margin:14px 0 2px; font-size:12px; color:var(--text-tertiary, #999);
+}
+.wx-divider::before,.wx-divider::after { content:''; flex:1; height:1px; background:var(--border-color, #e5e7eb); }
 .switch-text { text-align:center; margin-top:24px; color:var(--text-secondary); font-size:14px; }
 </style>

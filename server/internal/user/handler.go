@@ -21,16 +21,21 @@ import (
 type Handler struct {
 	db         *gorm.DB
 	jwtManager *auth.JWTManager
-	wxAppID    string
+	wxAppID     string
 	wxAppSecret string
+	// 网页版微信 OAuth（开放平台网站应用/服务号），与小程序 wx.login 独立
+	wxOauthAppID string
+	wxOauthSecret string
 }
 
 func NewHandler(db *gorm.DB, jwtManager *auth.JWTManager) *Handler {
 	return &Handler{
-		db:          db,
-		jwtManager:  jwtManager,
-		wxAppID:     os.Getenv("WX_MP_APPID"),
-		wxAppSecret: os.Getenv("WX_MP_APPSECRET"),
+		db:            db,
+		jwtManager:    jwtManager,
+		wxAppID:       os.Getenv("WX_MP_APPID"),
+		wxAppSecret:   os.Getenv("WX_MP_APPSECRET"),
+		wxOauthAppID:  os.Getenv("WX_OAUTH_APPID"),
+		wxOauthSecret: os.Getenv("WX_OAUTH_SECRET"),
 	}
 }
 
