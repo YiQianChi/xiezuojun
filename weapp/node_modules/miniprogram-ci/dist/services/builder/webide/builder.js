@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.WebideBuilder=void 0;const builder_1=require("../nw/builder");class WebideBuilder extends builder_1.NWBuilder{}exports.WebideBuilder=WebideBuilder;

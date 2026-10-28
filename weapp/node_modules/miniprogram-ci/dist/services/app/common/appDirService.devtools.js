@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.AppDirDevtoolsService=void 0;class AppDirDevtoolsService{constructor(){this._config={WeappCompileCache:"",WeappMiniApp:""}}async init(e){return this._config=e,e}async get(e){return this._config[e]}cleanDir(e){throw new Error("Method not implemented.")}}exports.AppDirDevtoolsService=AppDirDevtoolsService;

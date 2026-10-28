@@ -1,0 +1,198 @@
+import type { RawSourceMap } from 'source-map';
+import * as BabelTypes from '@babel/types';
+import { ICompileOptions } from '..';
+import { MiniProgramCore } from './core';
+import type { MiniProgramDevtools } from './devtools';
+export type IBasicCodeExt = 'js' | 'wxml' | 'wxss' | 'json' | 'wxs';
+export declare const BasicCodeExts: readonly ["js", "wxml", "wxss", "json", "wxs"];
+export declare namespace MiniProgramSummer {
+    interface ModuleJSON {
+        code: string | null;
+        map?: SourceMap;
+        path: string;
+        sourcePath?: string;
+        depFileIds?: string[];
+    }
+    interface SummerCache {
+        modules: ModuleJSON[];
+    }
+    interface SummerBuild {
+        cache: SummerCache | undefined;
+        output: {
+            [key in string]: string;
+        };
+        watchFiles: string[];
+    }
+    interface PluginContext {
+        addWatchFile: (absFilePath: string) => void;
+        error: (err: any) => never;
+        runWorkerMethod: (method: string, ...args: any[]) => Promise<any>;
+        requestAdditionalCompile: (targetPath: string) => void;
+        rootPath?: string;
+    }
+    type SourceMap = Omit<RawSourceMap, 'version'> & {
+        version: number | string;
+    };
+    enum AstType {
+        Babel = "babel",
+        Acorn = "acorn"
+    }
+    type AstInfo = {
+        ast: AcornNode;
+        type: AstType.Acorn;
+    } | {
+        ast: BabelTypes.File;
+        type: AstType.Babel;
+    };
+    type SourceDescription = {
+        sourceCode: string;
+        inputMap?: SourceMap;
+        astInfo?: AstInfo;
+        largeFile?: boolean;
+        mtime?: number;
+    };
+    type GenerateDescription = {
+        code: string;
+        map?: SourceMap | string;
+        helpers?: string[];
+        wrappedByDefine?: boolean;
+        resultType?: MiniProgramCore.IResultType;
+    };
+    interface IPluginProcessInfo {
+        cost: number;
+        pluginName: string;
+        action: AsyncPluginHooks;
+        options?: Record<string, any>;
+    }
+    interface ILoadResult {
+        targetPath: string;
+        source: SourceDescription;
+        process: IPluginProcessInfo[];
+    }
+    type ITransformResult = ILoadResult;
+    type AsyncPluginHooks = 'load' | 'transform' | 'optimize' | 'generate' | 'compress' | 'sealed' | 'compile';
+    type FirstPluginHooks = 'load' | 'generate' | 'compile';
+    type SequentialPluginHooks = 'transform' | 'optimize' | 'compress';
+    type ParallelPluginHooks = 'sealed';
+    type LoadHook = (this: PluginContext, targetPath: string, sourcePath: string, options: {
+        independentRoot: string;
+        isBabelIgnore: boolean;
+    }) => Promise<ILoadResult | undefined>;
+    type CompileHook = (this: PluginContext, targetPath: string, sourcePath: string, loadResult: ILoadResult, options: {
+        independentRoot: string;
+        isBabelIgnore: boolean;
+    } & ICompileOptions) => Promise<IGenerateResult | undefined>;
+    type TransformHook = (this: PluginContext, loadResult: ILoadResult, targetPath: string, sourcePath: string, options: {
+        independentRoot: string;
+        isBabelIgnore: boolean;
+    } & ICompileOptions) => Promise<ITransformResult>;
+    interface IGenerateResult extends ITransformResult {
+        target: GenerateDescription;
+    }
+    type GenerateHook = (this: PluginContext, transformResult: ITransformResult, targetPath: string, sourcePath: string, options: {
+        independentRoot: string;
+        isBabelIgnore: boolean;
+    } & ICompileOptions) => Promise<IGenerateResult | undefined>;
+    type OptimizeHook = (this: PluginContext, generatedResult: IGenerateResult, options: ICompileOptions) => Promise<IGenerateResult>;
+    type CompressHook = (this: PluginContext, generatedResult: IGenerateResult, options: ICompileOptions) => Promise<IGenerateResult>;
+    type SealedHook = (this: PluginContext, content: Record<string, string | Buffer>) => Promise<void>;
+    interface PluginHooks {
+        load: LoadHook;
+        transform: TransformHook;
+        generate: GenerateHook;
+        optimize: OptimizeHook;
+        compress: CompressHook;
+        sealed: SealedHook;
+        compile: CompileHook;
+    }
+    interface ResolveExt {
+        json?: string | string[];
+        wxml?: string | string[];
+        wxss?: string | string[];
+        js?: string | string[];
+        wxs?: string | string[];
+    }
+    interface BuildStartContext {
+        readonly changedFiles: ReadonlySet<string>;
+        readonly isInitial: boolean;
+        readonly project: MiniProgramCore.IPreCompileProject;
+        readonly resolveInfoMap: ReadonlyMap<string, {
+            path: string;
+            source: string;
+            sourceExt: string;
+        }>;
+        readonly rootPath: string;
+        readonly root: string;
+    }
+    type BuildFilter = string[] | ((sourcePath: string) => boolean);
+    type BuildStartHook = (this: PluginContext, context: BuildStartContext) => Promise<void>;
+    interface BuildEndFileRef {
+        path: string;
+    }
+    interface BuildEndContext extends BuildStartContext {
+        codeFiles: MiniProgramDevtools.CodeFiles;
+        readonly files: readonly BuildEndFileRef[];
+        readonly options: ICompileOptions & {
+            useCache?: boolean;
+            resultType?: MiniProgramCore.IResultType;
+        };
+    }
+    type BuildEndHook = (this: PluginContext, context: BuildEndContext) => Promise<void>;
+    interface SummerPlugin extends Partial<PluginHooks> {
+        name: string;
+        supportWorker?: boolean;
+        workerMethods?: Record<string, Function>;
+        resolveExt?: ResolveExt;
+        buildFilter?: BuildFilter;
+        buildStart?: BuildStartHook;
+        buildEnd?: BuildEndHook;
+    }
+    type SummerPluginOptions = Record<string, any>;
+    interface TypedEventEmitter<T extends {
+        [event: string]: (...args: any) => any;
+    }> {
+        addListener<K extends keyof T>(event: K, listener: T[K]): this;
+        emit<K extends keyof T>(event: K, ...args: Parameters<T[K]>): boolean;
+        eventNames(): Array<keyof T>;
+        getMaxListeners(): number;
+        listenerCount(type: keyof T): number;
+        listeners<K extends keyof T>(event: K): Array<T[K]>;
+        off<K extends keyof T>(event: K, listener: T[K]): this;
+        on<K extends keyof T>(event: K, listener: T[K]): this;
+        once<K extends keyof T>(event: K, listener: T[K]): this;
+        prependListener<K extends keyof T>(event: K, listener: T[K]): this;
+        prependOnceListener<K extends keyof T>(event: K, listener: T[K]): this;
+        rawListeners<K extends keyof T>(event: K): Array<T[K]>;
+        removeAllListeners<K extends keyof T>(event?: K): this;
+        removeListener<K extends keyof T>(event: K, listener: T[K]): this;
+        setMaxListeners(n: number): this;
+    }
+    type ChangeEvent = 'create' | 'update' | 'delete';
+    type SummerWatcherEvent = {
+        code: 'START';
+    } | {
+        code: 'BUILD_END';
+        duration: number;
+        output: SummerBuild['output'];
+    } | {
+        code: 'END';
+    };
+    interface SummerWatcher extends TypedEventEmitter<{
+        change: (id: string, change: {
+            event: ChangeEvent;
+        }) => void;
+        close: () => void;
+        event: (event: SummerWatcherEvent) => void;
+        restart: () => void;
+    }> {
+        close(): void;
+    }
+    interface WatcherOptions {
+        buildDelay?: number;
+    }
+    interface AcornNode {
+        end: number;
+        start: number;
+        type: string;
+    }
+}

@@ -1,0 +1,9 @@
+import { MiniProgramCore } from '../../../../../types';
+export declare function addSkylineRendererToComponents(pageJSONResults: {
+    [key: string]: string;
+}, potantialComponentResults: {
+    [key: string]: string;
+}): void;
+export declare function compileJSON(project: MiniProgramCore.IPreCompileProject, options: MiniProgramCore.ICompileOptions): Promise<{
+    [filePath: string]: Buffer | string;
+}>;

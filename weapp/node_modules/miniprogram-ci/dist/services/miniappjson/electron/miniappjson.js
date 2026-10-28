@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.ElectronMiniappJson=void 0;class ElectronMiniappJson{setIsMiniAppProject(i){this._isMiniAppProject=i}isMiniAppProject(i){var e;return null===(e=null==this?void 0:this._isMiniAppProject)||void 0===e?void 0:e.call(this,i)}}exports.ElectronMiniappJson=ElectronMiniappJson;

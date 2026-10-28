@@ -37,6 +37,22 @@
   font-weight: 600;
   border: none;
 }
+.btn-wx {
+  background: #07c160;
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #c0c8c2;
+  margin: 8rpx 0;
+}
 .btn-loading { opacity: .7; }
 .reg {
   text-align: center;

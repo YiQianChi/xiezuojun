@@ -1,0 +1,1 @@
+"use strict";function splitQuoteFromWASM(t,e=0){if(t.indexOf(`__SINGLE_${e}_QUOTE__`)>-1){const o={},r=t.split(`__SINGLE_${e}_QUOTE__`).filter((t=>!!t));for(let t=0;t<=r.length-1;t+=2)r[t]&&r[t+1]&&(o[r[t]]=splitQuoteFromWASM(r[t+1],e+1));return o}return t}Object.defineProperty(exports,"__esModule",{value:!0}),exports.splitQuoteFromWASM=splitQuoteFromWASM;

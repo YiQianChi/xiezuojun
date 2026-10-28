@@ -1,0 +1,1 @@
+"use strict";function _class_call_check(c,a){if(!(c instanceof a))throw TypeError("Cannot call a class as a function")}exports._=_class_call_check;

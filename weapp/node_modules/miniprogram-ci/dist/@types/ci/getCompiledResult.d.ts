@@ -1,0 +1,4 @@
+import { IInnerUploadOptions } from './upload';
+export declare function getCompiledResult(options: IInnerUploadOptions & {
+    includedMap?: boolean;
+}, savePath?: string): Promise<Record<string, string | Buffer>>;

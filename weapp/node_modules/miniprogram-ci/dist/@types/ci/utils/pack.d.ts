@@ -1,0 +1,6 @@
+export declare function pack(fileInfo: {
+    [filePath: string]: Buffer | string;
+}): {
+    buffer: Buffer;
+    validSize: number;
+};

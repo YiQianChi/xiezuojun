@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.IBuilder=void 0;const tslib_1=require("tslib"),vsbase_1=require("../../common/vsbase"),{createDecorator:createDecorator}=vsbase_1.vsbase.vs.platform.instantiation.common.instantiation.$get();tslib_1.__exportStar(require("../../.."),exports),exports.IBuilder=createDecorator("IBuilder");

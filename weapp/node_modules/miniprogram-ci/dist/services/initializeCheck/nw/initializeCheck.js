@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.InitializeCheck=void 0;class InitializeCheck{notifiedStatus(e,i){}}exports.InitializeCheck=InitializeCheck;

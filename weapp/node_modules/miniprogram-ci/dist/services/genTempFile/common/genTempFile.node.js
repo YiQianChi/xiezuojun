@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.nodeGenTempFile=void 0;const genTempFile_1=require("../../../utils/genTempFile");class nodeGenTempFile{async genPath(){return(0,genTempFile_1.genTempFile)().name}}exports.nodeGenTempFile=nodeGenTempFile;

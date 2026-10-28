@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.CIPluginFileReaderService=void 0;const pluginFileReader_base_1=require("../common/pluginFileReader.base");class CIPluginFileReaderService extends pluginFileReader_base_1.BasePluginFileReaderService{}exports.CIPluginFileReaderService=CIPluginFileReaderService;

@@ -1,0 +1,36 @@
+import { MiniProgramCore, MiniProgramDevtools, MiniProgramSummer, MiniProgramCI } from '../../types';
+import { BaseProject } from '../baseProject';
+import { ConditionCompiler } from '../../modules/precompiler/index';
+type FileChange = (type: 'unlink' | 'unlinkDir' | 'add' | 'addDir' | 'change', targetPath: string) => void;
+type ProjectEventEmitter = MiniProgramSummer.TypedEventEmitter<{
+    fileChange: FileChange;
+    optionsChange: any;
+    precompileOptionsChange: any;
+    requestRefreshFileList: () => void;
+}>;
+export declare class PreCompileProject extends BaseProject implements MiniProgramCore.IPreCompileProject {
+    project: MiniProgramCI.IProject;
+    event: ProjectEventEmitter;
+    targetPlatform: MiniProgramCore.ITargetPlatform;
+    targetPlatformDefines: MiniProgramCore.ITargetPlatformDefine;
+    runEnv?: MiniProgramCore.IPreRunEnv;
+    conditionCompiler: ConditionCompiler;
+    private _fileBufferCache;
+    constructor(project: MiniProgramCI.IProject, conditionCompiler: ConditionCompiler, opts: MiniProgramCore.IConditionCompileInfo);
+    ready(): Promise<void>;
+    init(): Promise<void>;
+    shouldConditionalCompile(): boolean;
+    updateOptions(options: MiniProgramDevtools.IDevtoolsProjectInfo): void;
+    refreshFileList(): void;
+    updateConditionCompileOptions(opts: MiniProgramCore.IConditionCompileInfo): void;
+    updateFileAndDirs(): void;
+    get srcPath(): string;
+    attr(): Promise<MiniProgramCI.IProjectAttr>;
+    serialize(): Promise<MiniProgramCore.IPrecompileProjectSerializeInfo>;
+    getSrcFile(prefix: string | undefined, filePath: string): Buffer<ArrayBufferLike>;
+    getFile(prefix: string | undefined, filePath: string): Buffer;
+    onFileChange: (type: MiniProgramCore.IWatchEventType, targetPath: string) => Promise<void>;
+    notifyRefreshFileOrDirs(oldFiles: string[]): void;
+    clearCache(): void;
+}
+export {};

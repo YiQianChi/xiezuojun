@@ -125,6 +125,19 @@ function onReplayOnboarding() {
   onboardingRef.value?.forceStart()
 }
 onMounted(() => {
+  // 小程序 web-view 桥接：壳登录后把 token 拼在 URL（?xzj_at=…&xzj_rt=…），这里收进 localStorage 后清掉参数
+  try {
+    const q = new URLSearchParams(window.location.search)
+    const at = q.get('xzj_at')
+    const rt = q.get('xzj_rt')
+    if (at) {
+      localStorage.setItem('access_token', at)
+      if (rt) localStorage.setItem('refresh_token', rt)
+      q.delete('xzj_at'); q.delete('xzj_rt')
+      const clean = window.location.pathname + (q.toString() ? '?' + q.toString() : '') + window.location.hash
+      window.history.replaceState(null, '', clean)
+    }
+  } catch { /* 忽略异常 URL */ }
   refreshLoginState()
   if (isLoggedIn.value) refreshProfile()
   document.addEventListener('contextmenu', (e) => e.preventDefault())

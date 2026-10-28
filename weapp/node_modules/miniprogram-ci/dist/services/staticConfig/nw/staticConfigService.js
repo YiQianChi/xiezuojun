@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.NWStaticConfigService=void 0;class NWStaticConfigService{setGet(e){this._get=e}get(e){var t;return null===(t=null==this?void 0:this._get)||void 0===t?void 0:t.call(this,e)}}exports.NWStaticConfigService=NWStaticConfigService;

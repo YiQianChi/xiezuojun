@@ -150,6 +150,7 @@ func main() {
 	api.POST("/auth/email-code", userHandler.SendEmailCode)
 	api.POST("/auth/register", userHandler.Register)
 	api.POST("/auth/login", userHandler.Login)
+	api.POST("/auth/wx-login", userHandler.WxLogin)
 	api.POST("/auth/refresh", userHandler.Refresh)
 	api.POST("/auth/reset-password", userHandler.ResetPassword)
 

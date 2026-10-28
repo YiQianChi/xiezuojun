@@ -1,0 +1,8 @@
+import { IGameJSON, MiniProgramCore } from '../../../../types';
+interface INameMapping {
+    [origin: string]: string;
+}
+export declare const getNameMapping: (project: MiniProgramCore.IPreCompileProject, root: string) => Promise<INameMapping>;
+export declare const getGameNameMapping: (project: MiniProgramCore.IPreCompileProject, gameJSON: IGameJSON, fileList: string[]) => Promise<INameMapping>;
+export declare function uglifyFileNames(project: MiniProgramCore.IPreCompileProject, prevResult: MiniProgramCore.IStringKeyMap<string | Buffer>, nameMapping?: INameMapping): Promise<MiniProgramCore.IAnyObject>;
+export {};

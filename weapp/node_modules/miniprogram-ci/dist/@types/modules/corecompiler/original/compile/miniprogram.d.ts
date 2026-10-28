@@ -1,0 +1,4 @@
+import { MiniProgramCore } from '../../../../types';
+export declare function compile(project: MiniProgramCore.IPreCompileProject, options: MiniProgramCore.ICompileOptions): Promise<{
+    [filePath: string]: Buffer | string;
+}>;

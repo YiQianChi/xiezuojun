@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.IGlobalService=void 0;const vsbase_1=require("../../common/vsbase"),{createDecorator:createDecorator}=vsbase_1.vsbase.vs.platform.instantiation.common.instantiation.$get();exports.IGlobalService=createDecorator("IGlobalService");

@@ -1,0 +1,26 @@
+import { MiniProgramCore } from '../../../../types';
+import { PLATFORM } from '../../../../config/define';
+import { MacroDefine } from '../define';
+type IPlaform = keyof typeof PLATFORM;
+interface IBaseConditionCompiler {
+    targetPlatform: MiniProgramCore.ITargetPlatform;
+    targetPlatformDefines: MiniProgramCore.ITargetPlatformDefine;
+    type: string;
+    verbose?: boolean;
+    tripleSlash?: boolean;
+}
+export declare abstract class BaseConditionCompiler {
+    targetPlatform: IPlaform;
+    targetPlatformDefines: {};
+    type: string;
+    verbose: boolean;
+    tripleSlash: boolean;
+    constructor({ targetPlatform, targetPlatformDefines, type, verbose, tripleSlash, }: IBaseConditionCompiler);
+    compile(filePath: string, content: Buffer): any;
+    abstract doCompile(opts: {
+        filePath: string;
+        content: Buffer;
+        macroDefine: MacroDefine;
+    }): any;
+}
+export {};

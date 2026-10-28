@@ -1,0 +1,9 @@
+import { MacroDefine } from '../define';
+import { BaseConditionCompiler } from './base';
+export declare class JSONConditionCompiler extends BaseConditionCompiler {
+    doCompile(opts: {
+        filePath: string;
+        content: Buffer;
+        macroDefine: MacroDefine;
+    }): string;
+}

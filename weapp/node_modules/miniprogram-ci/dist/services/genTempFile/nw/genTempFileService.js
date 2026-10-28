@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.GenTempFileService=void 0;const genTempFile_devtools_1=require("../common/genTempFile.devtools");class GenTempFileService extends genTempFile_devtools_1.devtoolsGenTempFile{}exports.GenTempFileService=GenTempFileService;

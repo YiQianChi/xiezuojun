@@ -1,0 +1,1 @@
+"use strict";function _is_native_reflect_construct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(exports._=_is_native_reflect_construct=function(){return!!t})()}exports._=_is_native_reflect_construct;

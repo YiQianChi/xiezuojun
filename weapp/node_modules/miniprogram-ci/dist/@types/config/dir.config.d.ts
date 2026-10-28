@@ -1,0 +1,17 @@
+export declare const getDataPath: () => string;
+export declare const UserDataPath: string;
+export declare const WeappVendor: string;
+export declare const CrashPath: string;
+export declare function cleanDir(filePath: string, include?: boolean): Promise<void>;
+export declare const WeappSimulator: string;
+export declare const WeappStorage: string;
+export declare const WeappBackgroudData: string;
+export declare const WeappFileSystem: string;
+export declare function makeSureSimulatorDirExist(): void;
+export declare const WeappRemote: string;
+export declare const WeappRemoteData: string;
+export declare const WeappRemoteTemp: string;
+export declare const WeappRemoteLog: string;
+export declare const WeappRemoteVendor: string;
+export declare const WeappCache: string;
+export declare const WeappCompileCache: string;

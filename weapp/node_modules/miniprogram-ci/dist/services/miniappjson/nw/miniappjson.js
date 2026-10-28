@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.NWMiniappJson=void 0;class NWMiniappJson{setIsMiniAppProject(i){this._isMiniAppProject=i}isMiniAppProject(i){var s;return null===(s=null==this?void 0:this._isMiniAppProject)||void 0===s?void 0:s.call(this,i)}}exports.NWMiniappJson=NWMiniappJson;

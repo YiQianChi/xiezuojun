@@ -1,0 +1,1 @@
+"use strict";function _class_check_private_static_access(c,s){if(c!==s)throw TypeError("Private static access of wrong provenance")}exports._=_class_check_private_static_access;

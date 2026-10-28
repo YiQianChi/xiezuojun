@@ -1,0 +1,4 @@
+import { MiniProgramCore, MiniProgramSummer } from '../../../../types';
+export declare const importWxssReg: RegExp;
+export declare const importWxssCssReg: RegExp;
+export default function (project: MiniProgramCore.IPreCompileProject, options: Pick<Less.Options, 'globalVars'>): MiniProgramSummer.SummerPlugin;

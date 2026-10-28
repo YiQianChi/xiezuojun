@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.AppDirService=void 0;const appDirService_devtools_1=require("../common/appDirService.devtools");class AppDirService extends appDirService_devtools_1.AppDirDevtoolsService{}exports.AppDirService=AppDirService;

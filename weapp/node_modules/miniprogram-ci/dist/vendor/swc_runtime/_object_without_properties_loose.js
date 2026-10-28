@@ -1,0 +1,1 @@
+"use strict";function _object_without_properties_loose(e,t){if(null==e)return{};var o,r,_={},i=Object.keys(e);for(r=0;r<i.length;r++)o=i[r],t.indexOf(o)>=0||(_[o]=e[o]);return _}exports._=_object_without_properties_loose;

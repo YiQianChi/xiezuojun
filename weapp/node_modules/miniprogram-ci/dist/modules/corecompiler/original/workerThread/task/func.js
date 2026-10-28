@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.readFileAsync=readFileAsync;const tslib_1=require("tslib"),fs_1=tslib_1.__importDefault(require("fs"));function readFileAsync(e,r){return new Promise(((s,t)=>{fs_1.default.readFile(e,r,((e,r)=>{if(e)return t(e);s(r)}))}))}

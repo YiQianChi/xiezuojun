@@ -1,0 +1,2 @@
+import { MiniProgramCore } from '../../../../types';
+export declare function compile(buffer: Buffer, filePath: string, settings: MiniProgramCore.ICompileSettings): void;

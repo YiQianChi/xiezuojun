@@ -1,0 +1,1 @@
+"use strict";function appendAiTicket(e,t){return e}function needSignature(e){return!0}Object.defineProperty(exports,"__esModule",{value:!0}),exports.appendAiTicket=appendAiTicket,exports.needSignature=needSignature;

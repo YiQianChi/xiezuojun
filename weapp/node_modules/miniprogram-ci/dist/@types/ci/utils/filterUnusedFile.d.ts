@@ -1,0 +1,6 @@
+import { IProject } from '../../types';
+interface ICodeData {
+    [key: string]: string | Buffer;
+}
+export declare function filterUnusedFile(forPreview: boolean, project: IProject, codes: ICodeData): Promise<ICodeData>;
+export {};

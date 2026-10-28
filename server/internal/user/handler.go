@@ -3,6 +3,7 @@ package user
 import (
 	crand "crypto/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,10 +21,17 @@ import (
 type Handler struct {
 	db         *gorm.DB
 	jwtManager *auth.JWTManager
+	wxAppID    string
+	wxAppSecret string
 }
 
 func NewHandler(db *gorm.DB, jwtManager *auth.JWTManager) *Handler {
-	return &Handler{db: db, jwtManager: jwtManager}
+	return &Handler{
+		db:          db,
+		jwtManager:  jwtManager,
+		wxAppID:     os.Getenv("WX_MP_APPID"),
+		wxAppSecret: os.Getenv("WX_MP_APPSECRET"),
+	}
 }
 
 // ============== 注册/登录 ==============

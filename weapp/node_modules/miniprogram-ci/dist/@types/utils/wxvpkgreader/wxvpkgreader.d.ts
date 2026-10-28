@@ -1,0 +1,11 @@
+declare class WxvpkgReader {
+    private version;
+    private instance;
+    constructor(path: string);
+    readSync: (start: number, length: number) => Buffer;
+    getFile(filePath: string): Buffer;
+    exists(filePath: string): any;
+    stat(filePath: string): any;
+    close(): void;
+}
+export = WxvpkgReader;

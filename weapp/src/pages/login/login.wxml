@@ -3,6 +3,10 @@
   <view class="slogan">一个写故事的地方</view>
 
   <view class="form">
+    <button class="btn-wx {{wxLoading ? 'btn-loading' : ''}}" bindtap="onWxLogin" disabled="{{wxLoading}}">
+      {{wxLoading ? '登录中…' : '微信一键登录'}}
+    </button>
+    <view class="divider"><text>或邮箱登录</text></view>
     <input class="input" type="text" value="{{email}}" bindinput="onEmail"
            placeholder="邮箱" placeholder-class="ph" />
     <input class="input" type="text" password value="{{password}}" bindinput="onPwd"

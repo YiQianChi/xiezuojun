@@ -1,0 +1,14 @@
+import { MiniProgramCore, MiniProgramDevtools } from '../types';
+interface IProjectLike {
+    setting: MiniProgramDevtools.IProjectSetting;
+}
+export declare function getHelperOutputPath(setting: MiniProgramDevtools.IProjectSetting): string;
+export declare function isBabelRuntimeHelperMod(setting: MiniProgramDevtools.IProjectSetting, mod: string): boolean;
+export declare function isSWCRuntimeHelperMod(setting: MiniProgramDevtools.IProjectSetting, mod: string): boolean;
+export declare function hasStaleCrossModeHelpers(setting: MiniProgramDevtools.IProjectSetting, helpers: Iterable<string> | null | undefined): boolean;
+export declare function getHelperContent(setting: MiniProgramDevtools.IProjectSetting, mod: string): Promise<string>;
+export declare function getHelperDeps(setting: MiniProgramDevtools.IProjectSetting, helpers: Set<string>): string[];
+export declare function appendHelpers(project: IProjectLike, helperSet: Set<string>, root: string, resultMap: MiniProgramCore.IAnyObject): Promise<void[]>;
+export declare function isValidHelperFunc(funcName: string): "babel" | "swc" | undefined;
+export declare function getHelperName(setting: MiniProgramDevtools.IProjectSetting, mod: string): string;
+export {};

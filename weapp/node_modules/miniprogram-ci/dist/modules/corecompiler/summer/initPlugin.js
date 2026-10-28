@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.initPlugin=initPlugin;const tslib_1=require("tslib"),index_1=tslib_1.__importDefault(require("./plugins/index"));function initPlugin(e,i,t){e.startsWith("summer-")&&(e=e.replace("summer-",""));const r=index_1.default.load(e);if(r)return r(i,t);throw new Error(`not found plugin for ${e}`)}

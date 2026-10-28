@@ -1,0 +1,1 @@
+"use strict";var _class_check_private_static_access=require("./_class_check_private_static_access.js");function _class_static_private_method_get(_,s,c){return _class_check_private_static_access._(_,s),c}exports._=_class_static_private_method_get;

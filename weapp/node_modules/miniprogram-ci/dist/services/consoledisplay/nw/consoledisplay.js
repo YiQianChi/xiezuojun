@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.NWConsoleDisplayService=void 0;class NWConsoleDisplayService{setDisplay(e){this._display=e}display(e){var s;return null===(s=null==this?void 0:this._display)||void 0===s?void 0:s.call(this,e)}}exports.NWConsoleDisplayService=NWConsoleDisplayService;
