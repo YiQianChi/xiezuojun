@@ -34,6 +34,9 @@
         :article-root-nodes="articleRootNodes"
         :active-doc-id="activeDocId"
         :loading-docs="loadingDocs"
+        :project-name="projectName"
+        :today-words="todayWords"
+        :chapter-words="wordCount"
         @switch-branch="switchBranch"
         @init-default="initDefaultStructure"
         @select-doc="openDoc"
@@ -137,6 +140,8 @@
           :open="contextPanelOpen"
           :project-id="projectId"
           :used-settings="usedSettings"
+          :prev-chapter-id="prevChapterId"
+          :current-chapter="currentChapterIndex"
           @update:open="contextPanelOpen = $event"
           @jump="jumpToSetting"
         />
@@ -262,6 +267,7 @@
         </div>
         <div class="ctx-sep"></div>
         <div @click="contextAction('oneClickFormat')">🧹 一键排版</div>
+        <div v-if="ctxHasSelection" @click="contextAction('thread')">🧵 记伏笔</div>
       </div>
 
       <!-- 文档树右键菜单 -->
@@ -302,6 +308,41 @@
         <option value="zh-CN">默认女声</option>
         <option v-for="v in voiceList" :key="v.voice" :value="v.voice">{{ v.name }}</option>
       </select>
+
+      <!-- 敏感词检测：实时扫描，点开看命中清单，点词定位 -->
+      <div class="toolbox-trigger" :class="{ open: sensitiveOpen }">
+        <button class="status-item speech-btn sens-btn" :class="{ hit: sensitiveTotal > 0 }" @click.stop="sensitiveOpen = !sensitiveOpen" title="敏感词检测（发布前自查）">
+          ◉ 敏感词 {{ sensitiveTotal }}
+        </button>
+        <div class="toolbox-popup sens-popup" v-show="sensitiveOpen" @click.stop>
+          <div class="sens-head">风险词命中 · {{ sensitiveTotal }} 处</div>
+          <div v-if="sensitiveHits.length === 0" class="sens-empty">✅ 未命中风险词</div>
+          <div v-for="h in sensitiveHits" :key="h.word" class="sens-row" @click="jumpToSensitiveWord(h.word)">
+            <span class="sens-word">{{ h.word }}</span>
+            <span class="sens-count">×{{ h.count }}</span>
+          </div>
+          <div class="sens-foot">命中 ≠ 必删，发布前结合情节自查</div>
+        </div>
+      </div>
+
+      <!-- 码字锁：目标字数内拦切章/离开 -->
+      <div class="toolbox-trigger" :class="{ open: wordLockOpen }">
+        <button class="status-item speech-btn lock-btn" :class="{ on: !!wordLock }" @click.stop="wordLockOpen = !wordLockOpen" :title="wordLock ? `码字锁进行中 · 还差 ${lockRemaining} 字` : '码字锁：设个目标字数，写完才解锁'">
+          {{ wordLock ? `🔒 差${lockRemaining}字` : '🔒 码字锁' }}
+        </button>
+        <div class="toolbox-popup lock-popup" v-show="wordLockOpen" @click.stop>
+          <div class="sens-head">{{ wordLock ? '换目标 / 解锁' : '写满多少字解锁？' }}</div>
+          <div class="lock-grid">
+            <button v-for="t in [300, 500, 1000, 2000]" :key="t" class="lock-opt" @click="setWordLock(t)">{{ t }} 字</button>
+          </div>
+          <button v-if="wordLock" class="lock-cancel" @click="clearWordLock">放弃本次目标（解锁）</button>
+        </div>
+      </div>
+
+      <!-- 听写：语音转文字（Chrome） -->
+      <button class="status-item speech-btn" :class="{ speaking: dictating }" @click="toggleDictation" :title="dictating ? '停止听写' : '🎙 听写（语音转文字）'">
+        {{ dictating ? '⏹' : '🎙' }}
+      </button>
 
       <!-- 显示设置：字号/行距/字距/底部留白 -->
       <DisplaySettings :overrides="displayOverrides" :line-numbers="lineNumbers" @update="onDisplaySetting" @toggle-line-numbers="onToggleLineNumbers" />
@@ -455,6 +496,25 @@
       </div>
     </div>
 
+    <!-- 记伏笔弹窗（选中正文右键触发，埋设章自动=当前章） -->
+    <div v-if="threadModal.visible" class="modal-overlay" @click="threadModal.visible = false">
+      <div class="settings-init-modal" @click.stop>
+        <h3>🧵 记一条伏笔</h3>
+        <p class="si-desc">埋设点自动关联当前章节（第 {{ currentChapterIndex }} 章），写到回收章时在右栏速查一键收</p>
+        <label class="si-steps">标题</label>
+        <input class="si-input" v-model="threadModal.title" placeholder="一句话说清这条伏笔" @keyup.enter="saveThreadFromSelection" />
+        <label class="si-steps" style="margin-top:10px;display:block">类型</label>
+        <div class="thread-type-chips">
+          <span v-for="t in THREAD_TYPES" :key="t.value" class="thread-chip" :class="[t.value, { on: threadModal.type === t.value }]" @click="threadModal.type = t.value">{{ t.label }}</span>
+        </div>
+        <div class="thread-quote">「{{ threadModal.quote }}」</div>
+        <div class="si-actions">
+          <button class="si-btn" @click="threadModal.visible = false">取消</button>
+          <button class="si-btn primary" @click="saveThreadFromSelection">记下</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 文件夹属性弹窗 -->
     <FolderPropsModal
       v-model="showFolderPropsModal"
@@ -525,6 +585,7 @@ import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick, watch 
 import { useRoute, useRouter } from 'vue-router'
 import { EditorContent } from '@tiptap/vue-3'
 import { Editor } from '@tiptap/core'
+import { Slice, Fragment } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Table } from '@tiptap/extension-table'
@@ -533,7 +594,8 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
-import { documentApi, branchApi, projectApi, ttsApi } from '../core/api'
+import { documentApi, branchApi, projectApi, ttsApi, threadApi } from '../core/api'
+import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import SearchPanel from '../components/SearchPanel.vue'
 import PlanView from '../components/PlanView.vue'
@@ -738,6 +800,133 @@ const currentChapterIndex = computed(() => {
   const idx = chapterList.value.findIndex(d => d.id === activeDocId.value)
   return idx >= 0 ? idx + 1 : 0
 })
+/* 方案B速查：上一章 doc id（供右栏「上一章结尾」卡取内容） */
+const prevChapterId = computed(() => {
+  const i = currentChapterIndex.value - 2
+  return i >= 0 && i < chapterList.value.length ? chapterList.value[i].id : null
+})
+
+/* ═══ A. 伏笔全套：右键记伏笔（弹窗）→ threadApi 落库 → 速查联动刷新 ═══ */
+const THREAD_TYPES = [
+  { value: 'foreshadowing', label: '伏笔' },
+  { value: 'hook', label: '钩子' },
+  { value: 'promise', label: '承诺' },
+  { value: 'suspense', label: '悬念' },
+] as const
+
+const ctxHasSelection = ref(false)
+const threadModal = ref({ visible: false, title: '', type: 'foreshadowing', quote: '' })
+
+async function saveThreadFromSelection() {
+  const m = threadModal.value
+  const title = m.title.trim() || m.quote.slice(0, 16)
+  try {
+    await threadApi.create(projectId, {
+      type: m.type as any,
+      title,
+      description: m.quote ? `「${m.quote.slice(0, 60)}${m.quote.length > 60 ? '…' : ''}」` : '',
+      status: 'open',
+      planted_chapter: currentChapterIndex.value || null,
+    })
+    threadModal.value.visible = false
+    window.dispatchEvent(new CustomEvent('xzj-threads-changed'))
+    toast.success(`🧵 已记下：「${title}」· 埋设于第 ${currentChapterIndex.value} 章`)
+  } catch {
+    toast.error('记伏笔失败，请重试')
+  }
+}
+
+/* ═══ B1. 敏感词检测：编辑防抖扫描，点词走全文搜索定位 ═══ */
+const sensitiveOpen = ref(false)
+const sensitiveHits = ref<{ word: string; count: number }[]>([])
+const sensitiveTotal = computed(() => sensitiveHits.value.reduce((s, h) => s + h.count, 0))
+let sensitiveTimer: ReturnType<typeof setTimeout> | null = null
+
+function rescanSensitive() {
+  if (sensitiveTimer) clearTimeout(sensitiveTimer)
+  sensitiveTimer = setTimeout(() => {
+    if (!editor.value) return
+    sensitiveHits.value = scanSensitive(getEditorText(editor.value))
+  }, 400)
+}
+
+function jumpToSensitiveWord(word: string) {
+  sensitiveOpen.value = false
+  searchVisible.value = true
+  onSearchQueryUpdate(word)
+}
+
+/* ═══ B2. 码字锁：目标字数内拦切章/离开编辑器 ═══ */
+const wordLock = ref<{ target: number; start: number } | null>(null)
+const wordLockOpen = ref(false)
+const lockRemaining = computed(() =>
+  wordLock.value ? Math.max(0, wordLock.value.target - Math.max(0, wordCount.value - wordLock.value.start)) : 0
+)
+
+function setWordLock(target: number) {
+  wordLock.value = { target, start: wordCount.value }
+  wordLockOpen.value = false
+  toast.success(`🔒 码字锁已上：写满 ${target} 字前不换章（当前章 ${wordCount.value} 字起算）`)
+}
+
+function clearWordLock() {
+  wordLock.value = null
+  wordLockOpen.value = false
+  toast.info('已解锁')
+}
+
+watch(wordCount, () => {
+  if (wordLock.value && lockRemaining.value <= 0) {
+    const t = wordLock.value.target
+    wordLock.value = null
+    toast.success(`🎉 码字锁达成：+${t} 字！已自动解锁`)
+  }
+})
+
+function guardWordLock(): boolean {
+  if (!wordLock.value || lockRemaining.value <= 0) return true
+  return window.confirm(`码字锁：还差 ${lockRemaining.value} 字解锁（目标 ${wordLock.value.target} 字）。\n确定要离开吗？`)
+}
+
+/* ═══ B3. 听写：Web Speech API（Chrome） ═══ */
+const dictating = ref(false)
+let recog: any = null
+
+function toggleDictation() {
+  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  if (!SR) {
+    toast.info('当前浏览器不支持听写，推荐用 Chrome / Edge')
+    return
+  }
+  if (dictating.value) {
+    recog?.stop()
+    return
+  }
+  recog = new SR()
+  recog.lang = 'zh-CN'
+  recog.continuous = true
+  recog.interimResults = false
+  recog.onresult = (e: any) => {
+    let text = ''
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) text += e.results[i][0].transcript
+    }
+    if (text && editor.value) editor.value.commands.insertContent(text)
+  }
+  recog.onend = () => { dictating.value = false }
+  recog.onerror = (e: any) => {
+    if (e.error !== 'aborted' && e.error !== 'no-speech') toast.error(`听写中断：${e.error}`)
+    dictating.value = false
+  }
+  try {
+    recog.start()
+    dictating.value = true
+    toast.info('🎙 听写已开启，说话即入文（再点一次停止）')
+  } catch {
+    dictating.value = false
+    toast.error('听写启动失败')
+  }
+}
 
 const memoryOpen = ref(false)
 const graphOpen = ref(false)
@@ -1120,6 +1309,8 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', closeToolboxOnClickOutside)
   window.removeEventListener('online', onOnlineStatusChange)
   window.removeEventListener('offline', onOnlineStatusChange)
+  try { recog?.stop() } catch {}
+  if (sensitiveTimer) clearTimeout(sensitiveTimer)
   if (editor.value) editor.value.destroy()
   if (saveTimer) clearTimeout(saveTimer)
   currentAudio?.pause()
@@ -1148,15 +1339,23 @@ function initEditor() {
       AIMark,
       AIStrikethrough,
     ],
-    // ponytail: 粘贴强制纯文本，去掉外部加粗/斜体等格式
+    // ponytail: 粘贴强制纯文本，去掉外部加粗/斜体等格式。
+    // 多行文本按行成段（此前 insertText 整段塞进当前段落，VS Code 复制来的换行全被吃成空格，
+    // 行号/段落全部失效）——首行接在光标处，其余行各成一段，行间空行保留。
     editorProps: {
       handlePaste: (view, event) => {
         const text = event.clipboardData?.getData('text/plain')
-        if (text) {
-          view.dispatch(view.state.tr.insertText(text))
-          return true
-        }
-        return false
+        if (!text) return false
+        const lines = text.replace(/\r\n?/g, '\n').split('\n')
+        while (lines.length && !lines[lines.length - 1].trim()) lines.pop()
+        if (!lines.length) return true
+        const { state } = view
+        const paras = lines.map(l =>
+          state.schema.nodes.paragraph.create(null, l.length ? [state.schema.text(l)] : undefined)
+        )
+        const slice = new Slice(Fragment.fromArray(paras), 1, 1)
+        view.dispatch(state.tr.replaceSelection(slice))
+        return true
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -1164,6 +1363,7 @@ function initEditor() {
       const plainText = getEditorText(ed)
       wordCount.value = countWords(plainText)
       saveStatus.value = '编辑中...'
+      rescanSensitive()
       // ponytail: write localStorage draft on every keystroke window so
       // browser crash / tab close in the 1.5s debounce gap doesn't lose data.
       if (activeDocId.value) {
@@ -1333,9 +1533,13 @@ function getEditorHTML(ed = editor.value) {
 }
 
 // —— 一键排版 ——
-// 处理"内容写好了但排版乱"：①去掉每段首尾的空白字符（含手打的全角空格缩进）②删除空段落
-// ③每段统一首行缩进两个全角空格 ④段落之间不留空行（网文排版习惯：段间靠 CSS margin 隔开）。
-// 标题(h1-h3)、表格、代码块等非段落节点原样保留；文字的 marks（高亮等）通过保留 inline 内容不动而保住。
+// 处理"内容写好了但排版乱"：
+// ①去每段首尾空白（含手打全角缩进）②删空段 ③统一首行缩进两个全角空格 ④段间不留空行。
+// ⑤断行合并：VS Code/记事本硬换行（一自然段拆成多行、每行一段），按"上一行是否句末标点收尾"
+//    判断合并——句末标点收尾=自然段结束，否则并入同段（下行以引号/破折号开头强制新段，保护对话）。
+// ⑥粘连段拆分：粘贴时换行被吃成空格的"巨型段落"（。 下一句 的形态），按 句末标点+空白 切回多段。
+// ⑦markdown 标题行：段首 "# / ## / ### " 前缀（拷来的 md 源码）转成真标题节点。
+// 标题(h1-h3)、表格、代码块等非段落节点原样保留；marks（高亮）通过沿用源段首个 text node 保住。
 // 单个 ProseMirror 事务完成，Ctrl+Z 一步可撤销。
 function oneClickFormat() {
   const ed = editor.value
@@ -1344,41 +1548,109 @@ function oneClickFormat() {
   const { tr } = state
   const INDENT = '\u3000\u3000' // 两个全角空格
 
-  // 从后往前处理，位置映射才不会互相干扰
-  const paras: { pos: number; node: any }[] = []
-  state.doc.forEach((node: any, offset: number) => {
-    if (node.type.name === 'paragraph') paras.push({ pos: offset, node })
-  })
+  // 句末标点 = 自然段结束；对话开头 = 强制新段；粘连段的"标点后空白"切分点
+  const endsParagraph = (t: string) => /[。！？…；~!?~”』」）)"']/.test(t.slice(-1)) || /\.{3,6}$/.test(t)
+  const startsDialogue = (t: string) => /^[“「『（《—"']/.test(t)
+  // 句末标点（含 ...... 省略号）后跟空白 = 被吃掉的换行
+  const SPACE_BREAK = /(?<=[。！？…；~”』」）"']|\.{3,6})[ \t]+/
 
-  let changed = 0
-  for (let i = paras.length - 1; i >= 0; i--) {
-    const { pos, node } = paras[i]
-    const text = node.textContent
-    const cleaned = text.replace(/^[\s\u3000]+|[\s\u3000]+$/g, '')
-    // 空段落（或只有空白）：删掉整个段落
-    if (!cleaned) {
-      tr.delete(pos, pos + node.nodeSize)
-      changed++
-      continue
+  // 按"连续相邻段落"分 run（中间隔着标题/表格的段不跨 run 处理）
+  const runs: { pos: number; node: any }[][] = []
+  let cur: { pos: number; node: any }[] = []
+  state.doc.forEach((node: any, offset: number) => {
+    if (node.type.name === 'paragraph') cur.push({ pos: offset, node })
+    else if (cur.length) { runs.push(cur); cur = [] }
+  })
+  if (cur.length) runs.push(cur)
+
+  let changed = 0, mergedCount = 0, splitCount = 0, headingCount = 0
+  for (const run of runs) {
+    // 1) 展平：清洗 → 行首 # 转 heading 行标记 → 粘连段按空格切分
+    type Line = { text: string; marks: any[]; heading?: number }
+    const lines: Line[] = []
+    for (const { node } of run) {
+      const cleaned = node.textContent.replace(/^[\s\u3000]+|[\s\u3000]+$/g, '')
+      if (!cleaned) continue
+      const firstText = node.content.firstChild
+      const marks: any[] = firstText?.marks ?? []
+      // md 残迹清理：**加粗** 星号、分隔线（---/***，含段中前缀形态）
+      const mdClean = (s: string) => s
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/^(-{3,}|\*{3,}|_{3,})\s+/, '')
+        .trim()
+      const isDivider = (s: string) => /^(-{3,}|\*{3,}|_{3,})$/.test(s)
+      // markdown 标题前缀（拷来的 md 源码形态："# 第1章 标题 正文..."）
+      // 标题取法：首词是「第X章/楔子/序章/番外…」且次词短且非句子 → 连次词一起当标题，防"第1章 开学第一课"被腰斩
+      const m = /^(#{1,3})\s+([^\s].*)$/.exec(cleaned)
+      if (m) {
+        const level = m[1].length
+        const tokens = m[2].split(' ').filter(Boolean)
+        let title = tokens[0] || ''
+        let restParts = tokens.slice(1)
+        if (/^(第.{1,4}章|楔子|序章|序言|番外|尾声|终章|引子|Chapter)/.test(title)
+            && restParts.length && restParts[0].length <= 12 && !/[。！？…；]/.test(restParts[0])) {
+          title += ' ' + restParts[0]
+          restParts = restParts.slice(1)
+        }
+        lines.push({ text: title, marks, heading: level })
+        for (const part of restParts.join(' ').split(SPACE_BREAK)) {
+          const pt = mdClean(part.replace(/^[\s\u3000]+|[\s\u3000]+$/g, ''))
+          if (pt && !isDivider(pt)) lines.push({ text: pt, marks })
+        }
+        headingCount++
+        continue
+      }
+      for (const part of cleaned.split(SPACE_BREAK)) {
+        const pt = mdClean(part.replace(/^[\s\u3000]+|[\s\u3000]+$/g, ''))
+        if (pt && !isDivider(pt)) lines.push({ text: pt, marks })
+      }
     }
-    // 已是标准缩进且无首尾空白：跳过
-    if (text === INDENT + cleaned) continue
-    const newText = INDENT + cleaned
-    // 重建段落：保留 marks 的做法是复制首个 text node 的 marks 应用到新文本
-    const firstText = node.content.firstChild
-    const marks = firstText?.marks ?? []
-    const paraType = state.schema.nodes.paragraph
-    const newPara = paraType.create(null, state.schema.text(newText, marks))
-    tr.replaceWith(pos, pos + node.nodeSize, newPara)
-    changed++
+    splitCount += lines.length // 先记总行数，后面用 run 原段数折算
+    // 2) 断行合并分组（句末标点收尾不合并；对话开头新开）
+    const groups: Line[][] = []
+    for (const line of lines) {
+      const lastGroup = groups[groups.length - 1]
+      const lastLine = lastGroup?.[lastGroup.length - 1]
+      const canMerge = lastLine && !lastLine.heading
+        && !endsParagraph(lastLine.text)
+        && !startsDialogue(line.text)
+      if (canMerge) lastGroup.push(line)
+      else groups.push([line])
+    }
+    // 3) 生成新节点序列
+    const newNodes: any[] = []
+    for (const g of groups) {
+      if (g.length > 1) mergedCount += g.length - 1
+      const head = g[0]
+      const joined = g.map(x => x.text).join('')
+      if (head.heading) {
+        newNodes.push(state.schema.nodes.heading.create(
+          { level: head.heading }, state.schema.text(head.text, head.marks)))
+      } else {
+        newNodes.push(state.schema.nodes.paragraph.create(null, state.schema.text(INDENT + joined, head.marks)))
+      }
+    }
+    // 4) 与原 run 对比，变了才整体替换（run 起止 = 首段 pos 到末段结尾）
+    const startPos = run[0].pos
+    const endPos = run[run.length - 1].pos + run[run.length - 1].node.nodeSize
+    const oldSig = run.map(x => x.node.textContent).join('\u0001')
+    const newSig = newNodes.map((n: any) => n.textContent).join('\u0001')
+    if (oldSig !== newSig) {
+      tr.replaceWith(startPos, endPos, newNodes)
+      changed++
+    }
   }
+  splitCount = Math.max(0, splitCount - runs.reduce((s, r) => s + r.length, 0))
 
   if (changed > 0) {
-    // 只把光标放回文档开头附近，避免位置失效
     tr.setSelection(state.selection.constructor.near(tr.doc.resolve(Math.min(state.selection.from, tr.doc.content.size))))
     view.dispatch(tr)
     autoSave()
-    toast.success(`已整理 ${changed} 个段落`)
+    const bits: string[] = [`已整理 ${changed} 组段落`]
+    if (mergedCount > 0) bits.push(`合并 ${mergedCount} 处断行`)
+    if (splitCount > 0) bits.push(`拆开 ${splitCount} 处粘连`)
+    if (headingCount > 0) bits.push(`转换 ${headingCount} 个标题`)
+    toast.success(bits.join(' · '))
   } else {
     toast.info('排版已经很整齐，无需整理')
   }
@@ -1489,6 +1761,8 @@ async function initDefaultStructure() {
 }
 
 async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
+  // 码字锁：目标没写完，拦切章
+  if (!guardWordLock()) return
   compareActive.value = false
   // ponytail-mobile: 移动端选中章节后收起抽屉
   mobileSidebarOpen.value = false
@@ -1543,6 +1817,7 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
         editor.value.commands.setContent(editorContentFromText(content), { emitUpdate: false })
       }
       wordCount.value = countWords(getEditorText())
+      rescanSensitive()
       saveStatus.value = fromCache ? '📡 离线读取' : '已保存'
       setTimeout(() => { isSettingContent.value = false }, 100)
 
@@ -1887,6 +2162,7 @@ async function handleStoryboardReorder(payload: { fromId: number; toId: number; 
 function openContextMenu(e: MouseEvent) {
   // ponytail: 右键前缓存当前选区，右键动作后编辑器已失焦
   cachedSelection = getSelection()
+  ctxHasSelection.value = !!(cachedSelection && cachedSelection.text && cachedSelection.text.trim())
   contextMenu.value = { visible: true, x: e.clientX, y: e.clientY }
   document.addEventListener('click', closeContextMenu, { once: true })
 }
@@ -1907,6 +2183,13 @@ function contextAction(action: string, color?: string) {
   cachedSelection = null
   if (!sel.text && action !== 'paste') return
   switch (action) {
+    case 'thread': {
+      // 记伏笔：预填选中文本，弹确认框
+      contextMenu.value.visible = false
+      const quote = (sel.text || '').trim().slice(0, 80)
+      threadModal.value = { visible: true, title: quote.slice(0, 16), type: 'foreshadowing', quote }
+      break
+    }
     case 'highlight':
       editor.value.chain().setTextSelection({ from: sel.start, to: sel.end }).toggleHighlight({ color }).run()
       break
@@ -1987,6 +2270,7 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 }
 
 function goBack() {
+  if (!guardWordLock()) return
   router.push('/bookshelf')
 }
 </script>

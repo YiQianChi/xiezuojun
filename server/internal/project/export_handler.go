@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +13,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"xiezuojun-server/internal/model"
 )
+
+// exportChapterTitle 导出章节名带序号（与前端 chapterDisplayTitle 口径一致）：
+// chapter 按全书顺序编「第N章 标题」；标题已带 第X章 前缀或属 序章/楔子/番外/尾声/终章/引子 则原样保留。
+var exportSpecialTitleRe = regexp.MustCompile(`^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]|^(序章|楔子|番外|尾声|终章|引子)`)
+
+func exportChapterTitle(ordinal int, title string) string {
+	t := strings.TrimSpace(title)
+	if t == "" || exportSpecialTitleRe.MatchString(t) {
+		return t
+	}
+	return fmt.Sprintf("第%s章 %s", numToChinese(ordinal), t)
+}
 
 // ExportEPUB 导出 EPUB 电子书
 // EPUB 3 最小实现：mimetype + container.xml + content.opf + nav.xhtml + 每章一个 XHTML
@@ -30,10 +43,14 @@ func (h *Handler) ExportEPUB(c *gin.Context) {
 
 	// 只导出正文类型（chapter/volume）
 	var chapters []exportChapter
+	chOrdinal := 0
 	for _, dc := range docs {
-		if dc["type"] == "chapter" || dc["type"] == "volume" {
+		if dc["type"] == "volume" {
+			chapters = append(chapters, exportChapter{Title: getString(dc, "title"), Content: getString(dc, "content")})
+		} else if dc["type"] == "chapter" {
+			chOrdinal++
 			chapters = append(chapters, exportChapter{
-				Title:   getString(dc, "title"),
+				Title:   exportChapterTitle(chOrdinal, getString(dc, "title")),
 				Content: getString(dc, "content"),
 			})
 		}
@@ -149,10 +166,14 @@ func (h *Handler) ExportDOCX(c *gin.Context) {
 	}
 
 	var chapters []exportChapter
+	chOrdinal := 0
 	for _, dc := range docs {
-		if dc["type"] == "chapter" || dc["type"] == "volume" {
+		if dc["type"] == "volume" {
+			chapters = append(chapters, exportChapter{Title: getString(dc, "title"), Content: getString(dc, "content")})
+		} else if dc["type"] == "chapter" {
+			chOrdinal++
 			chapters = append(chapters, exportChapter{
-				Title:   getString(dc, "title"),
+				Title:   exportChapterTitle(chOrdinal, getString(dc, "title")),
 				Content: getString(dc, "content"),
 			})
 		}
@@ -248,11 +269,17 @@ func (h *Handler) ExportTXT(c *gin.Context) {
 	}
 	var buf strings.Builder
 	buf.WriteString(proj.Name + "\n\n")
+	txtOrdinal := 0
 	for _, dc := range docs {
 		if dc["type"] != "chapter" && dc["type"] != "volume" {
 			continue
 		}
-		buf.WriteString(getString(dc, "title") + "\n")
+		title := getString(dc, "title")
+		if dc["type"] == "chapter" {
+			txtOrdinal++
+			title = exportChapterTitle(txtOrdinal, title)
+		}
+		buf.WriteString(title + "\n")
 		buf.WriteString(strings.Repeat("─", 20) + "\n")
 		buf.WriteString(stripMarkdown(getString(dc, "content")) + "\n\n")
 	}
@@ -342,7 +369,28 @@ func markdownToXHTML(md string) string {
 }
 
 // stripMarkdown 去除 Markdown 标记，输出纯文本
+// stripHTMLTags 导出兜底：编辑器自动保存的章节 content 是 HTML（<p>段</p>），
+// 导出前把块级闭合标签转换行、其余标签剥掉、解码常见实体——否则 TXT/DOCX/EPUB 里出现字面 <p>。
+var htmlTagRe = regexp.MustCompile(`<[^>]+>`)
+var htmlEntity = map[string]string{"&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": `"`, "&#39;": "'", "&ldquo;": "“", "&rdquo;": "”"}
+
+func stripHTMLTags(s string) string {
+	if !strings.Contains(s, "<") {
+		return s
+	}
+	s = strings.ReplaceAll(s, "</p>", "\n")
+	s = strings.ReplaceAll(s, "<br>", "\n")
+	s = strings.ReplaceAll(s, "<br/>", "\n")
+	s = strings.ReplaceAll(s, "<br />", "\n")
+	s = htmlTagRe.ReplaceAllString(s, "")
+	for k, v := range htmlEntity {
+		s = strings.ReplaceAll(s, k, v)
+	}
+	return s
+}
+
 func stripMarkdown(md string) string {
+	md = stripHTMLTags(md)
 	var buf strings.Builder
 	for _, line := range strings.Split(md, "\n") {
 		l := strings.TrimSpace(line)
