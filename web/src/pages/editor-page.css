@@ -169,23 +169,31 @@
 
 /* ponytail-mobile: 移动端布局（A 方案：抽屉侧栏）+ 专注模式沉浸增强（C 方案） */
 @media (max-width: 768px) {
-  /* 分离方案：移动端虚拟章名头（桌面纸皮肤版在文件末尾的桌面块） */
+  /* 分离方案：移动端虚拟章名头（C 破折号样式，尺寸收小；桌面版在文件末尾的桌面块） */
   .editor-page .chapter-virtual-heading {
-    text-align: center;
-    letter-spacing: 1px;
-    margin: 0.2em 0 0.9em;
-    font-size: 1.35em;
-    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 0.3em 0 1em;
     user-select: none;
   }
-  .editor-page .chapter-virtual-heading::after {
-    content: '';
-    display: block;
-    width: 36px;
-    height: 3px;
-    margin: 10px auto 0;
-    border-radius: 2px;
-    background: linear-gradient(90deg, #8fc59b, #6aa877);
+  .editor-page .chapter-virtual-heading .vh-dash {
+    flex: 0 0 38px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c9bfa6);
+  }
+  .editor-page .chapter-virtual-heading .vh-dash-r {
+    background: linear-gradient(90deg, #c9bfa6, transparent);
+  }
+  .editor-page .chapter-virtual-heading .vh-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: #4a4438;
+  }
+  .editor-page .chapter-virtual-heading .vh-num {
+    color: #6aa877;
   }
 
   .doc-tree {
@@ -1849,24 +1857,31 @@
     background: linear-gradient(90deg, #8fc59b, #6aa877);
   }
 
-  /* 分离方案：章节顶部虚拟章名头——动态「第N章 标题」，样式与纸内首个 H1 同款（居中+绿装饰线） */
+  /* 分离方案：章节顶部虚拟章名头（Boss 拍板 C 破折号样式）——两侧渐隐线 + 绿色章号 */
   .editor-page .chapter-virtual-heading {
-    text-align: center;
-    letter-spacing: 2px;
-    margin: 0.2em 0 1.1em;
-    font-size: 1.65em;
-    font-weight: 700;
-    color: var(--ink, #33302a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin: 0.4em 0 1.3em;
     user-select: none;
   }
-  .editor-page .chapter-virtual-heading::after {
-    content: '';
-    display: block;
-    width: 44px;
-    height: 3px;
-    margin: 14px auto 0;
-    border-radius: 2px;
-    background: linear-gradient(90deg, #8fc59b, #6aa877);
+  .editor-page .chapter-virtual-heading .vh-dash {
+    flex: 0 0 64px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c9bfa6);
+  }
+  .editor-page .chapter-virtual-heading .vh-dash-r {
+    background: linear-gradient(90deg, #c9bfa6, transparent);
+  }
+  .editor-page .chapter-virtual-heading .vh-title {
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: #4a4438;
+  }
+  .editor-page .chapter-virtual-heading .vh-num {
+    color: #6aa877;
   }
 
   /* 右栏 AI 面板头部：卡片化暖纸质感 */

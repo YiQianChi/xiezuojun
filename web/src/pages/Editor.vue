@@ -113,8 +113,12 @@
             </div>
           </CharacterCardView>
           <template v-else>
-            <!-- 分离方案：章节顶部虚拟章名头——动态「第N章 标题」，不进正文数据 -->
-            <div v-if="activeDoc && activeDoc.type === 'chapter' && currentDocDisplayName" class="chapter-virtual-heading">{{ currentDocDisplayName }}</div>
+            <!-- 分离方案：章节顶部虚拟章名头——动态「第N章 标题」，不进正文数据（Boss 拍板 C 破折号样式） -->
+            <div v-if="activeDoc && activeDoc.type === 'chapter' && currentDocDisplayName" class="chapter-virtual-heading">
+              <span class="vh-dash"></span>
+              <span class="vh-title"><span v-if="chapterHeadingParts?.num" class="vh-num">{{ chapterHeadingParts.num }} </span>{{ chapterHeadingParts?.name }}</span>
+              <span class="vh-dash vh-dash-r"></span>
+            </div>
             <div class="tiptap-container">
               <editor-content v-if="editor" :editor="editor" />
             </div>
@@ -666,6 +670,14 @@ const currentDocDisplayName = computed(() => {
   const d = documents.value.find((x: any) => x.id === activeDocId.value)
   if (d && d.type === 'chapter') return chapterDisplayTitle(d, documents.value)
   return currentDocName.value
+})
+// 虚拟章名头的「章号/章名」拆分（C 样式：章号绿色高亮）
+const chapterHeadingParts = computed(() => {
+  const d = activeDoc.value
+  if (!d || d.type !== 'chapter') return null
+  const m = /^(第[0-9零一二三四五六七八九十百千万两]+章)\s*(.*)$/.exec(String(currentDocDisplayName.value || '').trim())
+  if (!m) return { num: '', name: String(currentDocDisplayName.value || '') }
+  return { num: m[1], name: m[2] }
 })
 const projectName = ref('')
 const loadingDocs = ref(false)
