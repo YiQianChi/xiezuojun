@@ -19,6 +19,7 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/sprint/start", handleStart)
 	rg.POST("/sprint/heartbeat", handleHeartbeat)
 	rg.GET("/sprint/room", handleRoom)
+	rg.GET("/sprint/rooms", handleRooms) // 公开房列表
 	rg.GET("/sprint/events", handleEvents) // SSE 实时推送
 }
 
@@ -115,6 +116,10 @@ func handleRoom(c *gin.Context) {
 	uid := c.GetString("userID")
 	view := GetRoomFor(uid)
 	c.JSON(http.StatusOK, gin.H{"data": view}) // 不在房=null，前端按 null 处理
+}
+
+func handleRooms(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"data": ListPublicRooms()})
 }
 
 // handleEvents SSE：房内成员收实时快照（join/leave/开始/结算/每次心跳的榜单）

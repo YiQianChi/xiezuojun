@@ -126,6 +126,20 @@
               <button class="bs-btn green" @click="sprint.phase = 'create'">🔥 创建房间</button>
               <button class="bs-btn ghost" @click="sprint.phase = 'join'">🚪 房间号加入</button>
               <button class="bs-btn line" :disabled="sprint.busy" @click="sprint.quickmatch()">⚡ 快速匹配</button>
+
+              <!-- 公开房列表（在拼的排前面；中途可进） -->
+              <div class="bs-cap">公开房</div>
+              <div v-if="publicRooms.length === 0" class="bs-roomlist-empty">暂无公开房——创建时选 🌍 公开，或 ⚡ 快速匹配</div>
+              <div v-else class="bs-roomlist">
+                <button v-for="r in publicRooms" :key="r.code" class="bs-roomrow" :disabled="sprint.busy || r.players >= r.max_players" @click="joinPublic(r)">
+                  <span class="bs-rr-name">🔥 {{ r.name }}</span>
+                  <span class="bs-rr-meta">
+                    <span class="bs-rr-badge" :class="r.state">{{ r.state === 'running' ? '拼字中' : '等待' }}</span>
+                    <span class="bs-rr-count">{{ r.players }}/{{ r.max_players }}人</span>
+                    <span class="bs-rr-target">{{ r.target_label }}</span>
+                  </span>
+                </button>
+              </div>
             </template>
 
             <template v-else-if="sprint.phase === 'create'">
@@ -239,7 +253,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, reactive, onMounted, onBeforeUnmount, shallowRef } from 'vue'
-import { buddyApi, userApi } from '../../core/api'
+import { buddyApi, userApi, sprintApi } from '../../core/api'
 import { useSprint } from '../../composables/useSprint'
 import { toast } from '../../composables/useToast'
 
@@ -292,6 +306,27 @@ function onFocusSprint() {
 }
 // 恢复出房间时自动停在拼字页签
 watch(() => sprint.inRoom, (v) => { if (v) tab.value = 'sprint' })
+
+// ---- 公开房列表：拼字页签入口时拉取，10s 自刷新 ----
+interface PublicRoom { code: string; name: string; mode: string; target_label: string; state: string; players: number; max_players: number }
+const publicRooms = ref<PublicRoom[]>([])
+let roomsTimer: ReturnType<typeof setInterval> | null = null
+async function fetchPublicRooms() {
+  if (tab.value !== 'sprint' || sprint.room) return
+  try {
+    const res = await sprintApi.rooms()
+    publicRooms.value = res.data?.data || []
+  } catch { /* 静默 */ }
+}
+watch([tab, () => sprint.room, () => sprint.phase], () => { fetchPublicRooms() })
+onMounted(() => {
+  roomsTimer = setInterval(fetchPublicRooms, 10000)
+})
+onBeforeUnmount(() => { if (roomsTimer) clearInterval(roomsTimer) })
+async function joinPublic(r: PublicRoom) {
+  const ok = await sprint.join(r.code, '')
+  if (ok) fetchPublicRooms()
+}
 
 
 type TimerState = 'idle' | 'running' | 'paused' | 'summary'
@@ -1072,5 +1107,24 @@ onBeforeUnmount(() => {
 /* 拼字头部：倒计时大字 + 名次小注 */
 .bw-title.sprint-cd { font-size: 16px; color: #d97706; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 .sprint-head-sub { font-size: 10px; font-weight: 600; color: var(--text-tertiary, #999); margin-left: 6px; letter-spacing: 0; }
+
+
+/* 公开房列表 */
+.bs-roomlist { display: flex; flex-direction: column; gap: 3px; }
+.bs-roomlist-empty { font-size: 9.5px; color: var(--text-tertiary, #999); text-align: center; border: 1px dashed #e2d8c2; border-radius: 8px; padding: 6px 4px; line-height: 1.5; }
+.bs-roomrow {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  border: 1px solid #e2d8c2; background: #fff; border-radius: 9px; padding: 6px 8px;
+  cursor: pointer;
+}
+.bs-roomrow:hover { border-color: #81bb8e; background: rgba(129,187,142,0.06); }
+.bs-roomrow:disabled { opacity: 0.5; cursor: default; }
+.bs-rr-name { font-size: 11.5px; font-weight: 700; color: var(--text-primary, #333); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bs-rr-meta { display: flex; align-items: center; gap: 5px; }
+.bs-rr-badge { font-size: 8.5px; font-weight: 800; border-radius: 4px; padding: 1px 5px; }
+.bs-rr-badge.running { background: rgba(217,119,0,0.12); color: #d97706; }
+.bs-rr-badge.waiting { background: rgba(129,187,142,0.16); color: #5a9668; }
+.bs-rr-count { font-size: 9.5px; color: var(--text-secondary, #666); font-variant-numeric: tabular-nums; }
+.bs-rr-target { font-size: 9px; color: var(--text-tertiary, #999); margin-left: auto; }
 
 </style>

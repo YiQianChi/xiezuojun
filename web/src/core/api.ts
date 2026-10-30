@@ -375,6 +375,9 @@ export const sprintApi = {
   room() {
     return api.get('/sprint/room')
   },
+  rooms() {
+    return api.get('/sprint/rooms')
+  },
 }
 
 // 后台管理（仅 is_admin 账号可用，服务端校验）

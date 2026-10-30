@@ -482,6 +482,74 @@ func viewOf(r *Room, meUID string) *RoomView {
 	return v
 }
 
+// RoomListItem 对外的公开房摘要（房间列表用）
+type RoomListItem struct {
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Mode        string `json:"mode"`
+	TargetLabel string `json:"target_label"`
+	State       string `json:"state"`
+	Players     int    `json:"players"`
+	MaxPlayers  int    `json:"max_players"`
+	EndsAtMs    int64  `json:"ends_at_ms"`
+	ServerNowMs int64  `json:"server_now_ms"`
+}
+
+// ListPublicRooms 公开房列表：waiting + running 都列（中途可进）；死房/满员标注由前端处理
+func ListPublicRooms() []RoomListItem {
+	mu.Lock()
+	defer mu.Unlock()
+	now := time.Now()
+	var out []RoomListItem
+	for _, r := range rooms {
+		if !r.IsPublic || r.State == "finished" {
+			continue
+		}
+		// 等待超 10 分钟没人开的、全员离线的死房不列
+		if r.State == "waiting" && (now.Sub(r.CreatedAt) > 10*time.Minute || len(onlinePlayers(r)) == 0) {
+			continue
+		}
+		if r.State == "running" && len(onlinePlayers(r)) == 0 {
+			continue
+		}
+		item := RoomListItem{
+			Code:        r.Code,
+			Name:        r.Name,
+			Mode:        r.Mode,
+			TargetLabel: viewOf(r, "").TargetLabel,
+			State:       r.State,
+			Players:     len(r.Players),
+			MaxPlayers:  r.MaxPlayers,
+			ServerNowMs: now.UnixMilli(),
+		}
+		if r.Mode == "time" && !r.EndsAt.IsZero() {
+			item.EndsAtMs = r.EndsAt.UnixMilli()
+		}
+		out = append(out, item)
+	}
+	// 在拼的排前面，其次按人数降序
+	sort.SliceStable(out, func(a, b int) bool {
+		sa, sb := 0, 0
+		if out[a].State == "running" {
+			sa = 1
+		}
+		if out[b].State == "running" {
+			sb = 1
+		}
+		if sa != sb {
+			return sa > sb
+		}
+		if out[a].Players != out[b].Players {
+			return out[a].Players > out[b].Players
+		}
+		return out[a].Code < out[b].Code
+	})
+	if len(out) > 20 {
+		out = out[:20]
+	}
+	return out
+}
+
 // GetRoomFor 当前所在房间快照（不在房=nil）
 func GetRoomFor(uid string) *RoomView {
 	mu.Lock()
