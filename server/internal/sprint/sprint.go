@@ -183,9 +183,10 @@ func Join(uid, nickname, code, password string) (*Room, string) {
 	if r == nil {
 		return nil, "房间不存在或已解散"
 	}
-	if r.State != "waiting" {
-		return nil, "这一局已经在拼了，等下一局吧"
+	if r.State == "finished" {
+		return nil, "本局已结束，等房主开下一局"
 	}
+	// running 也放行：中途加入，字数从 0 起跑、按剩余时间拼（竞品同款）
 	if len(r.Players) >= r.MaxPlayers {
 		return nil, "房间已满"
 	}

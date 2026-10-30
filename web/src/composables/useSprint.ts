@@ -44,7 +44,6 @@ const showResult = ref(false)
 const now = ref(Date.now())
 let clockOffset = 0
 let wordCountRef: Ref<number> | null = null
-let baseline = -1 // 开局时的编辑器字数基线（本局字数 = 当前字数 - 基线）
 let beatTimer: number | null = null
 let esAbort: AbortController | null = null
 let lastForm: { name: string; mode: 'time' | 'words'; target: number; is_public: boolean; password: string; max_players: number } | null = null
@@ -59,11 +58,6 @@ function nickname(): string {
 function applyRoom(r: SprintRoom | null) {
   if (!r) return
   const prev = room.value
-  if (!prev || prev.state !== 'running') {
-    if (r.state === 'running' && wordCountRef && wordCountRef.value >= 0) {
-      baseline = wordCountRef.value
-    }
-  }
   room.value = r
   clockOffset = r.server_now_ms - Date.now()
   if (r.state === 'finished' && (!prev || prev.state !== 'finished')) {
@@ -119,14 +113,14 @@ function handleEvent(ev: any) {
   }
 }
 
-// ---- 心跳：约 5s 一拍，上报本局字数（服务端广播榜单） ----
+// ---- 心跳：约 5s 一拍，上报本局字数（Editor 传入的 sessionWords 已按章折叠，服务端广播榜单） ----
 function startBeat() {
   stopBeat()
   beatTimer = window.setInterval(async () => {
     if (!room.value || !wordCountRef) return
     const st = room.value.state
     if (st !== 'waiting' && st !== 'running') return
-    const words = st === 'running' && baseline >= 0 ? Math.max(0, wordCountRef.value - baseline) : 0
+    const words = st === 'running' ? Math.max(0, wordCountRef.value) : 0
     try {
       const res = await sprintApi.heartbeat(words)
       const r = res.data?.data?.room
@@ -214,7 +208,6 @@ async function doQuickmatch() {
 async function doLeave() {
   try { await sprintApi.leave() } catch { /* 房间可能已散 */ }
   room.value = null
-  baseline = -1
   phase.value = 'entry'
   panelOpen.value = false
   showResult.value = false
@@ -255,12 +248,13 @@ function openJoin(code?: string) {
   focusSprintWindow()
 }
 
-// ---- 初始化（Editor setup 调一次；重挂载允许重绑 wordCount） ----
+// ---- 初始化（Editor setup 调一次；传「按章折叠的本局字数」computed；返回恢复的本局字数供 Editor 做种子） ----
 let inited = false
-async function init(wc: Ref<number>) {
+async function init(wc: Ref<number>): Promise<number> {
   wordCountRef = wc
-  if (inited) return
+  if (inited) return 0
   inited = true
+  let restored = 0
   // 断线/刷新恢复：先拉当前房间
   try {
     const res = await sprintApi.room()
@@ -268,8 +262,7 @@ async function init(wc: Ref<number>) {
     if (r) {
       if (r.state === 'running') {
         const mine = r.players.find(p => p.user_id === r.me)
-        // 基线倒推：当前编辑器字数 - 已上报的本局字数
-        if (mine && wc.value >= mine.words) baseline = wc.value - mine.words
+        restored = mine?.words || 0
       }
       applyRoom(r)
       openEvents(); startBeat()
@@ -281,6 +274,7 @@ async function init(wc: Ref<number>) {
     localStorage.removeItem('xzj-sprint-invite')
     openJoin(inv)
   }
+  return restored
 }
 
 export function useSprint() {

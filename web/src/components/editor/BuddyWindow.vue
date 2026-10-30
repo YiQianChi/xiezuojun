@@ -158,6 +158,7 @@
             <template v-else-if="sprint.phase === 'join'">
               <input v-model="sprint.joinCode" class="bs-input code" placeholder="房间号" maxlength="6" />
               <input v-model="sprint.joinPass" class="bs-input" placeholder="密码（无密码可留空）" />
+              <div class="bs-note center">拼字中也能加入：字数从 0 起跑，按剩余时间拼</div>
               <div class="bs-row foot">
                 <button class="bs-btn green slim" :disabled="sprint.busy" @click="submitJoin">{{ sprint.busy ? '加入中…' : '加入房间' }}</button>
                 <button class="bs-btn line slim" @click="sprint.phase = 'entry'">返回</button>

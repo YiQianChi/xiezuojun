@@ -704,9 +704,36 @@ const chapterHeadingParts = computed(() => {
 const projectName = ref('')
 const loadingDocs = ref(false)
 const wordCount = ref(0)
-// 拼字房（单例 store）：HUD/面板消费；init 绑定 wordCount 并恢复断线房间/邀请链接
+// 拼字房（单例 store）：HUD/面板消费。字数口径=按章折叠（与搭子增量同款）：
+// 切章时结算旧章增量、新章以打开时的字数为基线——防止开局后打开/切换章节把整章存量算成本局新写。
+const sprintSettledWords = ref(0) // 已结算的旧章增量之和
+const sprintChBaseline = ref(-1) // 当前章基线；-1=待立（首次 wordCount 观测时立）
+watch(activeDocId, () => {
+  // openDoc 先变 activeDocId、后设 wordCount——此刻 wordCount 仍是旧章的字数
+  if (sprintChBaseline.value >= 0) {
+    sprintSettledWords.value += Math.max(0, wordCount.value - sprintChBaseline.value)
+  }
+  sprintChBaseline.value = -1
+})
+watch(wordCount, (v) => { if (sprintChBaseline.value < 0) sprintChBaseline.value = v })
+const sprintSessionWords = computed(() =>
+  sprintSettledWords.value + (sprintChBaseline.value >= 0 ? Math.max(0, wordCount.value - sprintChBaseline.value) : 0))
 const sprint = useSprint()
-sprint.init(wordCount)
+const sprintInited = sprint.init(sprintSessionWords)
+sprintInited.then((restored: number) => {
+  // 断线/刷新恢复：本局已上报的字数作为种子，当前章基线直接以现值立住（不等 watch）
+  if (restored > 0) {
+    sprintSettledWords.value = restored
+    sprintChBaseline.value = wordCount.value
+  }
+})
+watch(() => sprint.running, (on) => {
+  // 新一局开跑：清零重计，基线立当前值
+  if (on) {
+    sprintSettledWords.value = 0
+    sprintChBaseline.value = wordCount.value
+  }
+})
 const saveStatus = ref('')
 const draftBanner = ref<{ docId: number; text: string } | null>(null)
 const isSpeaking = ref(false)
