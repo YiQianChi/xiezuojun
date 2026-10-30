@@ -443,10 +443,23 @@ onBeforeUnmount(() => window.removeEventListener('xzj-threads-changed', onThread
 /* 速查里一键回收：当前章作为回收章 */
 async function resolveThread(t: StoryThread) {
   if (!t.id) return
+  const id = t.id
   try {
     await threadApi.update(t.id, { status: 'resolved', resolved_chapter: props.currentChapter || null })
     threads.value = threads.value.map(x => x.id === t.id ? { ...x, status: 'resolved' as const, resolved_chapter: props.currentChapter || null } : x)
-    toast.success(`已回收：「${t.title}」` + (props.currentChapter ? ` · 第${props.currentChapter}章` : ''))
+    // 误操作撤回：6 秒内点「撤回」恢复为埋设中
+    toast.withAction(`已回收：「${t.title}」` + (props.currentChapter ? ` · 第${props.currentChapter}章` : ''), {
+      label: '撤回',
+      onClick: async () => {
+        try {
+          await threadApi.update(id, { status: 'open', resolved_chapter: null })
+          threads.value = threads.value.map(x => x.id === id ? { ...x, status: 'open' as const, resolved_chapter: null } : x)
+          toast.success(`已撤回：「${t.title}」`)
+        } catch {
+          toast.error('撤回失败，请到工具箱-伏笔面板手动改回')
+        }
+      },
+    })
   } catch {
     toast.error('回收失败，请重试')
   }
