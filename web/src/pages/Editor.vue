@@ -37,6 +37,7 @@
         :project-name="projectName"
         :today-words="todayWords"
         :chapter-words="wordCount"
+        :init-busy="inittingDefault"
         @switch-branch="switchBranch"
         @init-default="initDefaultStructure"
         @select-doc="openDoc"
@@ -1826,28 +1827,48 @@ watch(documents, () => {
   }, 500)
 }, { deep: true })
 
+// 「初始化默认结构」幂等化（Boss 2026-10-30 报 bug：弱网下多次执行重复建文档）：
+// ①单飞守卫——进行中再点直接忽略；②动手前拉最新树，已存在的（设定类按 type、卷按 type+标题）跳过；
+// ③后端对设定类容器也有每书一份的幂等兜底，双保险
+const inittingDefault = ref(false)
 async function initDefaultStructure() {
-  const defaults = [
-    { type: 'outline', title: '大纲', sort_order: 1 },
-    { type: 'characters', title: '人物设定', sort_order: 2 },
-    { type: 'worldbuilding', title: '世界观', sort_order: 3 },
-    { type: 'storyline', title: '故事主线', sort_order: 4 },
-    { type: 'chapter_outline', title: '章节大纲', sort_order: 5 },
-    { type: 'volume', title: '文章', sort_order: 6 },
-  ]
-  for (const d of defaults) {
+  if (inittingDefault.value) return
+  inittingDefault.value = true
+  try {
+    let existing: any[] = []
     try {
-      await documentApi.create({
-        project_id: projectId,
-        title: d.title,
-        type: d.type,
-        sort_order: d.sort_order,
-      })
-    } catch (e) {
-      console.error('创建默认结构失败', d, e)
+      const res = await documentApi.list(String(projectId), activeBranchId.value)
+      existing = res.data?.data || res.data || []
+    } catch { /* 拉不到就当空处理，靠后端幂等兜底 */ }
+    const defaults = [
+      { type: 'outline', title: '大纲', sort_order: 1 },
+      { type: 'characters', title: '人物设定', sort_order: 2 },
+      { type: 'worldbuilding', title: '世界观', sort_order: 3 },
+      { type: 'storyline', title: '故事主线', sort_order: 4 },
+      { type: 'chapter_outline', title: '章节大纲', sort_order: 5 },
+      { type: 'volume', title: '文章', sort_order: 6 },
+    ]
+    for (const d of defaults) {
+      const dup = existing.some((x: any) => x.type === d.type
+        && (d.type === 'volume' ? String(x.title) === d.title : true))
+      if (dup) continue
+      try {
+        const res = await documentApi.create({
+          project_id: projectId,
+          title: d.title,
+          type: d.type,
+          sort_order: d.sort_order,
+        })
+        const created = res.data?.data
+        if (created) existing.push(created)
+      } catch (e) {
+        console.error('创建默认结构失败', d, e)
+      }
     }
+  } finally {
+    inittingDefault.value = false
+    await loadDocs()
   }
-  await loadDocs()
 }
 
 async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {

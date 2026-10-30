@@ -10,6 +10,11 @@ import (
 	"xiezuojun-server/internal/store"
 )
 
+// 设定类容器：每本书只允许一份的类型（前端「初始化默认结构」按这份清单建）
+var settingSingletonTypes = map[string]bool{
+	"outline": true, "characters": true, "worldbuilding": true, "storyline": true, "chapter_outline": true,
+}
+
 // CreateDocument 创建文档
 func (h *Handler) CreateDocument(c *gin.Context) {
 	userID := getUserID(c)
@@ -32,6 +37,16 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 
 	if !h.requireProjectOwner(c, req.ProjectID) {
 		return
+	}
+
+	// 设定类容器（大纲/人物/世界观/主线/章节大纲）每书一份——弱网重试/重复点「初始化默认结构」时
+	// 幂等返回已有文档，不再重复建（Boss 2026-10-30 报的 bug：树初始化弱网多次执行）
+	if settingSingletonTypes[req.Type] {
+		var existing model.Document
+		if err := h.db.Where("project_id = ? AND type = ? AND status = 1", req.ProjectID, req.Type).First(&existing).Error; err == nil {
+			c.JSON(http.StatusOK, gin.H{"data": existing})
+			return
+		}
 	}
 
 	doc := model.Document{

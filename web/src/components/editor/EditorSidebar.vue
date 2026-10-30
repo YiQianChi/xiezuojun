@@ -53,7 +53,7 @@
       <div v-if="loadingDocs" class="tree-loading">加载中...</div>
       <div v-else-if="settingRootNodes.length === 0 && articleRootNodes.length === 0" class="tree-empty">
         还没有文档<br>
-        <button @click="$emit('init-default')" class="btn small">初始化默认结构</button>
+        <button :disabled="initBusy" @click="$emit('init-default')" class="btn small">{{ initBusy ? '初始化中…' : '初始化默认结构' }}</button>
       </div>
       <template v-else>
         <!-- Tab：作品相关 -->
@@ -135,6 +135,7 @@ const props = defineProps<{
   projectName?: string
   todayWords?: number
   chapterWords?: number
+  initBusy?: boolean
 }>()
 
 /* 方案B：左栏双 Tab（默认正文） */
