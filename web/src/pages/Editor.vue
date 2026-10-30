@@ -113,13 +113,14 @@
             </div>
           </CharacterCardView>
           <template v-else>
-            <!-- 分离方案：章节顶部虚拟章名头——动态「第N章 标题」，不进正文数据（Boss 拍板 C 破折号样式） -->
-            <div v-if="activeDoc && activeDoc.type === 'chapter' && currentDocDisplayName" class="chapter-virtual-heading">
-              <span class="vh-dash"></span>
-              <span class="vh-title"><span v-if="chapterHeadingParts?.num" class="vh-num">{{ chapterHeadingParts.num }} </span>{{ chapterHeadingParts?.name }}</span>
-              <span class="vh-dash vh-dash-r"></span>
-            </div>
-            <div class="tiptap-container">
+            <div class="tiptap-container" :class="{ 'has-ch-heading': activeDoc && activeDoc.type === 'chapter' }">
+              <!-- 分离方案：章节顶部虚拟章名头——动态「第N章 标题」，不进正文数据（C 破折号样式）。
+                   放在滚动容器内、负 margin 压进纸张顶部：像正文第一行印在纸上、随内容一起滚动 -->
+              <div v-if="activeDoc && activeDoc.type === 'chapter' && currentDocDisplayName" class="chapter-virtual-heading">
+                <span class="vh-dash"></span>
+                <span class="vh-title"><span v-if="chapterHeadingParts?.num" class="vh-num">{{ chapterHeadingParts.num }} </span>{{ chapterHeadingParts?.name }}</span>
+                <span class="vh-dash vh-dash-r"></span>
+              </div>
               <editor-content v-if="editor" :editor="editor" />
             </div>
           </template>
