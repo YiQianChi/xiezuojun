@@ -176,13 +176,6 @@ export const projectApi = {
   },
 }
 
-// 故事线相关
-export const branchApi = {
-  list(projectId: string | number) {
-    return api.get(`/projects/${projectId}/branches`)
-  },
-}
-
 // 项目内搜索
 export const searchApi = {
   documents(projectId: string | number, q: string, limit = 200) {

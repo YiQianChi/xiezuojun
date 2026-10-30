@@ -27,8 +27,6 @@
       <EditorSidebar
         :class="{ 'drawer-open': mobileSidebarOpen }"
         class="doc-tree"
-        :branches="branches"
-        :active-branch-id="activeBranchId"
         :documents="documents"
         :setting-root-nodes="settingRootNodes"
         :article-root-nodes="articleRootNodes"
@@ -38,7 +36,6 @@
         :today-words="todayWords"
         :chapter-words="wordCount"
         :init-busy="inittingDefault"
-        @switch-branch="switchBranch"
         @init-default="initDefaultStructure"
         @select-doc="openDoc"
         @context-menu="openDocContextMenu"
@@ -623,7 +620,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
-import { documentApi, branchApi, projectApi, ttsApi, threadApi } from '../core/api'
+import { documentApi, projectApi, ttsApi, threadApi } from '../core/api'
 import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import SearchPanel from '../components/SearchPanel.vue'
@@ -661,8 +658,6 @@ try { localStorage.setItem('xzj-active-project', String(projectId)) } catch {}
 
 const editor = shallowRef<any>(null)
 const documents = ref<any[]>([])
-const branches = ref<any[]>([])
-const activeBranchId = ref<number | null>(null)
 const activeDocId = ref<number | null>(null)
 const currentDocName = ref('')
 // 当前打开的文档对象（角色卡视图判断用）
@@ -1326,7 +1321,6 @@ onMounted(async () => {
   window.addEventListener('offline', onOnlineStatusChange)
   loadProjectName()
   loadVoices() // E2: 非关键，不 await
-  await loadBranches()
   await loadDocs()
   maybeAskSettingsInit()
   // 打字机视线：底距 + 容器尺寸变化（改窗口/手机键盘弹起）时重算
@@ -1745,34 +1739,11 @@ function oneClickFormat() {
   }
 }
 
-async function loadBranches() {
-  try {
-    const res = await branchApi.list(projectId)
-    branches.value = res.data?.data || res.data || []
-    if (!activeBranchId.value && branches.value.length > 0) {
-      activeBranchId.value = branches.value[0].id
-    }
-  } catch (e) {
-    console.error('加载故事线失败', e)
-    branches.value = []
-  }
-}
-
-async function switchBranch() {
-  compareActive.value = false
-  activeDocId.value = null
-  currentDocName.value = ''
-  wordCount.value = 0
-  saveStatus.value = ''
-  if (editor.value) editor.value.commands.setContent('', { emitUpdate: false })
-  await loadDocs()
-}
-
 async function loadDocs() {
   loadingDocs.value = true
-  const docsCacheKey = `xzj-docs-${projectId}-${activeBranchId.value ?? 'main'}`
+  const docsCacheKey = `xzj-docs-${projectId}`
   try {
-    const res = await documentApi.list(String(projectId), activeBranchId.value)
+    const res = await documentApi.list(String(projectId))
     const fresh = res.data?.data || res.data || []
     // ponytail: 展开状态持久化到 localStorage，按项目独立
     const expandKey = `tree-expand-${projectId}`
@@ -1835,7 +1806,7 @@ async function initDefaultStructure() {
   try {
     let existing: any[] = []
     try {
-      const res = await documentApi.list(String(projectId), activeBranchId.value)
+      const res = await documentApi.list(String(projectId))
       existing = res.data?.data || res.data || []
     } catch { /* 拉不到就当空处理，靠后端幂等兜底 */ }
     const defaults = [
@@ -2037,7 +2008,6 @@ async function createDoc(folderType?: string) {
 
     const res = await documentApi.create({
       project_id: projectId,
-      branch_id: activeBranchId.value || undefined,
       title: newDocName.value.trim(),
       type: actualType,
       parent_id: createDocParent.value || undefined,
@@ -2096,7 +2066,6 @@ async function createSpecialChapter(kind: '楔子' | '番外') {
   try {
     const res = await documentApi.create({
       project_id: projectId,
-      branch_id: activeBranchId.value || undefined,
       title,
       type: 'chapter',
       sort_order: sort,

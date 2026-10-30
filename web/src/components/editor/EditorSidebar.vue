@@ -26,19 +26,6 @@
       </div>
     </div>
 
-    <div class="branch-switcher">
-      <label>故事线</label>
-      <select
-        :value="activeBranchId"
-        @change="$emit('switch-branch', Number(($event.target as HTMLSelectElement).value))"
-        :disabled="branches.length <= 1"
-      >
-        <option v-for="branch in branches" :key="branch.id" :value="branch.id">
-          {{ branch.name }}
-        </option>
-      </select>
-    </div>
-
     <!-- 方案B（2026-10-29）：左栏双 Tab——默认正文，作品相关收进第二 Tab -->
     <div class="side-tabs">
       <div class="side-tab" :class="{ on: sideTab === 'chapters' }" @click="sideTab = 'chapters'">
@@ -125,8 +112,6 @@ import { nextTick, ref } from 'vue'
 import DocTreeNode from '../DocTreeNode.vue'
 
 const props = defineProps<{
-  branches: any[]
-  activeBranchId: number | null
   documents: any[]
   settingRootNodes: any[]
   articleRootNodes: any[]
@@ -171,7 +156,6 @@ function saveGoal() {
 }
 
 defineEmits<{
-  'switch-branch': [id: number]
   'init-default': []
   'select-doc': [node: any]
   'context-menu': [e: MouseEvent, node: any]
@@ -321,30 +305,6 @@ defineEmits<{
   min-height: 0;
   background: var(--bg-secondary);
   flex-shrink: 0;
-}
-
-.branch-switcher {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-primary);
-}
-.branch-switcher label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-.branch-switcher select {
-  flex: 1;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 12px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  outline: none;
 }
 
 .tree-list {
