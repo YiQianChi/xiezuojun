@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterRoutes 注册拼字房路由（authd 组下）
+// RegisterRoutes 注册拼字房路由（authd 组下）；同时启动 Redis 持久化（桌面版/未配置时自动跳过）
 func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/sprint/create", handleCreate)
 	rg.POST("/sprint/join", handleJoin)
@@ -21,6 +21,9 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/sprint/room", handleRoom)
 	rg.GET("/sprint/rooms", handleRooms) // 公开房列表
 	rg.GET("/sprint/events", handleEvents) // SSE 实时推送
+
+	// Redis 房间持久化（显式启动而非包级 init：DESKTOP 开关在 main 里 Setenv，包级 init 拿不到）
+	go initPersistence()
 }
 
 // marshalEvent 组一个 SSE 事件包

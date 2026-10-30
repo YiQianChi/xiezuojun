@@ -10,10 +10,15 @@
 package sprint
 
 import (
+	"context"
+	"encoding/json"
 	"math/rand"
+	"os"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // Player 房间内一个成员
@@ -60,7 +65,95 @@ var (
 	userRoom = map[string]string{} // uid → code
 	subsMu   sync.Mutex
 	subs     = map[string]map[chan []byte]struct{}{} // uid → 订阅者集合
+
+	rdbPersist *redis.Client // 房间快照持久化（nil=纯内存：桌面版/未配 Redis）
+	rctx       = context.Background()
 )
+
+// ---- Redis 持久化：部署/重启不断局 ----
+//   xzj:sprint:room:{code} → Room JSON（TTL 2h 兜底）
+//   xzj:sprint:idx         → SET 房间号索引（启动恢复用）
+// 桌面版（DESKTOP=1）与未配 REDIS_ADDR 时自动退化为纯内存。
+// 注意：不在这里用包级 init()——DESKTOP 开关在 main 里 Setenv，包级 init 拿不到
+//（buddy/vcode 踩过的坑）；由 RegisterRoutes 显式启动。
+
+const (
+	keyRoomPrefix = "xzj:sprint:room:"
+	keyRoomIdx    = "xzj:sprint:idx"
+)
+
+func initPersistence() {
+	if os.Getenv("DESKTOP") == "1" {
+		return // 桌面版：纯内存
+	}
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		return // 未配置 Redis：退化为纯内存
+	}
+	rdbPersist = redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("REDIS_PASSWORD")})
+	restoreFromRedis()
+}
+
+func persistRoom(r *Room) {
+	if rdbPersist == nil {
+		return
+	}
+	if b, err := json.Marshal(r); err == nil {
+		rdbPersist.Set(rctx, keyRoomPrefix+r.Code, b, 2*time.Hour)
+		rdbPersist.SAdd(rctx, keyRoomIdx, r.Code)
+	}
+}
+
+func dropPersist(code string) {
+	if rdbPersist == nil {
+		return
+	}
+	rdbPersist.Del(rctx, keyRoomPrefix+code)
+	rdbPersist.SRem(rctx, keyRoomIdx, code)
+}
+
+// restoreFromRedis 启动恢复：没结算的房间捞回内存；过期房顺手清掉。
+// 恢复时全员 LastBeat 重置为 now——给 40s 心跳宽限，避免重启瞬间被判离线清场。
+func restoreFromRedis() {
+	if rdbPersist == nil {
+		return
+	}
+	codes, err := rdbPersist.SMembers(rctx, keyRoomIdx).Result()
+	if err != nil {
+		return
+	}
+	now := time.Now()
+	for _, code := range codes {
+		b, err := rdbPersist.Get(rctx, keyRoomPrefix+code).Bytes()
+		if err != nil {
+			rdbPersist.SRem(rctx, keyRoomIdx, code)
+			continue
+		}
+		var r Room
+		if json.Unmarshal(b, &r) != nil || len(r.Players) == 0 {
+			dropPersist(code)
+			continue
+		}
+		mu.Lock()
+		if r.State == "finished" && now.Sub(r.FinishedAt) > roomTTL {
+			mu.Unlock(); dropPersist(code); continue
+		}
+		if r.State == "waiting" && now.Sub(r.CreatedAt) > waitingTTL {
+			mu.Unlock(); dropPersist(code); continue
+		}
+		if rooms[code] == nil {
+			for _, p := range r.Players {
+				p.LastBeat = now
+				p.Online = true
+			}
+			rooms[code] = &r
+			for uid := range r.Players {
+				userRoom[uid] = code
+			}
+		}
+		mu.Unlock()
+	}
+}
 
 // ============ SSE（进程内广播） ============
 
@@ -246,6 +339,7 @@ func joinRoom(r *Room, uid, nickname string) {
 	}
 	r.Order = append(r.Order, uid)
 	userRoom[uid] = r.Code
+	persistRoom(r)
 	broadcastRoom(r)
 }
 
@@ -282,7 +376,9 @@ func LeaveLocked(uid string) {
 				delete(userRoom, u)
 			}
 			delete(rooms, code)
+			dropPersist(code)
 		} else {
+			persistRoom(r)
 			broadcastRoom(r)
 		}
 	} else {
@@ -290,6 +386,7 @@ func LeaveLocked(uid string) {
 		if len(onlinePlayers(r)) == 0 {
 			finishIfDue(r)
 		} else {
+			persistRoom(r)
 			broadcastRoom(r)
 		}
 	}
@@ -320,6 +417,7 @@ func Start(uid string) (*Room, string) {
 	for _, p := range r.Players {
 		p.LastBeat = time.Now()
 	}
+	persistRoom(r)
 	broadcastRoom(r)
 	return r, ""
 }
@@ -353,6 +451,7 @@ func Heartbeat(uid string, words int) *RoomView {
 		finishIfDue(r)
 	}
 	if r.State == "running" || r.State == "waiting" {
+		persistRoom(r)
 		broadcastRoom(r) // 心跳驱动榜单广播（约 5s 一拍）
 	}
 	return viewOf(r, uid)
@@ -388,6 +487,7 @@ func finishRoom(r *Room) {
 	}
 	r.State = "finished"
 	r.FinishedAt = time.Now()
+	persistRoom(r)
 	for uid := range r.Players {
 		publish(uid, marshalEvent("finished", viewOf(r, uid)))
 	}
@@ -585,6 +685,7 @@ func init() {
 						delete(userRoom, uid)
 					}
 					delete(rooms, code)
+					dropPersist(code)
 					continue
 				}
 				if r.State == "waiting" && (now.Sub(r.CreatedAt) > waitingTTL || len(onlinePlayers(r)) == 0) {
@@ -592,6 +693,7 @@ func init() {
 						delete(userRoom, uid)
 					}
 					delete(rooms, code)
+					dropPersist(code)
 					continue
 				}
 				if r.State == "running" && len(onlinePlayers(r)) == 0 {
