@@ -41,19 +41,9 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		Icon: req.Icon, Meta: req.Meta,
 	}
 
-	// 章节没带内容时自动给标题头模板：# 第N章 名称（N=同父级章节数+1，与树/顶栏的自动编号一致）
+	// 章节没带内容时给标题头模板：# 纯标题（分离方案 2026-10-30：编号在显示层/导出层算，正文 H1 永不带号）
 	if req.Type == "chapter" && strings.TrimSpace(req.Content) == "" {
-		var siblingCount int64
-		if req.ParentID != nil && *req.ParentID > 0 {
-			h.db.Model(&model.Document{}).
-				Where("project_id = ? AND type = 'chapter' AND status = 1 AND parent_id = ?", req.ProjectID, *req.ParentID).
-				Count(&siblingCount)
-		} else {
-			h.db.Model(&model.Document{}).
-				Where("project_id = ? AND type = 'chapter' AND status = 1 AND parent_id IS NULL", req.ProjectID).
-				Count(&siblingCount)
-		}
-		req.Content = chapterContentTemplate(int(siblingCount)+1, req.Title)
+		req.Content = chapterContentTemplate(req.Title)
 		doc.SearchText = req.Content
 		doc.WordCount = countWords(req.Content)
 	}

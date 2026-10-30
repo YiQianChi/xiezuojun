@@ -47,16 +47,17 @@ func numToChinese(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-// chapterContentTemplate 章节初始内容：# 第N章 名称（N=同父级现有章节数+1，由调用方传）
-// 名字里作者手写的「第X章」前缀先剥掉，防空名时双重编号（如「# 第一章 第一章」）
+// chapterContentTemplate 章节初始内容：# 纯标题（分离方案 2026-10-30：编号只存在于显示层和导出层，
+// 正文 H1 永不带号——插章/改序不需要同步改任何正文）。名字里作者手写的「第X章」前缀先剥掉；
+// 剥完为空则给空内容（顶栏会显示编号标题，正文留白开写）
 var chapterPrefixRe = regexp.MustCompile(`^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]\s*`)
 
-func chapterContentTemplate(ordinal int, title string) string {
+func chapterContentTemplate(title string) string {
 	name := strings.TrimSpace(chapterPrefixRe.ReplaceAllString(title, ""))
 	if name == "" {
-		return fmt.Sprintf("# 第%s章\n\n", numToChinese(ordinal))
+		return ""
 	}
-	return fmt.Sprintf("# 第%s章 %s\n\n", numToChinese(ordinal), name)
+	return fmt.Sprintf("# %s\n\n", name)
 }
 
 func defaultDocContent(docType, title string) string {
@@ -160,12 +161,12 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 		Type:       "chapter",
 		Title:      chapterTitle,
 		SortOrder:  len(settingDefs) + 2,
-		WordCount:  countWords(chapterContentTemplate(1, chapterTitle)),
-		SearchText: chapterContentTemplate(1, chapterTitle),
+		WordCount:  countWords(chapterContentTemplate(chapterTitle)),
+		SearchText: chapterContentTemplate(chapterTitle),
 		Status:     1,
 	}
 	if err := h.db.Create(&chapter).Error; err != nil {
 		return err
 	}
-	return h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, chapter, chapterContentTemplate(1, chapterTitle))
+	return h.saveDocWithMeta(proj.UserID, proj.ID, proj.Name, chapter, chapterContentTemplate(chapterTitle))
 }

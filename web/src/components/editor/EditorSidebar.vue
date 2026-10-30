@@ -5,10 +5,25 @@
     <div class="goal-card">
       <div class="row">
         <span class="k">今日码字</span>
-        <span class="v">{{ todayWords || 0 }}<small> 字</small></span>
+        <span class="v">{{ todayWords || 0 }}<small> / {{ dailyGoal }}</small></span>
       </div>
-      <div class="bar"><i :style="{ width: Math.min(100, (todayWords || 0) / 20) + '%' }"></i></div>
-      <div class="meta"><span>本章 {{ chapterWords || 0 }} 字</span><span>今日刻度 2000 字</span></div>
+      <div class="bar"><i :style="{ width: Math.min(100, ((todayWords || 0) / dailyGoal) * 100) + '%' }"></i></div>
+      <div class="meta">
+        <span>本章 {{ chapterWords || 0 }} 字</span>
+        <span v-if="!goalEditing" class="goal-edit" @click="startGoalEdit" title="点此修改每日目标">🎯 目标 {{ dailyGoal }} 字 ✎</span>
+        <span v-else class="goal-editing">
+          <input
+            ref="goalInputRef"
+            v-model="goalDraft"
+            type="number"
+            min="100"
+            step="100"
+            @keyup.enter="saveGoal"
+            @keyup.escape="goalEditing = false"
+            @blur="saveGoal"
+          />
+        </span>
+      </div>
     </div>
 
     <div class="branch-switcher">
@@ -82,7 +97,14 @@
             @add-child="(folder) => $emit('add-doc-in', folder)"
             @cycle-status="(n) => $emit('cycle-status', n)"
           />
-          <div class="zone-add-link article" @click.stop="$emit('add-article')">＋ 新建卷</div>
+          <div class="zone-add article-wrap">
+            <div class="zone-add-link article" @click.stop="addMenuOpen = !addMenuOpen">＋ 新建 ▾</div>
+            <div v-if="addMenuOpen" class="add-menu" @click.stop>
+              <div @click="$emit('add-volume'); addMenuOpen = false">📚 新建分卷</div>
+              <div @click="$emit('add-prologue'); addMenuOpen = false">🌙 新建楔子<span class="am-sub">插最前 · 不占章节号</span></div>
+              <div @click="$emit('add-extra'); addMenuOpen = false">🎁 新建番外<span class="am-sub">放最后 · 不占章节号</span></div>
+            </div>
+          </div>
         </div>
       </template>
     </div>
@@ -99,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import DocTreeNode from '../DocTreeNode.vue'
 
 const props = defineProps<{
@@ -117,6 +139,35 @@ const props = defineProps<{
 
 /* 方案B：左栏双 Tab（默认正文） */
 const sideTab = ref<'chapters' | 'related'>('chapters')
+const addMenuOpen = ref(false)
+
+/* 每日目标可调：全局 localStorage，默认 2000 */
+const GOAL_KEY = 'xzj-daily-goal'
+const dailyGoal = ref(2000)
+const goalEditing = ref(false)
+const goalDraft = ref('2000')
+const goalInputRef = ref<HTMLInputElement | null>(null)
+
+try {
+  const saved = Number(localStorage.getItem(GOAL_KEY))
+  if (saved >= 100) dailyGoal.value = saved
+} catch { /* ignore */ }
+
+function startGoalEdit() {
+  goalDraft.value = String(dailyGoal.value)
+  goalEditing.value = true
+  nextTick(() => goalInputRef.value?.focus())
+}
+
+function saveGoal() {
+  if (!goalEditing.value) return
+  goalEditing.value = false
+  const n = Math.round(Number(goalDraft.value))
+  if (n >= 100 && n <= 50000 && n !== dailyGoal.value) {
+    dailyGoal.value = n
+    try { localStorage.setItem(GOAL_KEY, String(n)) } catch { /* ignore */ }
+  }
+}
 
 defineEmits<{
   'switch-branch': [id: number]
@@ -126,6 +177,9 @@ defineEmits<{
   'drop-node': [srcId: number, dstId: number, position: 'before' | 'after' | 'inside']
   'add-doc-root': []
   'add-setting': []
+  'add-volume': []
+  'add-prologue': []
+  'add-extra': []
   'add-article': []
   'add-doc-in': [folder: any]
   'cycle-status': [node: any]
@@ -207,6 +261,22 @@ defineEmits<{
   margin-top: 6px;
   font-size: 11px;
   color: #94897a;
+}
+.goal-card .meta .goal-edit {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.goal-card .meta .goal-edit:hover { color: #4d8a5c; }
+.goal-card .meta .goal-editing input {
+  width: 64px;
+  border: 1px solid #8fc59b;
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 1px 5px;
+  outline: none;
+  background: #fff;
+  color: #33302a;
+  text-align: right;
 }
 
 /* ===== 书卡（demo：纸张布局 v1） ===== */
@@ -363,4 +433,32 @@ defineEmits<{
 .article-zone {
   padding-top: 2px;
 }
+
+/* ＋ 新建下拉菜单（对齐炼笔智作：分卷/楔子/番外） */
+.article-wrap { position: relative; }
+.add-menu {
+  position: absolute;
+  right: 6px;
+  bottom: calc(100% + 4px);
+  z-index: 260;
+  min-width: 190px;
+  background: #fffdf8;
+  border: 1px solid #e2d8c2;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(60, 45, 20, 0.16);
+  padding: 5px;
+}
+.add-menu > div {
+  padding: 8px 12px;
+  font-size: 12.5px;
+  border-radius: 7px;
+  cursor: pointer;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.add-menu > div:hover { background: rgba(129, 187, 142, 0.14); color: #4d8a5c; }
+.add-menu .am-sub { font-size: 10px; color: var(--text-tertiary); }
 </style>

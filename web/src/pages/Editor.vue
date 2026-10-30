@@ -44,6 +44,9 @@
         @drop-node="handleDropNode"
         @add-doc-root="createDocAtRoot"
         @add-setting="createSettingAtRoot"
+        @add-volume="createVolumeAtRoot"
+        @add-prologue="createSpecialChapter('楔子')"
+        @add-extra="createSpecialChapter('番外')"
         @add-article="createVolumeAtRoot"
         @add-doc-in="createDocInFolder"
         @cycle-status="handleCycleStatus"
@@ -292,6 +295,8 @@
         <template v-else>
           <div @click="newDocUnder('chapter')">新建章节</div>
           <div @click="newDocUnder('volume')">新建卷</div>
+          <div @click="createSpecialChapter('楔子'); closeDocContextMenu()">新建楔子</div>
+          <div @click="createSpecialChapter('番外'); closeDocContextMenu()">新建番外</div>
         </template>
       </div>
     </div>
@@ -343,6 +348,9 @@
       <button class="status-item speech-btn" :class="{ speaking: dictating }" @click="toggleDictation" :title="dictating ? '停止听写' : '🎙 听写（语音转文字）'">
         {{ dictating ? '⏹' : '🎙' }}
       </button>
+
+      <!-- 手机排版预览（读者视角，正文实时同步） -->
+      <button class="status-item speech-btn" @click="phonePreviewOpen = true" title="📱 手机排版预览（读者视角）">📱</button>
 
       <!-- 显示设置：字号/行距/字距/底部留白 -->
       <DisplaySettings :overrides="displayOverrides" :line-numbers="lineNumbers" @update="onDisplaySetting" @toggle-line-numbers="onToggleLineNumbers" />
@@ -402,6 +410,18 @@
 
     <BuddyWindow :current-word-count="wordCount" :active-doc-id="activeDocId" />
 
+    <!-- 手机排版预览（读者视角） -->
+    <PhonePreview
+      :open="phonePreviewOpen"
+      :title="phonePreviewTitle"
+      :book-name="projectName || '未命名作品'"
+      :text="phonePreviewText"
+      :word-count="wordCount"
+      :chapter-index="currentChapterIndex"
+      :chapter-total="chapterList.length"
+      @close="phonePreviewOpen = false"
+    />
+
     <!-- 工具箱面板：记忆/伏笔/回收站/统计/AI对话（从状态栏触发，弹窗位置统一） -->
     <div v-if="memoryOpen" class="panel-popup memory-popup" @click.stop>
       <div class="panel-head"><span>🧠 记忆</span><button @click="memoryOpen = false">✕</button></div>
@@ -460,6 +480,7 @@
       v-model="showCreateDocModal"
       :doc-type="createDocType"
       :folder-type-options="createDocFolderTypeOptions"
+      :default-name="newDocName"
       @create="onCreateDocConfirm"
     />
 
@@ -599,6 +620,7 @@ import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import SearchPanel from '../components/SearchPanel.vue'
 import PlanView from '../components/PlanView.vue'
+import PhonePreview from '../components/editor/PhonePreview.vue'
 import ReviewView from '../components/ReviewView.vue'
 import EditorHeader from '../components/editor/EditorHeader.vue'
 import EditorSidebar from '../components/editor/EditorSidebar.vue'
@@ -886,6 +908,24 @@ watch(wordCount, () => {
 function guardWordLock(): boolean {
   if (!wordLock.value || lockRemaining.value <= 0) return true
   return window.confirm(`码字锁：还差 ${lockRemaining.value} 字解锁（目标 ${wordLock.value.target} 字）。\n确定要离开吗？`)
+}
+
+/* ═══ 手机排版预览：状态栏📱按钮 → 右侧抽屉，正文实时同步 ═══ */
+const phonePreviewOpen = ref(false)
+const phonePreviewText = ref('')
+let phonePreviewTimer: ReturnType<typeof setTimeout> | null = null
+
+const phonePreviewTitle = computed(() => {
+  if (!activeDoc.value || activeDoc.value.type !== 'chapter') return currentDocName.value || '未命名'
+  return chapterDisplayTitle(activeDoc.value, documents.value) || currentDocName.value || '未命名'
+})
+
+function syncPhonePreview() {
+  if (phonePreviewTimer) clearTimeout(phonePreviewTimer)
+  phonePreviewTimer = setTimeout(() => {
+    if (!editor.value) return
+    phonePreviewText.value = getEditorText(editor.value)
+  }, 500)
 }
 
 /* ═══ B3. 听写：Web Speech API（Chrome） ═══ */
@@ -1311,6 +1351,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('offline', onOnlineStatusChange)
   try { recog?.stop() } catch {}
   if (sensitiveTimer) clearTimeout(sensitiveTimer)
+  if (phonePreviewTimer) clearTimeout(phonePreviewTimer)
   if (editor.value) editor.value.destroy()
   if (saveTimer) clearTimeout(saveTimer)
   currentAudio?.pause()
@@ -1364,6 +1405,7 @@ function initEditor() {
       wordCount.value = countWords(plainText)
       saveStatus.value = '编辑中...'
       rescanSensitive()
+      syncPhonePreview()
       // ponytail: write localStorage draft on every keystroke window so
       // browser crash / tab close in the 1.5s debounce gap doesn't lose data.
       if (activeDocId.value) {
@@ -1511,6 +1553,40 @@ function editorContentFromText(content: string) {
     i++
   }
   return { type: 'doc', content: blocks }
+}
+
+// 分离方案（Boss 2026-10-30）：正文 H1 永不带章号——加载时把老数据写死在正文里的「第N章 」前缀剥掉。
+// 安全闸：剥掉前缀后的剩余文字必须等于章节标题（或为空，纯「第N章」标题头）才动，防误伤正文段落。
+const CONTENT_CHAPTER_PREFIX_RE = /^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]\s*/
+function stripContentChapterHeading(content: string): string {
+  if (!content) return content
+  const s = content.replace(/^\s+/, '')
+  if (s.startsWith('<h1')) {
+    const openEnd = s.indexOf('>')
+    const closeIdx = s.indexOf('</h1>')
+    if (openEnd < 0 || closeIdx < 0) return content
+    const inner = s.slice(openEnd + 1, closeIdx).replace(/<[^>]+>/g, '').trim()
+    const rest = inner.replace(CONTENT_CHAPTER_PREFIX_RE, '').trim()
+    if (rest === inner) return content // 无章号前缀，不动
+    if (!rest) {
+      return s.slice(closeIdx + 5) // 纯「第N章」空标题头 → 删掉（顶栏已有编号标题）
+    }
+    // 剥号保留纯标题 H1（分离方案：H1=标题不带号，而不是没有 H1）
+    return s.slice(0, openEnd + 1) + rest + s.slice(closeIdx)
+  }
+  // 纯文本/markdown：只处理首行
+  const lines = content.split('\n')
+  const md = /^#\s+(.*)$/.exec(lines[0].trim())
+  if (!md) return content
+  const first = md[1].trim()
+  if (!CONTENT_CHAPTER_PREFIX_RE.test(first)) return content
+  const rest = first.replace(CONTENT_CHAPTER_PREFIX_RE, '').trim()
+  if (!rest) {
+    lines.shift()
+    return lines.join('\n')
+  }
+  lines[0] = '# ' + rest
+  return lines.join('\n')
 }
 
 function getEditorText(ed = editor.value) {
@@ -1798,6 +1874,8 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
       const res = await documentApi.get(doc.id)
       const docData = res.data?.data || res.data
       content = (typeof docData?.content === 'string') ? docData.content : ''
+      // 分离方案：章节正文加载时剥掉写死的「第N章」标题头（顶栏已显示编号标题）
+      if (doc.type === 'chapter') content = stripContentChapterHeading(content)
       // ponytail: 缓存章节内容，离线时兜底可读
       try { localStorage.setItem('xzj-doc-content-' + doc.id, content) } catch {}
     } catch {
@@ -1818,6 +1896,7 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
       }
       wordCount.value = countWords(getEditorText())
       rescanSensitive()
+      syncPhonePreview()
       saveStatus.value = fromCache ? '📡 离线读取' : '已保存'
       setTimeout(() => { isSettingContent.value = false }, 100)
 
@@ -1899,10 +1978,10 @@ function discardDraft() {
   draftBanner.value = null
 }
 
-function openCreateDocModal(parentId: number | null = null, type: string = 'chapter') {
+function openCreateDocModal(parentId: number | null = null, type: string = 'chapter', defaultName = '') {
   createDocParent.value = parentId
   createDocType.value = type
-  newDocName.value = ''
+  newDocName.value = defaultName
   showCreateDocModal.value = true
 }
 
@@ -1965,7 +2044,38 @@ function createDocAtRoot() {
 
 // ponytail: 文章区＋号=新建卷（层级：卷→章节；章节走每卷的「+ 在卷下新建章节」）
 function createVolumeAtRoot() {
-  openCreateDocModal(null, 'volume')
+  // 预填「第N卷」（N=现有卷数+1，与竞品一致的自动命名，弹窗里可改）
+  const volCount = documents.value.filter(d => d.type === 'volume').length + 1
+  openCreateDocModal(null, 'volume', `第${numToChinese(volCount)}卷`)
+}
+
+/* 特殊章节：楔子插根级最前 / 番外放根级最后，标题即类型名，不占章节号（编号规则见 chapterTitle.ts） */
+async function createSpecialChapter(kind: '楔子' | '番外') {
+  const rootSiblings = documents.value.filter((d: any) => !d.parent_id)
+  const sort = kind === '楔子'
+    ? rootSiblings.reduce((m: number, d: any) => Math.min(m, d.sort_order || 0), 0) - 1
+    : rootSiblings.reduce((m: number, d: any) => Math.max(m, d.sort_order || 0), 0) + 1
+  // 番外常有多个：第二个起自动接续编号（番外二/番外三…），作者可再改名；楔子保持原名
+  let title: string = kind
+  if (kind === '番外') {
+    const extraCount = documents.value.filter((d: any) => d.type === 'chapter' && /^番外/.test(d.title || '')).length
+    if (extraCount > 0) title = `番外${numToChinese(extraCount + 1)}`
+  }
+  try {
+    const res = await documentApi.create({
+      project_id: projectId,
+      branch_id: activeBranchId.value || undefined,
+      title,
+      type: 'chapter',
+      sort_order: sort,
+    })
+    await loadDocs()
+    const nd = res.data?.data || res.data
+    if (nd) openDoc(nd)
+    toast.success(kind === '楔子' ? '楔子已插入正文最前（不占章节号）' : '番外已放到最后（不占章节号）')
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '创建失败')
+  }
 }
 
 // ponytail: 设定区＋号——根目录建设定（弹窗里选类型：大纲/人物/世界观等）

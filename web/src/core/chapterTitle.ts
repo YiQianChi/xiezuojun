@@ -25,7 +25,8 @@ export function stripChapterPrefix(title: string): string {
   return String(title || '').replace(CHAPTER_PREFIX_RE, '').trim()
 }
 
-/** 章节在同级（同卷/同父级）中的序号，从 1 开始；找不到返回 0。序章/番外类不占序号位 */
+/** 章节序号 = 同父级（卷内）独立编号（Boss 2026-10-30 分离方案定稿：编号只是显示标签，
+ *  正文 H1 永不带号，导出时按卷统一编号——插章只影响本卷，其他卷一个字不动）。序章/番外类不占号位。 */
 export function chapterOrdinal(doc: any, allDocs: any[]): number {
   const siblings = allDocs
     .filter((d: any) => d.type === 'chapter'

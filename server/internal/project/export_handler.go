@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +16,8 @@ import (
 )
 
 // exportChapterTitle 导出章节名带序号（与前端 chapterDisplayTitle 口径一致）：
-// chapter 按全书顺序编「第N章 标题」；标题已带 第X章 前缀或属 序章/楔子/番外/尾声/终章/引子 则原样保留。
+// chapter 按卷内顺序编「第N章 标题」（每卷重起，Boss 2026-10-30 分离方案定稿）；
+// 标题已带 第X章 前缀或属 序章/楔子/番外/尾声/终章/引子 则原样保留。
 var exportSpecialTitleRe = regexp.MustCompile(`^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]|^(序章|楔子|番外|尾声|终章|引子)`)
 
 func exportChapterTitle(ordinal int, title string) string {
@@ -24,6 +26,53 @@ func exportChapterTitle(ordinal int, title string) string {
 		return t
 	}
 	return fmt.Sprintf("第%s章 %s", numToChinese(ordinal), t)
+}
+
+// stripChapterHeadingForExport 正文开头若带着老模板写死进正文的「第N章 标题」标题头（HTML h1 或 md # 行），
+// 导出时删掉，防止与导出标题行重复编号。安全闸：剥掉章号前缀后的剩余文字必须等于章节标题（或为空）才动，
+// 防误伤以「第X章」开头的正文段落。正文源数据不改，只影响导出产物。
+func stripChapterHeadingForExport(content, title string) string {
+	if content == "" {
+		return content
+	}
+	s := strings.TrimLeft(content, " 	\r\n")
+	bareTitle := strings.TrimSpace(chapterPrefixRe.ReplaceAllString(strings.TrimSpace(title), ""))
+	trimTitle := strings.TrimSpace(title)
+	stripPrefix := func(t string) string {
+		return strings.TrimSpace(chapterPrefixRe.ReplaceAllString(t, ""))
+	}
+	if strings.HasPrefix(s, "<h1") {
+		openEnd := strings.Index(s, ">")
+		closeIdx := strings.Index(s, "</h1>")
+		if openEnd < 0 || closeIdx < 0 {
+			return content
+		}
+		inner := strings.TrimSpace(htmlTagRe.ReplaceAllString(s[openEnd+1:closeIdx], ""))
+		normalized := stripPrefix(inner)
+		if normalized == inner && inner != bareTitle && inner != trimTitle {
+			return content // 无章号前缀且不是标题文字 → 正文内容，不动
+		}
+		if normalized == "" || normalized == bareTitle || normalized == trimTitle {
+			return s[closeIdx+5:] // 「第N章 标题」/「第N章」/「标题」标题头 → 删掉（导出已有标题行）
+		}
+		return content // h1 写的是别的文字，尊重原文
+	}
+	// markdown 标题行：# 第N章 标题 / # 标题
+	lines := strings.Split(content, "\n")
+	first := strings.TrimSpace(lines[0])
+	if !strings.HasPrefix(first, "#") {
+		return content
+	}
+	first = strings.TrimSpace(strings.TrimLeft(first, "#"))
+	normalized := stripPrefix(first)
+	if normalized == first && first != bareTitle && first != trimTitle {
+		return content
+	}
+	if normalized == "" || normalized == bareTitle || normalized == trimTitle {
+		lines = lines[1:]
+		return strings.Join(lines, "\n")
+	}
+	return content
 }
 
 // ExportEPUB 导出 EPUB 电子书
@@ -46,12 +95,16 @@ func (h *Handler) ExportEPUB(c *gin.Context) {
 	chOrdinal := 0
 	for _, dc := range docs {
 		if dc["type"] == "volume" {
+			chOrdinal = 0 // 卷内独立编号：进新卷重起（Boss 2026-10-30 分离方案）
 			chapters = append(chapters, exportChapter{Title: getString(dc, "title"), Content: getString(dc, "content")})
 		} else if dc["type"] == "chapter" {
-			chOrdinal++
+			// 特判章节（楔子/番外…）不占号位，与前端卷内口径一致
+			if !exportSpecialTitleRe.MatchString(strings.TrimSpace(getString(dc, "title"))) {
+				chOrdinal++
+			}
 			chapters = append(chapters, exportChapter{
 				Title:   exportChapterTitle(chOrdinal, getString(dc, "title")),
-				Content: getString(dc, "content"),
+				Content: stripChapterHeadingForExport(getString(dc, "content"), getString(dc, "title")),
 			})
 		}
 	}
@@ -169,12 +222,16 @@ func (h *Handler) ExportDOCX(c *gin.Context) {
 	chOrdinal := 0
 	for _, dc := range docs {
 		if dc["type"] == "volume" {
+			chOrdinal = 0 // 卷内独立编号：进新卷重起（Boss 2026-10-30 分离方案）
 			chapters = append(chapters, exportChapter{Title: getString(dc, "title"), Content: getString(dc, "content")})
 		} else if dc["type"] == "chapter" {
-			chOrdinal++
+			// 特判章节（楔子/番外…）不占号位，与前端卷内口径一致
+			if !exportSpecialTitleRe.MatchString(strings.TrimSpace(getString(dc, "title"))) {
+				chOrdinal++
+			}
 			chapters = append(chapters, exportChapter{
 				Title:   exportChapterTitle(chOrdinal, getString(dc, "title")),
-				Content: getString(dc, "content"),
+				Content: stripChapterHeadingForExport(getString(dc, "content"), getString(dc, "title")),
 			})
 		}
 	}
@@ -242,8 +299,11 @@ func (h *Handler) collectExportDocs(c *gin.Context, projectID uint) ([]map[strin
 	}
 	var docs []model.Document
 	h.db.Where("project_id = ? AND status = 1", projectID).Order("sort_order, id").Find(&docs)
+	// 树深度优先摊平（根级按 sort_order 交错卷/散章，卷内按各自 sort_order）——
+	// 卷和章节的 sort_order 是两套父级序列，全表混排顺序会碰运气（Boss 2026-10-30 修）
+	ordered := flattenDocTree(docs)
 	docContents := make([]map[string]interface{}, 0)
-	for _, doc := range docs {
+	for _, doc := range ordered {
 		content, _ := h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID)
 		if content == "" && doc.ParentID != nil && *doc.ParentID > 0 {
 			content, _ = h.ds.loadDocContent(proj.UserID, proj.ID, proj.Name, doc.ID, *doc.ParentID)
@@ -255,6 +315,41 @@ func (h *Handler) collectExportDocs(c *gin.Context, projectID uint) ([]map[strin
 		})
 	}
 	return docContents, proj, true
+}
+
+// flattenDocTree 文档树深度优先摊平：根级节点按 sort_order/id 排，进入文件夹后子级按各自 sort_order/id
+func flattenDocTree(docs []model.Document) []model.Document {
+	childrenOf := make(map[int][]model.Document)
+	var roots []model.Document
+	for _, d := range docs {
+		if d.ParentID != nil && *d.ParentID > 0 {
+			childrenOf[int(*d.ParentID)] = append(childrenOf[int(*d.ParentID)], d)
+		} else {
+			roots = append(roots, d)
+		}
+	}
+	bySort := func(list []model.Document) []model.Document {
+		out := append([]model.Document(nil), list...)
+		sort.SliceStable(out, func(i, j int) bool {
+			if out[i].SortOrder != out[j].SortOrder {
+				return out[i].SortOrder < out[j].SortOrder
+			}
+			return out[i].ID < out[j].ID
+		})
+		return out
+	}
+	var walk func(list []model.Document) []model.Document
+	walk = func(list []model.Document) []model.Document {
+		result := make([]model.Document, 0, len(list))
+		for _, d := range bySort(list) {
+			result = append(result, d)
+			if kids, ok := childrenOf[int(d.ID)]; ok {
+				result = append(result, walk(kids)...)
+			}
+		}
+		return result
+	}
+	return walk(roots)
 }
 
 // ExportTXT 导出纯文本
@@ -275,13 +370,18 @@ func (h *Handler) ExportTXT(c *gin.Context) {
 			continue
 		}
 		title := getString(dc, "title")
+		if dc["type"] == "volume" {
+			txtOrdinal = 0 // 卷内独立编号：进新卷重起（Boss 2026-10-30 分离方案）
+		}
 		if dc["type"] == "chapter" {
-			txtOrdinal++
+			if !exportSpecialTitleRe.MatchString(strings.TrimSpace(title)) {
+				txtOrdinal++
+			}
 			title = exportChapterTitle(txtOrdinal, title)
 		}
 		buf.WriteString(title + "\n")
 		buf.WriteString(strings.Repeat("─", 20) + "\n")
-		buf.WriteString(stripMarkdown(getString(dc, "content")) + "\n\n")
+		buf.WriteString(stripMarkdown(stripChapterHeadingForExport(getString(dc, "content"), getString(dc, "title"))) + "\n\n")
 	}
 	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.txt"`, sanitizeFilename(proj.Name)))
@@ -378,7 +478,9 @@ func stripHTMLTags(s string) string {
 	if !strings.Contains(s, "<") {
 		return s
 	}
-	s = strings.ReplaceAll(s, "</p>", "\n")
+	for _, tag := range []string{"</p>", "</h1>", "</h2>", "</h3>", "</div>", "</blockquote>", "</li>"} {
+		s = strings.ReplaceAll(s, tag, "\n")
+	}
 	s = strings.ReplaceAll(s, "<br>", "\n")
 	s = strings.ReplaceAll(s, "<br/>", "\n")
 	s = strings.ReplaceAll(s, "<br />", "\n")

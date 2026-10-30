@@ -36,6 +36,7 @@ const props = defineProps<{
   modelValue: boolean
   docType: string
   folderTypeOptions?: { value: string; label: string }[]
+  defaultName?: string
 }>()
 
 const emit = defineEmits<{
@@ -64,7 +65,7 @@ watch(() => props.folderTypeOptions, (opts) => {
 // 打开时清空
 watch(() => props.modelValue, (v) => {
   if (v) {
-    name.value = ''
+    name.value = props.defaultName || ''
     if (props.folderTypeOptions?.length) selectedFolderType.value = props.folderTypeOptions[0].value
     else selectedFolderType.value = '' // ponytail: 必须清空，否则上次建文件夹残留的值会覆盖 chapter 类型
   }
