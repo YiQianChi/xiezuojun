@@ -16,9 +16,12 @@ import (
 )
 
 // exportChapterTitle 导出章节名带序号（与前端 chapterDisplayTitle 口径一致）：
-// chapter 按卷内顺序编「第N章 标题」（每卷重起，Boss 2026-10-30 分离方案定稿）；
+// chapter 按全书摊平顺序连续编「第N章 标题」（第一卷 1-4、第二卷续 5-8，Boss 2026-10-30 终版）；
 // 标题已带 第X章 前缀或属 序章/楔子/番外/尾声/终章/引子 则原样保留。
 var exportSpecialTitleRe = regexp.MustCompile(`^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]|^(序章|楔子|番外|尾声|终章|引子)`)
+
+// 只用于「不占章节号」判定（序章/楔子/番外类）；标题自带「第X章」前缀的仍占号——与前端摊平口径一致
+var exportNoCountTitleRe = regexp.MustCompile(`^(序章|序|楔子|引子|尾声|终章|番外)`)
 
 func exportChapterTitle(ordinal int, title string) string {
 	t := strings.TrimSpace(title)
@@ -96,11 +99,10 @@ func (h *Handler) ExportEPUB(c *gin.Context) {
 	chOrdinal := 0
 	for _, dc := range docs {
 		if dc["type"] == "volume" {
-			chOrdinal = 0 // 卷内独立编号：进新卷重起（Boss 2026-10-30 分离方案）
 			chapters = append(chapters, exportChapter{Title: getString(dc, "title"), Content: getString(dc, "content")})
 		} else if dc["type"] == "chapter" {
 			// 特判章节（楔子/番外…）不占号位，与前端卷内口径一致
-			if !exportSpecialTitleRe.MatchString(strings.TrimSpace(getString(dc, "title"))) {
+			if !exportNoCountTitleRe.MatchString(strings.TrimSpace(getString(dc, "title"))) {
 				chOrdinal++
 			}
 			chapters = append(chapters, exportChapter{
@@ -223,11 +225,10 @@ func (h *Handler) ExportDOCX(c *gin.Context) {
 	chOrdinal := 0
 	for _, dc := range docs {
 		if dc["type"] == "volume" {
-			chOrdinal = 0 // 卷内独立编号：进新卷重起（Boss 2026-10-30 分离方案）
 			chapters = append(chapters, exportChapter{Title: getString(dc, "title"), Content: getString(dc, "content")})
 		} else if dc["type"] == "chapter" {
 			// 特判章节（楔子/番外…）不占号位，与前端卷内口径一致
-			if !exportSpecialTitleRe.MatchString(strings.TrimSpace(getString(dc, "title"))) {
+			if !exportNoCountTitleRe.MatchString(strings.TrimSpace(getString(dc, "title"))) {
 				chOrdinal++
 			}
 			chapters = append(chapters, exportChapter{
@@ -371,11 +372,8 @@ func (h *Handler) ExportTXT(c *gin.Context) {
 			continue
 		}
 		title := getString(dc, "title")
-		if dc["type"] == "volume" {
-			txtOrdinal = 0 // 卷内独立编号：进新卷重起（Boss 2026-10-30 分离方案）
-		}
 		if dc["type"] == "chapter" {
-			if !exportSpecialTitleRe.MatchString(strings.TrimSpace(title)) {
+			if !exportNoCountTitleRe.MatchString(strings.TrimSpace(title)) {
 				txtOrdinal++
 			}
 			title = exportChapterTitle(txtOrdinal, title)

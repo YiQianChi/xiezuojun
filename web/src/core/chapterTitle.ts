@@ -25,15 +25,31 @@ export function stripChapterPrefix(title: string): string {
   return String(title || '').replace(CHAPTER_PREFIX_RE, '').trim()
 }
 
-/** 章节序号 = 同父级（卷内）独立编号（Boss 2026-10-30 分离方案定稿：编号只是显示标签，
- *  正文 H1 永不带号，导出时按卷统一编号——插章只影响本卷，其他卷一个字不动）。序章/番外类不占号位。 */
+/** 全书章节摊平序（卷顺序→卷内顺序，根级散章按根序与卷交错）——编号与导出共用这一份顺序 */
+export function flattenChapterOrder(allDocs: any[]): any[] {
+  const chapters = allDocs.filter((d: any) => d.type === 'chapter')
+  const bySort = (a: any, b: any) => ((a.sort_order || 0) - (b.sort_order || 0)) || ((a.id || 0) - (b.id || 0))
+  const rootChapters = chapters.filter((d: any) => !d.parent_id)
+  const volumes = allDocs.filter((d: any) => d.type === 'volume' && !d.parent_id).sort(bySort)
+  const rootSeq = [...rootChapters, ...volumes].sort(bySort)
+  const out: any[] = []
+  for (const n of rootSeq) {
+    if (n.type === 'volume') {
+      out.push(...chapters.filter((d: any) => d.parent_id === n.id).sort(bySort))
+    } else {
+      out.push(n)
+    }
+  }
+  // 特判章节（楔子/番外…）不占号位
+  return out.filter((d: any) => !NO_NUMBER_RE.test(String(d.title || '').trim()))
+}
+
+/** 章节序号 = 全书连续编号（Boss 2026-10-30 终版：第一卷 1-4 章、第二卷续 5-8 章。
+ *  分离方案落地后编号是纯显示层——正文/导出永不含号，连续编号零数据风险；插章后全书标签顺延是预期行为）。
+ *  序章/番外类不占号位。 */
 export function chapterOrdinal(doc: any, allDocs: any[]): number {
-  const siblings = allDocs
-    .filter((d: any) => d.type === 'chapter'
-      && (d.parent_id || null) === (doc.parent_id || null)
-      && !NO_NUMBER_RE.test(String(d.title || '').trim()))
-    .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
-  return siblings.findIndex((d: any) => d.id === doc.id) + 1
+  const flat = flattenChapterOrder(allDocs)
+  return flat.findIndex((d: any) => d.id === doc.id) + 1
 }
 
 /** 章节显示标题：「第一章 雨夜」；序章/番外类保持原名 */
