@@ -31,6 +31,7 @@ func exportChapterTitle(ordinal int, title string) string {
 // stripChapterHeadingForExport 正文开头若带着老模板写死进正文的「第N章 标题」标题头（HTML h1 或 md # 行），
 // 导出时删掉，防止与导出标题行重复编号。安全闸：剥掉章号前缀后的剩余文字必须等于章节标题（或为空）才动，
 // 防误伤以「第X章」开头的正文段落。正文源数据不改，只影响导出产物。
+var chapterPrefixRe = regexp.MustCompile(`^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]\s*`)
 func stripChapterHeadingForExport(content, title string) string {
 	if content == "" {
 		return content

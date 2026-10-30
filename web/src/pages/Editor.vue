@@ -113,6 +113,8 @@
             </div>
           </CharacterCardView>
           <template v-else>
+            <!-- 分离方案：章节顶部虚拟章名头——动态「第N章 标题」，不进正文数据 -->
+            <div v-if="activeDoc && activeDoc.type === 'chapter' && currentDocDisplayName" class="chapter-virtual-heading">{{ currentDocDisplayName }}</div>
             <div class="tiptap-container">
               <editor-content v-if="editor" :editor="editor" />
             </div>
@@ -1555,38 +1557,37 @@ function editorContentFromText(content: string) {
   return { type: 'doc', content: blocks }
 }
 
-// 分离方案（Boss 2026-10-30）：正文 H1 永不带章号——加载时把老数据写死在正文里的「第N章 」前缀剥掉。
-// 安全闸：剥掉前缀后的剩余文字必须等于章节标题（或为空，纯「第N章」标题头）才动，防误伤正文段落。
+// 分离方案（Boss 2026-10-30）：章节正文不存标题头——顶部的「第N章 标题」是渲染层虚拟头（动态算号）。
+// 加载时把存量正文里的标题头删掉：带号/无号都处理，且剥号/剥头后的文字必须等于章节标题（或为空）才动，
+// 作者自写的其他文字（≠标题的 H1）原样保留。保存时渐进迁移，存量数据无需脚本清洗。
 const CONTENT_CHAPTER_PREFIX_RE = /^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]\s*/
-function stripContentChapterHeading(content: string): string {
+function stripContentChapterHeading(content: string, title: string): string {
   if (!content) return content
+  const bareTitle = stripChapterPrefix(String(title || ''))
+  const trimTitle = String(title || '').trim()
+  const drop = (text: string): string | null => {
+    const normalized = text.replace(CONTENT_CHAPTER_PREFIX_RE, '').trim()
+    if (normalized === text && text !== bareTitle && text !== trimTitle) return null // 无号且不是标题 → 作者自己的文字
+    if (!normalized || normalized === bareTitle || normalized === trimTitle) return '' // 标题头 → 删
+    return null // 带号但内容≠标题（作者自拟章名头）→ 保留
+  }
   const s = content.replace(/^\s+/, '')
   if (s.startsWith('<h1')) {
     const openEnd = s.indexOf('>')
     const closeIdx = s.indexOf('</h1>')
     if (openEnd < 0 || closeIdx < 0) return content
     const inner = s.slice(openEnd + 1, closeIdx).replace(/<[^>]+>/g, '').trim()
-    const rest = inner.replace(CONTENT_CHAPTER_PREFIX_RE, '').trim()
-    if (rest === inner) return content // 无章号前缀，不动
-    if (!rest) {
-      return s.slice(closeIdx + 5) // 纯「第N章」空标题头 → 删掉（顶栏已有编号标题）
-    }
-    // 剥号保留纯标题 H1（分离方案：H1=标题不带号，而不是没有 H1）
-    return s.slice(0, openEnd + 1) + rest + s.slice(closeIdx)
+    if (drop(inner) === '') return s.slice(closeIdx + 5)
+    return content
   }
-  // 纯文本/markdown：只处理首行
   const lines = content.split('\n')
   const md = /^#\s+(.*)$/.exec(lines[0].trim())
   if (!md) return content
-  const first = md[1].trim()
-  if (!CONTENT_CHAPTER_PREFIX_RE.test(first)) return content
-  const rest = first.replace(CONTENT_CHAPTER_PREFIX_RE, '').trim()
-  if (!rest) {
+  if (drop(md[1].trim()) === '') {
     lines.shift()
     return lines.join('\n')
   }
-  lines[0] = '# ' + rest
-  return lines.join('\n')
+  return content
 }
 
 function getEditorText(ed = editor.value) {
@@ -1874,8 +1875,8 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
       const res = await documentApi.get(doc.id)
       const docData = res.data?.data || res.data
       content = (typeof docData?.content === 'string') ? docData.content : ''
-      // 分离方案：章节正文加载时剥掉写死的「第N章」标题头（顶栏已显示编号标题）
-      if (doc.type === 'chapter') content = stripContentChapterHeading(content)
+      // 分离方案：章节正文不存标题头（顶部虚拟头动态显示「第N章 标题」），存量标题头加载时删掉
+      if (doc.type === 'chapter') content = stripContentChapterHeading(content, doc.title)
       // ponytail: 缓存章节内容，离线时兜底可读
       try { localStorage.setItem('xzj-doc-content-' + doc.id, content) } catch {}
     } catch {

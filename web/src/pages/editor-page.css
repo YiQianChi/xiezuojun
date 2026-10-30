@@ -169,6 +169,25 @@
 
 /* ponytail-mobile: 移动端布局（A 方案：抽屉侧栏）+ 专注模式沉浸增强（C 方案） */
 @media (max-width: 768px) {
+  /* 分离方案：移动端虚拟章名头（桌面纸皮肤版在文件末尾的桌面块） */
+  .editor-page .chapter-virtual-heading {
+    text-align: center;
+    letter-spacing: 1px;
+    margin: 0.2em 0 0.9em;
+    font-size: 1.35em;
+    font-weight: 700;
+    user-select: none;
+  }
+  .editor-page .chapter-virtual-heading::after {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 3px;
+    margin: 10px auto 0;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #8fc59b, #6aa877);
+  }
+
   .doc-tree {
     position: fixed;
     top: 0;
@@ -1821,6 +1840,26 @@
     margin: 0.2em 0 1.1em;
   }
   .editor-page .tiptap-container :deep(.ProseMirror) > h1:first-child::after {
+    content: '';
+    display: block;
+    width: 44px;
+    height: 3px;
+    margin: 14px auto 0;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #8fc59b, #6aa877);
+  }
+
+  /* 分离方案：章节顶部虚拟章名头——动态「第N章 标题」，样式与纸内首个 H1 同款（居中+绿装饰线） */
+  .editor-page .chapter-virtual-heading {
+    text-align: center;
+    letter-spacing: 2px;
+    margin: 0.2em 0 1.1em;
+    font-size: 1.65em;
+    font-weight: 700;
+    color: var(--ink, #33302a);
+    user-select: none;
+  }
+  .editor-page .chapter-virtual-heading::after {
     content: '';
     display: block;
     width: 44px;

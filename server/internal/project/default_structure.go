@@ -2,7 +2,6 @@ package project
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"xiezuojun-server/internal/model"
@@ -47,17 +46,10 @@ func numToChinese(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-// chapterContentTemplate 章节初始内容：# 纯标题（分离方案 2026-10-30：编号只存在于显示层和导出层，
-// 正文 H1 永不带号——插章/改序不需要同步改任何正文）。名字里作者手写的「第X章」前缀先剥掉；
-// 剥完为空则给空内容（顶栏会显示编号标题，正文留白开写）
-var chapterPrefixRe = regexp.MustCompile(`^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]\s*`)
-
-func chapterContentTemplate(title string) string {
-	name := strings.TrimSpace(chapterPrefixRe.ReplaceAllString(title, ""))
-	if name == "" {
-		return ""
-	}
-	return fmt.Sprintf("# %s\n\n", name)
+// chapterContentTemplate 章节初始内容：空（分离方案 2026-10-30：章节顶部章名头是前端虚拟头动态渲染，
+// 「第N章 标题」不进正文数据——插章/改序不需要同步改任何正文，作者打开直接开写）
+func chapterContentTemplate(_ string) string {
+	return ""
 }
 
 func defaultDocContent(docType, title string) string {
