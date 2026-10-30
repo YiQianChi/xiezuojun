@@ -1862,13 +1862,17 @@
   }
 
   /* 分离方案：章节顶部虚拟章名头（Boss 拍板 C 破折号样式）——两侧渐隐线 + 绿色章号。
-     负 margin 把头压进纸张卡顶部 52px 内边距区，视觉上"印在纸上"（纸=ProseMirror 卡，头是其兄弟节点） */
+     负 margin 把头压进纸张卡顶部内边距区；sticky 让它钉在可视区顶部不随滚动走（Boss 2026-10-30：
+     滚正文时章名常驻），纸色底+光晕盖住底下滚过的文字 */
   .editor-page .chapter-virtual-heading {
-    position: relative;
+    position: sticky;
+    top: 6px;
     z-index: 2;
     pointer-events: none;
     max-width: 820px;
     margin: 0 auto -70px;
+    background: #fbf7ee;
+    box-shadow: 0 0 0 10px #fbf7ee;
     display: flex;
     align-items: center;
     justify-content: center;
