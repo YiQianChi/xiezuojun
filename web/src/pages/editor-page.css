@@ -1800,6 +1800,10 @@
     box-shadow: 0 2px 14px rgba(96, 74, 40, 0.10);
     color: #33302a;
   }
+  /* 带虚拟章名头的章节：纸面顶留白加高，让章名头落在双线纸边之下、不压线 */
+  .editor-page .chapter-virtual-heading + .tiptap-container > :deep(div .ProseMirror) {
+    padding-top: 66px;
+  }
   /* 行号打开时 gutter 落在纸张左缘外(桌面色上)，数字色加深保可读 */
   .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > p::before,
   .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h1::before,
@@ -1857,13 +1861,19 @@
     background: linear-gradient(90deg, #8fc59b, #6aa877);
   }
 
-  /* 分离方案：章节顶部虚拟章名头（Boss 拍板 C 破折号样式）——两侧渐隐线 + 绿色章号 */
+  /* 分离方案：章节顶部虚拟章名头（Boss 拍板 C 破折号样式）——两侧渐隐线 + 绿色章号。
+     负 margin 把头压进纸张卡顶部 52px 内边距区，视觉上"印在纸上"（纸=ProseMirror 卡，头是其兄弟节点） */
   .editor-page .chapter-virtual-heading {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+    max-width: 820px;
+    margin: 0 auto -70px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 18px;
-    margin: 0.4em 0 1.3em;
+    white-space: nowrap;
     user-select: none;
   }
   .editor-page .chapter-virtual-heading .vh-dash {
@@ -1877,6 +1887,7 @@
   .editor-page .chapter-virtual-heading .vh-title {
     font-size: 21px;
     font-weight: 600;
+    line-height: 30px;
     letter-spacing: 2px;
     color: #4a4438;
   }
