@@ -48,12 +48,13 @@ const name = ref('')
 const selectedFolderType = ref('')
 
 // 术语统一：标题/占位符按创建目标动态生成，全书只叫「卷/章节/设定/文档」
+// Boss 2026-10-30：占位只要一个居中的名字，不要「如：xxx」示例
 const TITLE_MAP: Record<string, [string, string]> = {
-  chapter: ['新建章节', '章节名，如：雨夜（第几章自动生成）'],
-  volume: ['新建卷', '卷名，如：第一卷'],
+  chapter: ['新建章节', '章节名'],
+  volume: ['新建卷', '卷名'],
   setting: ['新建设定', '设定名称'],
   note: ['新建文档', '文档名'],
-  character: ['新建角色', '角色名，如：李逍遥（身份标签进卡再补）'],
+  character: ['新建角色', '角色名'],
 }
 const dialogTitle = computed(() => TITLE_MAP[props.docType]?.[0] || '新建文档')
 const inputPlaceholder = computed(() => TITLE_MAP[props.docType]?.[1] || '文档名')
@@ -120,6 +121,7 @@ h3 {
   font-size: 14px;
   color: var(--text-primary, #1d1d1f);
   box-sizing: border-box;
+  text-align: center;
 }
 .input:focus {
   border-color: var(--accent, #007aff);
