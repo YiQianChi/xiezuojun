@@ -196,7 +196,9 @@
     color: #6aa877;
   }
 
-  .doc-tree {
+  /* 侧栏抽屉：.doc-tree 已是 EditorSidebar 组件根元素（带子组件自己的 data-v），
+     同特异性会被侧栏自己的 .doc-tree{width:240px} 按注入顺序盖掉——必须 :deep+前缀提权 */
+  .editor-page :deep(.doc-tree) {
     position: fixed;
     top: 0;
     bottom: 0;
@@ -209,7 +211,7 @@
     border-right: none;
     padding-top: env(safe-area-inset-top);
   }
-  .doc-tree.drawer-open {
+  .editor-page :deep(.doc-tree.drawer-open) {
     transform: translateX(0);
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.25);
   }

@@ -1,13 +1,15 @@
 <template>
   <Teleport to="body">
-    <!-- 收起态：小圆钮（拼字进行中也常驻，倒计时直达） -->
-    <button v-if="!visible && (state !== 'idle' || sprint.inRoom)" class="buddy-fab" @click="visible = true" title="结伴写作 / 拼字">
+    <!-- 收起态：小圆钮（桌面=计时/拼字中才显示；手机=常驻入口） -->
+    <button v-if="!visible && (state !== 'idle' || sprint.inRoom || isMobile)" class="buddy-fab" @click="visible = true" title="结伴写作 / 拼字">
       <span class="fab-dot"></span>
-      <span class="fab-time">{{ sprint.running ? sprint.countdownText : displayTime }}</span>
+      <span class="fab-time">{{ sprint.running ? sprint.countdownText : (state !== 'idle' ? displayTime : '搭子') }}</span>
     </button>
 
     <!-- 悬浮窗 -->
     <div v-if="visible" class="buddy-window" :class="{ 'sprint-tab': tab === 'sprint' }" :style="winStyle" @mousedown="onDragStart">
+      <!-- 手机端抽屉抓手条（点按=收起） -->
+      <div class="bw-grabber" @click="visible = false"><span></span></div>
       <!-- 头部跟页签走：陪伴=个人计时器；拼字=房间状态（倒计时/房间名），不再混显 -->
       <div class="bw-head">
         <template v-if="tab === 'buddy'">
@@ -471,7 +473,11 @@ async function sendNudge(n: typeof NUDGES[number]) {
 
 // 窗口拖动
 const winPos = ref({ x: 0, y: 0 })
+// 手机端（≤768px）：浮动窗改底部抽屉——winStyle 置空让 CSS 接管定位；默认收起成 fab
+const isMobile = ref(false)
+function updateMobile() { isMobile.value = window.innerWidth <= 768 }
 const winStyle = computed(() => {
+  if (isMobile.value) return {}
   if (winPos.value.x === 0 && winPos.value.y === 0) return {}
   return { right: 'auto', bottom: 'auto', left: winPos.value.x + 'px', top: winPos.value.y + 'px' }
 })
@@ -823,6 +829,10 @@ function formatTime(ms: number): string {
 
 onMounted(() => {
   restoreSnapshot()
+  updateMobile()
+  window.addEventListener('resize', updateMobile)
+  // 手机端不默认展开抽屉（盖正文），收起成 fab 常驻入口
+  if (isMobile.value) visible.value = false
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup', onDragEnd)
   // 深度融合：useSprint 的开窗请求（邀请链接/再来一局/专注胶囊）→ 开窗+切拼字页签
@@ -835,6 +845,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   saveSnapshot()
+  window.removeEventListener('resize', updateMobile)
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
   window.removeEventListener('xzj-sprint-focus', onFocusSprint)
@@ -1126,5 +1137,46 @@ onBeforeUnmount(() => {
 .bs-rr-badge.waiting { background: rgba(129,187,142,0.16); color: #5a9668; }
 .bs-rr-count { font-size: 9.5px; color: var(--text-secondary, #666); font-variant-numeric: tabular-nums; }
 .bs-rr-target { font-size: 9px; color: var(--text-tertiary, #999); margin-left: auto; }
+
+
+/* ==================== 手机端（≤768px）：浮动窗 → 底部抽屉 ==================== */
+.bw-grabber { display: none; }
+@media (max-width: 768px) {
+  .buddy-window {
+    left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
+    width: 100% !important; max-width: 100% !important;
+    border-radius: 16px 16px 0 0;
+    max-height: 62dvh; overflow-y: auto;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    user-select: auto;
+  }
+  .buddy-window.sprint-tab { width: 100% !important; }
+  .bw-grabber {
+    display: flex; align-items: center; justify-content: center;
+    padding: 8px 0 2px; cursor: pointer;
+  }
+  .bw-grabber span {
+    width: 38px; height: 4px; border-radius: 2px;
+    background: rgba(0, 0, 0, 0.18);
+  }
+  .bw-head { padding: 6px 14px 2px; }
+  .bw-tabs { padding: 6px 14px 0; }
+  .bw-body { padding: 10px 14px 12px; }
+  .bs-btn { padding: 11px 0; font-size: 13px; }
+  .bs-input { font-size: 16px; } /* 防 iOS 聚焦缩放 */
+  .bs-input.code { font-size: 21px; }
+  .bs-roomrow { padding: 9px 10px; }
+  .buddy-fab {
+    right: 14px;
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    padding: 10px 14px; font-size: 13px;
+  }
+}
+/* pad 端（769-1100px）：浮动窗微加宽，触控目标稍大 */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .buddy-window { width: 248px; }
+  .buddy-window.sprint-tab { width: 282px; }
+  .bs-btn, .bs-opt, .bs-chip { min-height: 34px; }
+}
 
 </style>

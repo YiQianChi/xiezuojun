@@ -84,4 +84,11 @@ function onAgain() {
 .sp-m-name { font-weight: 700; color: #3a352c; flex: 1; }
 .sp-m-rk { width: 24px; text-align: center; font-size: 16px; }
 .sp-m-wc { font-size: 15px; font-weight: 800; color: #3a352c; font-variant-numeric: tabular-nums; }
+
+/* 手机端：结算卡收紧（dvh 防地址栏收缩溢出） */
+@media (max-width: 768px) {
+  .sp-overlay { padding: 12px; }
+  .sp-card { width: 100%; padding: 18px 16px 16px; max-height: 82dvh; }
+  .sp-members { max-height: 46dvh; overflow-y: auto; }
+}
 </style>
