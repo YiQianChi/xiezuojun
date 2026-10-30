@@ -92,7 +92,7 @@ type SettingDocDTO struct {
 // 优先读 documents.search_text；空则回退读文件系统。
 func (h *Handler) LoadSettingDocs(projectID uint) ([]SettingDocDTO, error) {
 	var docs []model.Document
-	settingTypes := []string{"outline", "characters", "worldbuilding", "storyline", "chapter_outline"}
+	settingTypes := []string{"outline", "characters", "worldbuilding", "chapter_outline"}
 	err := h.db.
 		Select("id", "title", "type", "search_text", "sort_order").
 		Where("project_id = ? AND status = 1 AND type IN (?) AND (ai_include IS NULL OR ai_include = ?)", projectID, settingTypes, true).

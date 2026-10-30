@@ -752,7 +752,6 @@ const createDocFolderTypeOptions = computed(() => {
     { value: 'outline', label: '📋 大纲' },
     { value: 'characters', label: '👥 人物' },
     { value: 'worldbuilding', label: '🌍 世界观' },
-    { value: 'storyline', label: '📖 故事主线' },
     { value: 'chapter_outline', label: '📑 章节大纲' },
   ]
 })
@@ -1044,10 +1043,9 @@ const settingsInitOptions = ref([
   { value: 'outline', label: '📋 大纲', checked: true },
   { value: 'characters', label: '👥 人物设定', checked: true },
   { value: 'worldbuilding', label: '🌍 世界观', checked: true },
-  { value: 'storyline', label: '📖 故事主线', checked: true },
   { value: 'chapter_outline', label: '📑 章节大纲', checked: true },
 ])
-const SETTING_INIT_TYPES = ['outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline']
+const SETTING_INIT_TYPES = ['outline', 'characters', 'worldbuilding', 'chapter_outline']
 
 function maybeAskSettingsInit() {
   const skipKey = `xzj-settings-init-asked-${projectId}`
@@ -1844,7 +1842,6 @@ async function initDefaultStructure() {
       { type: 'outline', title: '大纲', sort_order: 1 },
       { type: 'characters', title: '人物设定', sort_order: 2 },
       { type: 'worldbuilding', title: '世界观', sort_order: 3 },
-      { type: 'storyline', title: '故事主线', sort_order: 4 },
       { type: 'chapter_outline', title: '章节大纲', sort_order: 5 },
       { type: 'volume', title: '第一卷', sort_order: 6 },
     ]

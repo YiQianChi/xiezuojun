@@ -12,7 +12,7 @@ import (
 
 // 设定类容器：每本书只允许一份的类型（前端「初始化默认结构」按这份清单建）
 var settingSingletonTypes = map[string]bool{
-	"outline": true, "characters": true, "worldbuilding": true, "storyline": true, "chapter_outline": true,
+	"outline": true, "characters": true, "worldbuilding": true, "chapter_outline": true,
 }
 
 // CreateDocument 创建文档

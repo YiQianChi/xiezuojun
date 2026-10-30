@@ -60,8 +60,6 @@ func defaultDocContent(docType, title string) string {
 		return "# 人物设定\n\n## 主角\n\n\n## 重要配角\n\n\n## 反派\n\n\n## 角色关系\n\n"
 	case "worldbuilding":
 		return "# 世界观\n\n## 时代背景\n\n\n## 地理/势力\n\n\n## 能力体系\n\n\n## 规则与禁忌\n\n"
-	case "storyline":
-		return "# 故事主线\n\n## 主线脉络\n\n\n## 核心矛盾\n\n\n## 关键转折\n\n"
 	case "chapter_outline":
 		return "# 章节大纲\n\n## 卷一\n\n\n## 卷二\n\n"
 	case "chapter":
@@ -85,7 +83,6 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 		{Title: "大纲", Type: "outline", Content: "", ParentID: nil},
 		{Title: "人物设定", Type: "characters", Content: "", ParentID: nil},
 		{Title: "世界观", Type: "worldbuilding", Content: "", ParentID: nil},
-		{Title: "故事主线", Type: "storyline", Content: "", ParentID: nil},
 		{Title: "章节大纲", Type: "chapter_outline", Content: "", ParentID: nil},
 	}
 	var settingDefs []defaultDocX
