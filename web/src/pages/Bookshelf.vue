@@ -83,11 +83,11 @@
         <template v-if="createMode === 'blank'">
           <div class="form-group">
             <label>书籍名称</label>
-            <input v-model="newBookName" placeholder="输入书籍名称" class="input" @keyup.enter="createBook" />
+            <input v-model="newBookName" placeholder="书名" class="input" @keyup.enter="createBook" />
           </div>
           <div class="form-group">
             <label>简介（可选）</label>
-            <input v-model="newBookDesc" placeholder="一句话描述这本书" class="input" />
+            <input v-model="newBookDesc" placeholder="简介（可选）" class="input" />
           </div>
           <div class="modal-actions">
             <button class="btn" @click="closeCreateModal">取消</button>
@@ -175,7 +175,7 @@
           </div>
           <div class="form-group">
             <label>昵称</label>
-            <input v-model="editNickname" class="input" placeholder="设置昵称" />
+            <input v-model="editNickname" class="input" placeholder="昵称" />
           </div>
           <div class="usage-stats" v-if="usage">
             <div class="usage-row">
@@ -779,6 +779,8 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 .confirm-modal-box .confirm-warn { font-size: 13px; color: var(--danger, #ff4d6d); font-weight: 600; margin-bottom: 12px; }
 .confirm-modal-box .confirm-hint { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
 .confirm-modal-box .input { text-align: center; margin-bottom: 4px; }
+/* 弹窗输入统一居中（Boss 2026-10-30） */
+.modal .input { text-align: center; }
 .confirm-modal-box .modal-actions { justify-content: center; }
 
 .form-group {

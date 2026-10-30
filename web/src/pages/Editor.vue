@@ -497,7 +497,7 @@
         <template v-if="settingsInitStep === 1">
           <h3>第一章叫什么？</h3>
           <p class="si-desc">只写章节名就好（如「雨夜」），第几章系统按位置自动排。</p>
-          <input v-model="firstChapterNameInput" class="si-input" placeholder="雨夜" @keyup.enter="settingsInitStep = 2" />
+          <input v-model="firstChapterNameInput" class="si-input" placeholder="章节名" @keyup.enter="settingsInitStep = 2" />
           <div class="si-actions">
             <button class="si-btn" @click="skipSettingsInit">跳过</button>
             <button class="si-btn primary" @click="settingsInitStep = 2">下一步</button>

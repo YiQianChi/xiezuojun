@@ -72,9 +72,9 @@
       <div class="modal" @click.stop>
         <h3>{{ editingNode ? '编辑角色' : '添加角色' }}</h3>
         <label>角色名</label>
-        <input v-model="newNodeName" placeholder="如：张三" @keyup.enter="confirmAddNode">
+        <input v-model="newNodeName" placeholder="姓名" @keyup.enter="confirmAddNode">
         <label>身份</label>
-        <input v-model="newNodeRole" placeholder="如：主角">
+        <input v-model="newNodeRole" placeholder="身份">
         <label>颜色</label>
         <div class="color-grid">
           <button
@@ -150,7 +150,7 @@
           >{{ t.label }}</button>
         </div>
         <label>关系描述</label>
-        <input v-model="newLinkLabel" placeholder="如：两情相悦" class="link-desc-input">
+        <input v-model="newLinkLabel" placeholder="关系描述" class="link-desc-input">
         <div class="modal-actions">
           <button class="btn-cancel" @click="showAddLink = false">取消</button>
           <button class="btn-ok" @click="confirmAddLink">确定</button>
@@ -165,7 +165,7 @@
       <div class="modal" @click.stop>
         <h3>添加关系类型</h3>
         <label>类型名称</label>
-        <input v-model="newTypeLabel" placeholder="如：宿敌">
+        <input v-model="newTypeLabel" placeholder="类型名">
         <label>颜色</label>
         <div class="color-grid">
           <button

@@ -6,7 +6,7 @@
       <input
         v-model="label"
         class="input"
-        placeholder="第一版v1.0"
+        placeholder="版本备注"
         autofocus
         @keyup.enter="confirm"
       />
@@ -95,6 +95,7 @@ h3 {
   font-size: 14px;
   color: var(--text-primary, #1d1d1f);
   box-sizing: border-box;
+  text-align: center;
 }
 .input:focus {
   border-color: var(--accent, #007aff);

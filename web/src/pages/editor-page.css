@@ -1724,6 +1724,7 @@
   color: var(--text-primary);
   background: var(--bg-secondary, #fff);
   box-sizing: border-box;
+  text-align: center;
 }
 .si-input:focus { border-color: var(--accent, #007aff); }
 
