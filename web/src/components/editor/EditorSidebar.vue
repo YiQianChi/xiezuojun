@@ -85,12 +85,7 @@
             @cycle-status="(n) => $emit('cycle-status', n)"
           />
           <div class="zone-add article-wrap">
-            <div class="zone-add-link article" @click.stop="addMenuOpen = !addMenuOpen">＋ 新建 ▾</div>
-            <div v-if="addMenuOpen" class="add-menu" @click.stop>
-              <div @click="$emit('add-volume'); addMenuOpen = false">📚 新建分卷</div>
-              <div @click="$emit('add-prologue'); addMenuOpen = false">🌙 新建楔子<span class="am-sub">插最前 · 不占章节号</span></div>
-              <div @click="$emit('add-extra'); addMenuOpen = false">🎁 新建番外<span class="am-sub">放最后 · 不占章节号</span></div>
-            </div>
+            <div ref="addMenuAnchor" class="zone-add-link article" @click.stop="toggleAddMenu">＋ 新建 ▾</div>
           </div>
         </div>
       </template>
@@ -105,6 +100,15 @@
       </div>
     </div>
   </aside>
+
+  <!-- 新建菜单：Teleport 到 body——原绝对定位弹层长在 .tree-list（overflow 滚动容器）里会被裁剪压住 -->
+  <Teleport to="body">
+    <div v-if="addMenuOpen" class="add-menu teleported" :style="addMenuStyle" @click.stop>
+      <div @click="$emit('add-volume'); addMenuOpen = false">📚 新建分卷</div>
+      <div @click="$emit('add-prologue'); addMenuOpen = false">🌙 新建楔子<span class="am-sub">插最前 · 不占章节号</span></div>
+      <div @click="$emit('add-extra'); addMenuOpen = false">🎁 新建番外<span class="am-sub">放最后 · 不占章节号</span></div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -126,6 +130,26 @@ const props = defineProps<{
 /* 方案B：左栏双 Tab（默认正文） */
 const sideTab = ref<'chapters' | 'related'>('chapters')
 const addMenuOpen = ref(false)
+const addMenuAnchor = ref<HTMLElement | null>(null)
+const addMenuStyle = ref<Record<string, string>>({})
+function toggleAddMenu() {
+  if (addMenuOpen.value) { addMenuOpen.value = false; return }
+  const el = addMenuAnchor.value
+  if (el) {
+    const r = el.getBoundingClientRect()
+    addMenuStyle.value = { left: `${Math.max(8, r.right - 196)}px`, bottom: `${window.innerHeight - r.top + 6}px` }
+  }
+  addMenuOpen.value = true
+}
+// 点别处收起菜单（teleport 到 body 后必须自己管）；capture 阶段要放过触发钮/菜单自身，否则切换会被「先关再开」抵消
+function onDocClickCloseMenu(e: MouseEvent) {
+  const t = e.target as HTMLElement | null
+  if (t?.closest && (t.closest('.add-menu') || t.closest('.zone-add-link'))) return
+  addMenuOpen.value = false
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', onDocClickCloseMenu, { capture: true })
+}
 
 /* 每日目标可调：全局 localStorage，默认 2000 */
 const GOAL_KEY = 'xzj-daily-goal'
@@ -408,6 +432,13 @@ defineEmits<{
   border-radius: 10px;
   box-shadow: 0 8px 28px rgba(60, 45, 20, 0.16);
   padding: 5px;
+}
+/* Teleport 到 body 的版本：视口定位，压过一切滚动容器/层叠上下文 */
+.add-menu.teleported {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  z-index: 900;
 }
 .add-menu > div {
   padding: 8px 12px;
