@@ -1846,7 +1846,7 @@ async function initDefaultStructure() {
       { type: 'worldbuilding', title: '世界观', sort_order: 3 },
       { type: 'storyline', title: '故事主线', sort_order: 4 },
       { type: 'chapter_outline', title: '章节大纲', sort_order: 5 },
-      { type: 'volume', title: '文章', sort_order: 6 },
+      { type: 'volume', title: '第一卷', sort_order: 6 },
     ]
     for (const d of defaults) {
       const dup = existing.some((x: any) => x.type === d.type
