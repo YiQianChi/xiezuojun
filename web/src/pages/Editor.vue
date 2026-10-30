@@ -52,6 +52,22 @@
 
       <!-- 编辑器 -->
       <div class="editor-main" :class="{ 'ai-panel-open': contextPanelOpen }" v-show="mode === 'write'">
+        <!-- 拼字房 HUD（C 形态）：顶部细横幅 + 右缘迷你榜；专注模式降级为胶囊+底部淡字 -->
+        <div v-if="sprint.running && !focusMode" class="sprint-banner">
+          <span class="sb-cd">{{ sprint.countdownText }}</span>
+          <span class="sb-sep"></span>
+          <span class="sb-me">我 第{{ sprint.myRank }}名 · {{ sprint.myWords }} 字</span>
+          <span class="sb-sep"></span>
+          <span class="sb-lead">{{ sprint.leadText }}</span>
+          <button class="sb-btn" @click="sprint.openPanel()">房间 ▸</button>
+        </div>
+        <div v-if="sprint.running && !focusMode && sprint.room" class="sprint-rail">
+          <div v-for="p in sprint.room.players" :key="p.user_id" class="sr-dot" :class="{ me: p.user_id === sprint.room.me, off: !p.online }" :title="p.nickname">
+            <span class="sr-rk">{{ p.rank }}</span>
+            <span class="sr-av">{{ sprint.avatar(p.nickname) }}</span>
+            <span class="sr-wc">{{ p.words }}</span>
+          </div>
+        </div>
         <div v-if="draftBanner && draftBanner.docId === activeDocId" class="draft-banner" style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#fef3cd;border-bottom:1px solid #f0d57a;font-size:14px;color:#856404;">
           <span>📝 检测到未保存的本地草稿，是否恢复？</span>
           <div class="draft-actions" style="display:flex;gap:8px;">
@@ -357,6 +373,8 @@
       <!-- 手机排版预览（读者视角，正文实时同步） -->
       <button class="status-item speech-btn" @click="phonePreviewOpen = true" title="📱 手机排版预览（读者视角）">📱</button>
 
+      <!-- 拼字房入口已深度融合进搭子悬浮窗「拼字」页签（状态栏不再单列） -->
+
       <!-- 显示设置：字号/行距/字距/底部留白 -->
       <DisplaySettings :overrides="displayOverrides" :line-numbers="lineNumbers" @update="onDisplaySetting" @toggle-line-numbers="onToggleLineNumbers" />
 
@@ -414,6 +432,11 @@
     </div>
 
     <BuddyWindow :current-word-count="wordCount" :active-doc-id="activeDocId" />
+    <SprintPanel />
+
+    <!-- 拼字房专注模式降级：右上倒计时胶囊（贴退出胶囊）+ 底部一行淡字 -->
+    <div v-if="sprint.running && focusMode" class="sprint-focus-pill" @click="sprint.openPanel()">🔥 {{ sprint.countdownText }} · 第{{ sprint.myRank }}名</div>
+    <div v-if="sprint.running && focusMode" class="sprint-focus-line">{{ sprint.countdownText }} · 我第 {{ sprint.myRank }} 名 · 本局 +{{ sprint.myWords }} 字 · {{ sprint.leadText }}</div>
 
     <!-- 手机排版预览（读者视角） -->
     <PhonePreview
@@ -639,6 +662,8 @@ import TrashPanel from '../components/editor/TrashPanel.vue'
 import StoryboardView from '../components/editor/StoryboardView.vue'
 import WritingStatsPanel from '../components/editor/WritingStatsPanel.vue'
 import BuddyWindow from '../components/editor/BuddyWindow.vue'
+import SprintPanel from '../components/editor/SprintPanel.vue'
+import { useSprint } from '../composables/useSprint'
 import CharacterCardView from '../components/editor/CharacterCardView.vue'
 import DisplaySettings from '../components/editor/DisplaySettings.vue'
 import CreateDocModal from '../components/editor/CreateDocModal.vue'
@@ -679,6 +704,9 @@ const chapterHeadingParts = computed(() => {
 const projectName = ref('')
 const loadingDocs = ref(false)
 const wordCount = ref(0)
+// 拼字房（单例 store）：HUD/面板消费；init 绑定 wordCount 并恢复断线房间/邀请链接
+const sprint = useSprint()
+sprint.init(wordCount)
 const saveStatus = ref('')
 const draftBanner = ref<{ docId: number; text: string } | null>(null)
 const isSpeaking = ref(false)

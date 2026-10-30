@@ -352,9 +352,33 @@ export const buddyApi = {
   },
 }
 
+// 拼字房（多人拼字）
+export const sprintApi = {
+  create(data: { nickname?: string; name: string; mode: 'time' | 'words'; target: number; is_public: boolean; password?: string; max_players: number }) {
+    return api.post('/sprint/create', data)
+  },
+  join(data: { nickname?: string; code: string; password?: string }) {
+    return api.post('/sprint/join', data)
+  },
+  quickmatch(nickname?: string) {
+    return api.post('/sprint/quickmatch', { nickname })
+  },
+  leave() {
+    return api.post('/sprint/leave')
+  },
+  start() {
+    return api.post('/sprint/start')
+  },
+  heartbeat(words: number) {
+    return api.post('/sprint/heartbeat', { words })
+  },
+  room() {
+    return api.get('/sprint/room')
+  },
+}
+
 // 后台管理（仅 is_admin 账号可用，服务端校验）
-export const adminApi = {
-  statsOverview() { return api.get('/admin/stats/overview') },
+export const adminApi = {  statsOverview() { return api.get('/admin/stats/overview') },
   statsDaily() { return api.get('/admin/stats/daily') },
   statsAIUsage() { return api.get('/admin/stats/ai-usage') },
   listUsers(params: { q?: string; page?: number }) { return api.get('/admin/users', { params }) },

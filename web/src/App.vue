@@ -25,7 +25,8 @@
   <div class="toast-container">
     <Transition-group name="toast">
       <div v-for="t in toasts" :key="t.id" class="toast-item" :class="t.type">
-        {{ t.message }}
+        <span>{{ t.message }}</span>
+        <button v-if="t.action" class="toast-action" @click="t.action!.onClick(); dismissToast(t.id)">{{ t.action.label }}</button>
       </div>
     </Transition-group>
   </div>
@@ -51,13 +52,14 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { toasts, toast } from './composables/useToast'
+import { useRoute, useRouter } from 'vue-router'
+import { toasts, toast, dismissToast } from './composables/useToast'
 import { usePwaInstall } from './composables/usePwaInstall'
 import OnboardingTour from './components/OnboardingTour.vue'
 import ProfileModal from './components/ProfileModal.vue'
 
 const route = useRoute()
+const router = useRouter()
 const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
 const isLoggedIn = ref(false)
@@ -102,6 +104,16 @@ function refreshLoginState() {
   if (isLoggedIn.value && !was) refreshProfile()
 }
 watch(() => route.fullPath, refreshLoginState)
+
+// 拼字邀请链接落地：/s/8621 重定向成 ?sprint=8621 —— 存本地后进编辑器自动弹「加入房间」
+watch(() => route.query.sprint, (code) => {
+  const c = String(code || '').trim()
+  if (!c) return
+  try { localStorage.setItem('xzj-sprint-invite', c) } catch {}
+  toast.info(`🏁 收到拼字邀请：房间 ${c}——进一本书的编辑器，点底部 🏁 加入`)
+  router.replace({ path: route.path, query: { ...route.query, sprint: undefined } }).catch(() => {})
+}, { immediate: true })
+
 const showQQModal = ref(false)
 const onboardingRef = ref<{ start: () => void; forceStart: () => void } | null>(null)
 const { canInstall, promptInstall } = usePwaInstall()
@@ -250,7 +262,23 @@ onMounted(() => {
   backdrop-filter: blur(20px);
   box-shadow: 0 4px 16px rgba(0,0,0,.15);
   pointer-events: auto;
+  display: flex;
+  align-items: center;
 }
+
+.toast-action {
+  margin-left: 12px;
+  padding: 2px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toast-action:hover { background: rgba(255, 255, 255, 0.3); }
 
 .toast-item.error {
   background: rgba(255,59,48,.92);

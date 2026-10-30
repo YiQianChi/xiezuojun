@@ -26,6 +26,7 @@ import (
 	"xiezuojun-server/internal/middleware"
 	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/project"
+	"xiezuojun-server/internal/sprint"
 	"xiezuojun-server/internal/store"
 	"xiezuojun-server/internal/tts"
 	"xiezuojun-server/internal/user"
@@ -349,6 +350,9 @@ func main() {
 	// 搭子（结伴写作）路由
 	buddy.RegisterRoutes(authd)
 	buddy.SetDB(db) // writing_sessions 落库用（timer 一场结束记录）
+
+	// 拼字房（多人拼字）路由
+	sprint.RegisterRoutes(authd)
 
 	// 后台管理路由（用户管理/看板/内容监管/公告/反馈）
 	adminHandler := admin.NewHandler(db)

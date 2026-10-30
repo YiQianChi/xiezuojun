@@ -32,6 +32,7 @@ import (
 	"xiezuojun-server/internal/ai"
 	"xiezuojun-server/internal/auth"
 	"xiezuojun-server/internal/buddy"
+	"xiezuojun-server/internal/sprint"
 	"xiezuojun-server/internal/gateway"
 	"xiezuojun-server/internal/memory"
 	"xiezuojun-server/internal/middleware"
@@ -247,6 +248,9 @@ func main() {
 
 	buddy.RegisterRoutes(authd)
 	buddy.SetDB(db) // 桌面版同款注入：writing_sessions 落库
+
+	// 拼字房（多人拼字，纯内存无外部依赖，桌面版同样可用）
+	sprint.RegisterRoutes(authd)
 
 	authd.GET("/projects/:id/stats", projectHandler.WritingStats)
 	authd.GET("/projects/:id/threads", projectHandler.ListThreads)

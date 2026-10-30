@@ -1954,3 +1954,75 @@
   border-radius: 6px; padding: 8px 10px; margin-top: 10px; line-height: 1.6;
   max-height: 80px; overflow-y: auto;
 }
+
+/* =====================================================================
+   拼字房 HUD（C 形态，2026-10-30）：拼字中顶部细横幅 + 右缘迷你榜；
+   专注模式自动降级为右上倒计时胶囊 + 底部一行淡字（复用今天+N字锚点风格）。
+   弹窗 UI 在 SprintPanel.vue（自有 scoped 样式）。回滚 = 删除本段。
+   ===================================================================== */
+.editor-page .sprint-banner {
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  height: 42px; padding: 0 16px;
+  background: rgba(251, 247, 238, 0.96); border-bottom: 1px solid #e2d8c2;
+  font-size: 12.5px; font-weight: 700; color: #3a352c;
+}
+.editor-page .sprint-banner .sb-cd {
+  font-size: 15px; font-weight: 800; color: #d97706;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.5px;
+}
+.editor-page .sprint-banner .sb-sep { width: 1px; height: 15px; background: #e2d8c2; }
+.editor-page .sprint-banner .sb-me { color: #5a9668; }
+.editor-page .sprint-banner .sb-lead { color: #7a7263; font-weight: 600; }
+.editor-page .sprint-banner .sb-btn {
+  margin-left: auto; border: none; background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px; padding: 4px 10px; font-size: 11px;
+  color: #7a7263; cursor: pointer; font-weight: 600;
+}
+.editor-page .sprint-banner .sb-btn:hover { background: rgba(129, 187, 142, 0.16); color: #5a9668; }
+
+/* 右缘迷你榜：头像+名次+字数，hover 微探出 */
+.editor-page .sprint-rail {
+  position: absolute; top: 52px; right: 10px; z-index: 30;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.editor-page .sprint-rail .sr-dot {
+  width: 52px; padding: 4px 2px 3px; text-align: center; cursor: default;
+  background: rgba(255, 253, 248, 0.92); border: 1px solid #e6dcc6;
+  border-radius: 10px; transition: transform 0.15s ease;
+}
+.editor-page .sprint-rail .sr-dot:hover { transform: translateX(-3px); }
+.editor-page .sprint-rail .sr-dot.me { border-color: #81bb8e; background: rgba(129, 187, 142, 0.14); }
+.editor-page .sprint-rail .sr-dot.off { opacity: 0.5; }
+.editor-page .sprint-rail .sr-dot .sr-rk { display: block; font-size: 9px; font-weight: 800; color: #a49a86; }
+.editor-page .sprint-rail .sr-dot .sr-av {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; margin: 2px auto; border-radius: 8px;
+  background: linear-gradient(135deg, #7db5f8, #4a9bf5); color: #fff;
+  font-size: 12px; font-weight: 800;
+}
+.editor-page .sprint-rail .sr-dot.me .sr-av { background: linear-gradient(135deg, #8fc59b, #6aa877); }
+.editor-page .sprint-rail .sr-dot .sr-wc {
+  display: block; font-size: 9.5px; font-weight: 800; color: #7a7263;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 专注模式降级：右上倒计时胶囊（贴「退出专注」胶囊）+ 底部一行淡字 */
+.editor-page .sprint-focus-pill {
+  position: fixed; top: 12px; right: 150px; z-index: 999; cursor: pointer;
+  background: #3a352c; color: #fff; border-radius: 99px; padding: 6px 14px;
+  font-size: 12px; font-weight: 700; display: flex; gap: 8px; align-items: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); font-variant-numeric: tabular-nums;
+}
+.editor-page .sprint-focus-line {
+  position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%);
+  font-size: 12px; color: var(--text-tertiary); opacity: 0.62;
+  letter-spacing: 0.05em; pointer-events: none; white-space: nowrap;
+}
+
+/* 手机端：迷你榜太挤不显（榜单看横幅+面板），专注胶囊贴右上不挡正文 */
+@media (max-width: 768px) {
+  .editor-page .sprint-rail { display: none; }
+  .editor-page .sprint-banner { gap: 8px; font-size: 11.5px; }
+  .editor-page .sprint-banner .sb-lead { display: none; }
+  .editor-page .sprint-focus-pill { right: 130px; }
+}

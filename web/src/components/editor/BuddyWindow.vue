@@ -1,29 +1,53 @@
 <template>
   <Teleport to="body">
-    <!-- 收起态：小圆钮 -->
-    <button v-if="!visible && state !== 'idle'" class="buddy-fab" @click="visible = true" title="结伴写作">
+    <!-- 收起态：小圆钮（拼字进行中也常驻，倒计时直达） -->
+    <button v-if="!visible && (state !== 'idle' || sprint.inRoom)" class="buddy-fab" @click="visible = true" title="结伴写作 / 拼字">
       <span class="fab-dot"></span>
-      <span class="fab-time">{{ displayTime }}</span>
+      <span class="fab-time">{{ sprint.running ? sprint.countdownText : displayTime }}</span>
     </button>
 
     <!-- 悬浮窗 -->
-    <div v-if="visible" class="buddy-window" :style="winStyle" @mousedown="onDragStart">
+    <div v-if="visible" class="buddy-window" :class="{ 'sprint-tab': tab === 'sprint' }" :style="winStyle" @mousedown="onDragStart">
+      <!-- 头部跟页签走：陪伴=个人计时器；拼字=房间状态（倒计时/房间名），不再混显 -->
       <div class="bw-head">
-        <span class="bw-title">
-          <span class="pulse-dot" v-if="state === 'running'"></span>
-          {{ displayTime }}
-          <span v-if="state !== 'idle'" class="me-chip" :class="{ negative: wordsDelta < 0, zero: wordsDelta === 0 }">✍ {{ wordsDelta >= 0 ? '+' : '' }}{{ wordsDelta }}</span>
-        </span>
-        <span class="bw-actions">
-          <button v-if="state === 'idle'" class="bw-btn play" @click="start" title="开始计时">▶</button>
-          <button v-else-if="state === 'running'" class="bw-btn" @click="pause" title="暂停">⏸</button>
-          <button v-else class="bw-btn play" @click="start" :title="state === 'summary' ? '开始新一场' : '继续'">▶</button>
-          <button v-if="state !== 'idle'" class="bw-btn" @click="stop" title="结束">⏹</button>
-          <button class="bw-btn close" @click="visible = false" title="收起">—</button>
-        </span>
+        <template v-if="tab === 'buddy'">
+          <span class="bw-title">
+            <span class="pulse-dot" v-if="state === 'running'"></span>
+            {{ displayTime }}
+            <span v-if="state !== 'idle'" class="me-chip" :class="{ negative: wordsDelta < 0, zero: wordsDelta === 0 }">✍ {{ wordsDelta >= 0 ? '+' : '' }}{{ wordsDelta }}</span>
+          </span>
+          <span class="bw-actions">
+            <button v-if="state === 'idle'" class="bw-btn play" @click="start" title="开始计时">▶</button>
+            <button v-else-if="state === 'running'" class="bw-btn" @click="pause" title="暂停">⏸</button>
+            <button v-else class="bw-btn play" @click="start" :title="state === 'summary' ? '开始新一场' : '继续'">▶</button>
+            <button v-if="state !== 'idle'" class="bw-btn" @click="stop" title="结束">⏹</button>
+            <button class="bw-btn close" @click="visible = false" title="收起">—</button>
+          </span>
+        </template>
+        <template v-else>
+          <!-- 拼字头部：进行中=大倒计时+我的名次；等待/结束=房间名；不在房=标题 -->
+          <span v-if="!sprint.room" class="bw-title">🔥 拼字</span>
+          <span v-else-if="sprint.room.state === 'running'" class="bw-title sprint-cd">
+            <span class="pulse-dot"></span>
+            {{ sprint.countdownText }}
+            <span class="sprint-head-sub">我第{{ sprint.myRank }}名 · {{ sprint.myWords }} 字</span>
+          </span>
+          <span v-else class="bw-title">🔥 {{ sprint.room.name }}<span class="sprint-head-sub">{{ sprint.room.state === 'waiting' ? '等待开拼' : '本局结束' }}</span></span>
+          <span class="bw-actions">
+            <button v-if="sprint.running" class="bw-btn play" @click="visible = false" title="收起去写（榜单看顶部横幅）">✍ 去写</button>
+            <button class="bw-btn close" @click="visible = false" title="收起">—</button>
+          </span>
+        </template>
+      </div>
+
+      <!-- 深度融合页签：陪伴（1v1 搭子）/ 拼字（房间） -->
+      <div class="bw-tabs">
+        <button class="bw-tab" :class="{ on: tab === 'buddy' }" @click="tab = 'buddy'">🤝 陪伴</button>
+        <button class="bw-tab" :class="{ on: tab === 'sprint' }" @click="tab = 'sprint'">🔥 拼字<span v-if="sprint.inRoom" class="bw-tab-dot"></span></button>
       </div>
 
       <div class="bw-body">
+        <template v-if="tab === 'buddy'">
         <!-- 未开始 -->
         <div v-if="state === 'idle'" class="bw-idle">
           <p class="bw-hint">开始计时后可以找一个<br>同样在写的搭子互相陪伴</p>
@@ -91,6 +115,115 @@
           ></span>
           <span class="ms-next">今日 {{ milestoneTicks.done }} 档 · {{ milestoneTicks.nextLabel }}</span>
         </div>
+        </template>
+
+        <!-- ==================== 拼字页签（深度融合：入口/建房/加入/大厅全在窗内） ==================== -->
+        <template v-else>
+          <!-- 不在房：入口 / 建房 / 加入 -->
+          <div v-if="!sprint.room" class="bs-wrap">
+            <template v-if="sprint.phase === 'entry'">
+              <p class="bw-hint">约码友拼一局，或匹配陌生菌<br>限时比字数，对抗拖延</p>
+              <button class="bs-btn green" @click="sprint.phase = 'create'">🔥 创建房间</button>
+              <button class="bs-btn ghost" @click="sprint.phase = 'join'">🚪 房间号加入</button>
+              <button class="bs-btn line" :disabled="sprint.busy" @click="sprint.quickmatch()">⚡ 快速匹配</button>
+            </template>
+
+            <template v-else-if="sprint.phase === 'create'">
+              <div class="bs-cap">模式</div>
+              <div class="bs-row">
+                <button class="bs-opt" :class="{ on: form.mode === 'time' }" @click="pickMode('time')">⏱ 拼时间</button>
+                <button class="bs-opt" :class="{ on: form.mode === 'words' }" @click="pickMode('words')">🎯 拼字数</button>
+              </div>
+              <div class="bs-chips">
+                <button v-for="t in targetOptions" :key="t" class="bs-chip" :class="{ on: form.target === t }" @click="form.target = t">{{ t }}{{ form.mode === 'time' ? ' 分' : ' 字' }}</button>
+              </div>
+              <div class="bs-cap">性质</div>
+              <div class="bs-row">
+                <button class="bs-opt" :class="{ on: !form.is_public }" @click="form.is_public = false">🔒 仅邀请</button>
+                <button class="bs-opt" :class="{ on: form.is_public }" @click="form.is_public = true">🌍 公开</button>
+              </div>
+              <div class="bs-note">{{ form.is_public ? '公开房可被「快速匹配」找到' : '只有房间号 / 邀请链接能进' }}</div>
+              <input v-model="form.name" class="bs-input" placeholder="房间名" />
+              <input v-if="!form.is_public" v-model="form.password" class="bs-input" placeholder="密码（可选）" />
+              <div class="bs-cap">人数上限</div>
+              <div class="bs-chips">
+                <button v-for="n in [2, 4, 6, 8]" :key="n" class="bs-chip" :class="{ on: form.max_players === n }" @click="form.max_players = n">{{ n }} 人</button>
+              </div>
+              <div class="bs-row foot">
+                <button class="bs-btn green slim" :disabled="sprint.busy" @click="submitCreate">{{ sprint.busy ? '创建中…' : '创建并邀请' }}</button>
+                <button class="bs-btn line slim" @click="sprint.phase = 'entry'">返回</button>
+              </div>
+            </template>
+
+            <template v-else-if="sprint.phase === 'join'">
+              <input v-model="sprint.joinCode" class="bs-input code" placeholder="房间号" maxlength="6" />
+              <input v-model="sprint.joinPass" class="bs-input" placeholder="密码（无密码可留空）" />
+              <div class="bs-row foot">
+                <button class="bs-btn green slim" :disabled="sprint.busy" @click="submitJoin">{{ sprint.busy ? '加入中…' : '加入房间' }}</button>
+                <button class="bs-btn line slim" @click="sprint.phase = 'entry'">返回</button>
+              </div>
+            </template>
+          </div>
+
+          <!-- 在房 -->
+          <div v-else class="bs-wrap">
+            <div class="bs-room-head">
+              <span class="bs-room-name">🔥 {{ sprint.room.name }}</span>
+              <span class="bs-room-tag">{{ sprint.room.is_public ? '🌍 公开' : '🔒 仅邀请' }}</span>
+            </div>
+
+            <!-- 等待：大厅（邀请卡+成员） -->
+            <template v-if="sprint.room.state === 'waiting'">
+              <div class="bs-invite">
+                <div class="bs-inv-row">
+                  <span class="bs-code">{{ sprint.room.code }}</span>
+                  <button class="bs-mini" @click="copy(sprint.room.code, '已复制房间号 ' + sprint.room.code)">📋 房间号</button>
+                  <button class="bs-mini on" @click="copy(inviteLink, '邀请链接已复制')">🔗 链接</button>
+                </div>
+                <div class="bs-inv-note">链接发码友（微信 / QQ 群），点开自动进房</div>
+              </div>
+              <div class="bs-members">
+                <div v-for="p in sprint.room.players" :key="p.user_id" class="bs-member" :class="{ me: p.user_id === sprint.room.me }">
+                  <span class="bs-m-av">{{ sprint.avatar(p.nickname) }}</span>
+                  <span class="bs-m-name">{{ p.nickname }}{{ p.user_id === sprint.room.me ? '（我）' : '' }}<span v-if="p.is_host" class="bs-m-host">房主</span></span>
+                  <span class="bs-m-ready">{{ p.online ? '✓' : '离线' }}</span>
+                </div>
+                <div v-if="sprint.room.players.length < sprint.room.max_players" class="bs-member-empty">＋ 等码友进房（{{ sprint.room.players.length }}/{{ sprint.room.max_players }}）</div>
+              </div>
+              <div class="bs-row foot">
+                <button v-if="sprint.amHost" class="bs-btn green slim" :disabled="sprint.busy" @click="sprint.start()">开始拼字</button>
+                <div v-else class="bs-waiting">等房主开始…</div>
+                <button class="bs-btn line slim" @click="sprint.leave()">退出</button>
+              </div>
+            </template>
+
+            <!-- 进行中：窗内榜单（倒计时在头部）；HUD 横幅在编辑器顶部 -->
+            <template v-else-if="sprint.room.state === 'running'">
+              <div class="bs-members">
+                <div v-for="p in sprint.room.players" :key="p.user_id" class="bs-member" :class="{ me: p.user_id === sprint.room.me, off: !p.online }">
+                  <span class="bs-m-rk">{{ p.rank }}</span>
+                  <span class="bs-m-av">{{ sprint.avatar(p.nickname) }}</span>
+                  <span class="bs-m-name">{{ p.nickname }}</span>
+                  <span class="bs-m-wc">{{ p.words }}</span>
+                </div>
+              </div>
+              <div class="bs-live-hint">回正文写就计入榜单 · 顶部横幅实时可见</div>
+              <div class="bs-row foot">
+                <button class="bs-btn line slim" @click="visible = false">收起去写</button>
+                <button class="bs-btn ghost slim" @click="sprint.leave()">退出房间</button>
+              </div>
+            </template>
+
+            <!-- 结束：结算浮层负责，窗内给入口 -->
+            <template v-else>
+              <div class="bs-live-cd">🏁 本局结束</div>
+              <div class="bs-row foot">
+                <button class="bs-btn green slim" @click="sprint.showResult = true">看结算</button>
+                <button class="bs-btn ghost slim" @click="sprint.leave()">退出房间</button>
+              </div>
+            </template>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -104,10 +237,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, shallowRef } from 'vue'
+import { ref, computed, watch, reactive, onMounted, onBeforeUnmount, shallowRef } from 'vue'
 import { buddyApi, userApi } from '../../core/api'
+import { useSprint } from '../../composables/useSprint'
+import { toast } from '../../composables/useToast'
 
 const props = defineProps<{ currentWordCount: number; activeDocId?: string | number | null }>()
+
+// ---- 深度融合：拼字页签（入口/建房/加入/大厅都在本窗体） ----
+const sprint = useSprint()
+const tab = ref<'buddy' | 'sprint'>(((): 'buddy' | 'sprint' => {
+  try { return localStorage.getItem('xzj-buddy-tab') === 'sprint' ? 'sprint' : 'buddy' } catch { return 'buddy' }
+})())
+watch(tab, (t) => { try { localStorage.setItem('xzj-buddy-tab', t) } catch { /* 私密模式 */ } })
+const form = reactive({
+  name: '今晚必更',
+  mode: 'time' as 'time' | 'words',
+  target: 15,
+  is_public: false,
+  password: '',
+  max_players: 4,
+})
+const targetOptions = computed(() => (form.mode === 'time' ? [15, 30, 45, 60] : [1000, 2000, 4000, 6000]))
+function pickMode(m: 'time' | 'words') {
+  form.mode = m
+  form.target = m === 'time' ? 15 : 2000
+}
+async function submitCreate() {
+  await sprint.create({ ...form })
+}
+async function submitJoin() {
+  const ok = await sprint.join(sprint.joinCode, sprint.joinPass)
+  if (ok) sprint.joinPass = ''
+}
+const inviteLink = computed(() => `${location.origin}/s/${sprint.room?.code || ''}`)
+async function copy(text: string, tip: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    try { document.execCommand('copy') } catch { /* 老浏览器兜底 */ }
+    ta.remove()
+  }
+  toast.success(tip)
+}
+// useSprint 的开窗请求（状态栏撤了 🏁；focus 胶囊/邀请链接/再来一局都走这里）
+function onFocusSprint() {
+  visible.value = true
+  tab.value = 'sprint'
+}
+// 恢复出房间时自动停在拼字页签
+watch(() => sprint.inRoom, (v) => { if (v) tab.value = 'sprint' })
+
 
 type TimerState = 'idle' | 'running' | 'paused' | 'summary'
 const STORAGE_KEY = 'xzj-buddy-timer'
@@ -605,6 +789,9 @@ onMounted(() => {
   restoreSnapshot()
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup', onDragEnd)
+  // 深度融合：useSprint 的开窗请求（邀请链接/再来一局/专注胶囊）→ 开窗+切拼字页签
+  window.addEventListener('xzj-sprint-focus', onFocusSprint)
+  if (sprint.inRoom) tab.value = 'sprint'
   // 拉一次昵称供心跳携带（对方卡片显示用）
   userApi.me().then((res) => {
     myNickname.value = (res.data?.data || res.data)?.nickname || ''
@@ -614,6 +801,7 @@ onBeforeUnmount(() => {
   saveSnapshot()
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
+  window.removeEventListener('xzj-sprint-focus', onFocusSprint)
   if (intervalRef.value) clearInterval(intervalRef.value)
   if (beatRef.value) clearInterval(beatRef.value)
   if (nudgeTick) clearInterval(nudgeTick)
@@ -792,4 +980,96 @@ onBeforeUnmount(() => {
   .me-chip { background: rgba(48, 209, 88, 0.2); }
   .bw-peer-words { background: rgba(0, 122, 255, 0.25); }
 }
+
+/* ==================== 拼字页签（深度融合） ==================== */
+.buddy-window.sprint-tab { width: 264px; }
+.bw-tabs {
+  display: flex; gap: 2px; padding: 4px 10px 0;
+}
+.bw-tab {
+  flex: 1; border: none; background: rgba(0,0,0,0.04); border-radius: 8px;
+  padding: 5px 0; font-size: 11.5px; font-weight: 700; color: var(--text-tertiary, #999);
+  cursor: pointer; position: relative;
+}
+.bw-tab.on { background: rgba(129,187,142,0.16); color: #5a9668; }
+.bw-tab-dot {
+  position: absolute; top: 4px; right: 10px; width: 6px; height: 6px;
+  border-radius: 50%; background: #30d158;
+}
+.bs-wrap { display: flex; flex-direction: column; gap: 7px; }
+.bs-btn {
+  width: 100%; border: none; border-radius: 9px; padding: 8px 0;
+  font-size: 12px; font-weight: 800; cursor: pointer;
+}
+.bs-btn.slim { padding: 7px 0; font-size: 11.5px; }
+.bs-btn:disabled { opacity: 0.55; cursor: default; }
+.bs-btn.green { background: linear-gradient(135deg, #8fc59b, #6aa877); color: #fff; }
+.bs-btn.ghost { background: rgba(129,187,142,0.12); color: #5a9668; }
+.bs-btn.line { background: none; border: 1px solid #e2d8c2; color: var(--text-secondary, #666); }
+.bs-cap { font-size: 10px; color: var(--text-tertiary, #999); margin-top: 2px; }
+.bs-row { display: flex; gap: 6px; }
+.bs-row.foot { margin-top: 2px; }
+.bs-opt {
+  flex: 1; border: 1px solid #e2d8c2; background: #fff; border-radius: 8px;
+  padding: 6px 0; font-size: 11px; font-weight: 600; color: var(--text-secondary, #666); cursor: pointer;
+}
+.bs-opt.on { background: rgba(129,187,142,0.14); border-color: #81bb8e; color: #5a9668; }
+.bs-chips { display: flex; gap: 4px; }
+.bs-chip {
+  flex: 1; border: 1px solid #e2d8c2; background: #fff; border-radius: 99px;
+  padding: 4px 0; font-size: 10px; font-weight: 600; color: var(--text-secondary, #666); cursor: pointer;
+}
+.bs-chip.on { background: rgba(129,187,142,0.14); border-color: #81bb8e; color: #5a9668; }
+.bs-note { font-size: 9.5px; color: var(--text-tertiary, #999); line-height: 1.5; }
+.bs-input {
+  width: 100%; border: 1px solid #e2d8c2; border-radius: 8px; padding: 7px 10px;
+  font-size: 12px; background: #fff; color: var(--text-primary, #333); outline: none;
+}
+.bs-input:focus { border-color: #81bb8e; box-shadow: 0 0 0 3px rgba(129,187,142,0.15); }
+.bs-input.code {
+  text-align: center; font-size: 19px; font-weight: 800; letter-spacing: 5px; padding: 9px;
+}
+.bs-room-head { display: flex; align-items: center; gap: 6px; }
+.bs-room-name { font-size: 12.5px; font-weight: 800; color: var(--text-primary, #333); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bs-room-tag { font-size: 9px; color: #5a9668; background: rgba(129,187,142,0.14); border-radius: 99px; padding: 1px 7px; font-weight: 700; flex-shrink: 0; }
+.bs-invite {
+  background: rgba(129,187,142,0.1); border: 1px dashed #81bb8e; border-radius: 10px; padding: 8px 10px;
+}
+.bs-inv-row { display: flex; align-items: center; gap: 6px; }
+.bs-code { font-size: 21px; font-weight: 800; letter-spacing: 4px; color: #5a9668; font-variant-numeric: tabular-nums; flex: 1; }
+.bs-mini {
+  border: 1px solid #e2d8c2; background: #fff; border-radius: 7px;
+  padding: 4px 7px; font-size: 9.5px; font-weight: 700; color: var(--text-secondary, #666); cursor: pointer; flex-shrink: 0;
+}
+.bs-mini.on { background: rgba(129,187,142,0.14); border-color: #81bb8e; color: #5a9668; }
+.bs-inv-note { font-size: 9px; color: var(--text-tertiary, #999); margin-top: 5px; line-height: 1.5; }
+.bs-members { display: flex; flex-direction: column; gap: 2px; }
+.bs-member {
+  display: flex; align-items: center; gap: 7px; padding: 4px 7px; border-radius: 8px; font-size: 11.5px;
+}
+.bs-member.me { background: rgba(129,187,142,0.12); }
+.bs-member.off { opacity: 0.5; }
+.bs-member-empty { font-size: 10px; color: var(--text-tertiary, #999); text-align: center; border: 1px dashed #e2d8c2; border-radius: 8px; padding: 4px 0; }
+.bs-m-av {
+  width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+  background: linear-gradient(135deg, #7db5f8, #4a9bf5); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;
+}
+.bs-member.me .bs-m-av { background: linear-gradient(135deg, #8fc59b, #6aa877); }
+.bs-m-name { flex: 1; font-weight: 700; color: var(--text-primary, #333); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bs-m-host { font-size: 8px; background: #e8c26a; color: #7a5c12; border-radius: 3px; padding: 0 4px; margin-left: 4px; }
+.bs-m-ready { font-size: 10px; color: #2f9e44; }
+.bs-member.off .bs-m-ready { color: var(--text-tertiary, #999); }
+.bs-m-rk { width: 14px; font-size: 10px; font-weight: 800; color: var(--text-tertiary, #999); text-align: center; }
+.bs-m-wc { font-size: 11px; font-weight: 800; color: var(--text-primary, #333); font-variant-numeric: tabular-nums; }
+.bs-waiting { flex: 1; text-align: center; font-size: 11px; color: var(--text-tertiary, #999); align-self: center; }
+.bs-live-cd { text-align: center; font-size: 22px; font-weight: 800; color: #d97706; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.bs-live-sub { text-align: center; font-size: 10.5px; color: var(--text-secondary, #666); }
+.bs-live-hint { text-align: center; font-size: 9.5px; color: var(--text-tertiary, #999); }
+
+
+/* 拼字头部：倒计时大字 + 名次小注 */
+.bw-title.sprint-cd { font-size: 16px; color: #d97706; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+.sprint-head-sub { font-size: 10px; font-weight: 600; color: var(--text-tertiary, #999); margin-left: 6px; letter-spacing: 0; }
+
 </style>
