@@ -1,5 +1,7 @@
 <template>
-  <aside class="doc-tree">
+  <!-- $attrs 显式绑定：本组件是多根模板（aside + Teleport 新建菜单），Vue 不会自动继承
+       fallthrough class——Editor 传的 drawer-open 曾被静默丢弃，导致手机端抽屉打不开 -->
+  <aside class="doc-tree" v-bind="$attrs">
 
     <!-- 今日码字卡（数据来自编辑器实时统计：todayWords=本次会话净增，chapterWords=当前章） -->
     <div class="goal-card">
@@ -110,6 +112,11 @@
     </div>
   </Teleport>
 </template>
+
+<script lang="ts">
+// 多根模板必须关掉自动继承，配合根元素 v-bind="$attrs"（见模板注释）
+export default { inheritAttrs: false }
+</script>
 
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'

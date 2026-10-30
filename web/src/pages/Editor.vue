@@ -23,10 +23,9 @@
     <div class="editor-body">
       <!-- 移动端抽屉遮罩 -->
       <div v-if="mobileSidebarOpen" class="sidebar-scrim" @click="mobileSidebarOpen = false"></div>
-      <!-- 左侧文档树（移动端=抽屉） -->
+      <!-- 左侧文档树（移动端=抽屉）；class 由 EditorSidebar 根元素自带，此处不重复传 -->
       <EditorSidebar
         :class="{ 'drawer-open': mobileSidebarOpen }"
-        class="doc-tree"
         :documents="documents"
         :setting-root-nodes="settingRootNodes"
         :article-root-nodes="articleRootNodes"
