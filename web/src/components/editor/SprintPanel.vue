@@ -91,4 +91,13 @@ function onAgain() {
   .sp-card { width: 100%; padding: 18px 16px 16px; max-height: 82dvh; }
   .sp-members { max-height: 46dvh; overflow-y: auto; }
 }
+
+/* 深色适配 v1.3：结算卡暖米底 → 暗面 */
+html.dark .sp-card {
+  background: #2c2c2e;
+  border-color: #ffffff1a;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+}
+html.dark .sp-btn.line { border-color: #ffffff26; color: #d1d1d6; }
+
 </style>

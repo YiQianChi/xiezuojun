@@ -460,4 +460,12 @@ defineEmits<{
 }
 .add-menu > div:hover { background: rgba(129, 187, 142, 0.14); color: #4d8a5c; }
 .add-menu .am-sub { font-size: 10px; color: var(--text-tertiary); }
+
+/* 深色适配 v1.3：Teleport 新建菜单暖底 → 暗面 */
+html.dark .add-menu {
+  background: #2c2c2e;
+  border-color: #ffffff1a;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+}
+
 </style>

@@ -187,4 +187,13 @@ watch(() => props.open, v => {
 @media (max-width: 768px) {
   .phone-preview-drawer { width: 100vw; max-width: 100vw; border-left: none; }
 }
+
+/* 深色适配 v1.3：手机预览抽屉暖米底 → 暗面 */
+html.dark .phone-preview-drawer {
+  --panel: #2c2c2e;
+  background: #2c2c2e;
+  border-left-color: #ffffff14;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.6);
+}
+
 </style>

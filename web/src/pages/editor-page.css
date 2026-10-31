@@ -2066,3 +2066,77 @@
   }
   .editor-page :deep(.context-panel .row-toggle) { border-color: #c9bfa6; }
 }
+
+/* =====================================================================
+   深色适配 v1.3（2026-10-31，Boss：深浅切换还有问题）
+   皮肤 v1/v1.2 无条件硬编码暖米，把 :root.dark 的深色变量压住了。
+   这里在深色下用标准深色 token 镜像一遍（后置+更高特异性，纯追加可回滚）。
+   ===================================================================== */
+@media (min-width: 769px) {
+  /* 编辑器内 token 回到标准深色（压过 v1.2 的暖米声明） */
+  html.dark .editor-page {
+    --bg-secondary: #2c2c2e;
+    --bg-tertiary: #3a3a3c;
+    --bg-hover: rgba(255, 255, 255, 0.06);
+    --text-primary: #f5f5f7;
+    --text-secondary: #d1d1d6;
+    --text-tertiary: #8e8e93;
+    --setting-bg: #2a2622;
+    --setting-card-bg: #322e29;
+    --setting-border: #3a3530;
+    --setting-children-border: #3d3833;
+    --setting-hover: rgba(180, 160, 130, 0.08);
+    background-image: none;
+    background: var(--bg-primary, #1a1a1c);
+  }
+  html.dark .editor-page .editor-header {
+    background: rgba(26, 26, 28, 0.92);
+    border-bottom-color: #ffffff14;
+  }
+  html.dark .editor-page :deep(.doc-tree) {
+    background: #2c2c2e;
+    border-right-color: #ffffff14;
+  }
+  html.dark .editor-page :deep(.branch-switcher) { border-bottom-color: #ffffff12; }
+  html.dark .editor-page .context-panel,
+  html.dark .editor-page .reference-panel {
+    background: #2c2c2e;
+    border-left-color: #ffffff14;
+  }
+  html.dark .editor-page :deep(.context-panel-toggle) { background: #3a3a3c; }
+  html.dark .editor-page :deep(.context-panel.collapsed .context-panel-toggle) {
+    background: #2c2c2e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 0 1px #ffffff14;
+  }
+  /* 纸张：深色卡面 + 浅字（双线纸边同步压暗） */
+  html.dark .editor-page .tiptap-container > :deep(div .ProseMirror) {
+    background: #2c2c2e;
+    border-color: #ffffff1a;
+    outline-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+    color: var(--text-primary, #f5f5f7);
+  }
+  /* 行号 / 虚拟章名线：暖沙 → 暗灰 */
+  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > p::before,
+  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h1::before,
+  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h2::before,
+  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h3::before,
+  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > blockquote::before,
+  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > ul::before,
+  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > ol::before,
+  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > pre::before {
+    color: #8e8e93;
+  }
+  html.dark .editor-page .chapter-virtual-heading .vh-dash { background: linear-gradient(90deg, transparent, #55555c); }
+  html.dark .editor-page .chapter-virtual-heading .vh-dash-r { background: linear-gradient(90deg, #55555c, transparent); }
+  html.dark .editor-page .status-bar {
+    background: #1f1f21;
+    border-top-color: #ffffff14;
+  }
+  /* v1.2 输入框暖底在深色下压回暗面 */
+  html.dark .editor-page :deep(.context-panel input:not([type='checkbox'])) {
+    background: #1a1a1c;
+    border-color: #ffffff26;
+  }
+  html.dark .editor-page :deep(.context-panel .row-toggle) { border-color: #5a5a5e; }
+}

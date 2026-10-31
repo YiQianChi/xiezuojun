@@ -1188,4 +1188,18 @@ onBeforeUnmount(() => {
   .bs-btn, .bs-opt, .bs-chip { min-height: 34px; }
 }
 
+
+/* 深色适配 v1.3：Teleport 弹层，深色下回标准暗面（压过 v1.2 自带的暖米） */
+html.dark .buddy-window {
+  --bg-secondary: #2c2c2e;
+  --bg-tertiary: #3a3a3c;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --text-primary: #f5f5f7;
+  --text-secondary: #d1d1d6;
+  --text-tertiary: #8e8e93;
+  --border-subtle: #ffffff14;
+  background: #2c2c2e;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55), 0 0 0 1px #ffffff14;
+}
+
 </style>

@@ -203,4 +203,15 @@ function download() {
   box-shadow: 0 4px 14px rgba(129,187,142,0.4);
 }
 .rm-save:active { transform: scale(0.97); }
+
+/* 深色适配 v1.3 */
+html.dark .report-modal {
+  --bg-secondary: #2c2c2e;
+  --text-secondary: #d1d1d6;
+  --text-tertiary: #8e8e93;
+  background: #2c2c2e;
+  border-color: #ffffff1a;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+}
+
 </style>
