@@ -38,13 +38,26 @@
     </div>
 
     <div class="header-actions">
+      <!-- 主题选择：调色盘弹层（六主题），替代原深浅二态切换 -->
+      <div class="theme-picker" v-if="themeMenuOpen" @click.stop />
+      <div class="theme-pop" v-if="themeMenuOpen">
+        <div class="tp-title">皮肤</div>
+        <button
+          v-for="t in THEMES" :key="t.id"
+          class="tp-item" :class="{ on: themeId === t.id }"
+          @click="pickTheme(t.id)"
+        >
+          <span class="tp-sw" :style="{ background: t.sw }"><i :style="{ background: t.sw2 }"></i></span>
+          <span class="tp-name">{{ t.name }}</span>
+          <span class="tp-sub">{{ t.desc }}</span>
+        </button>
+      </div>
       <button
-        @click="toggleDark"
+        @click.stop="themeMenuOpen = !themeMenuOpen"
         class="btn icon-btn"
-        :title="isDark ? '切换浅色模式' : '切换深色模式'"
+        title="主题（皮肤）"
       >
-        <svg v-if="!isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20 2.35 2.35 0 0 0 1.7-4 2.35 2.35 0 0 1 1.7-4h3.1A4.2 4.2 0 0 0 22 9.8 10 10 0 0 0 12 2z"/></svg>
       </button>
       <button
         v-if="mode === 'write'"
@@ -106,12 +119,37 @@ defineEmits<{
   'toggle-sidebar': []
 }>()
 
-const isDark = ref(document.documentElement.classList.contains('dark'))
+const THEMES = [
+  { id: 'xuan', name: '米宣', desc: '默认 · 暖宣纸', sw: '#f8f3e8', sw2: '#fbf7ee' },
+  { id: 'qing', name: '青竹', desc: '淡青绿 · 护眼', sw: '#e4eee4', sw2: '#f4faf4' },
+  { id: 'wu', name: '晨雾', desc: '冷灰蓝 · 清爽', sw: '#e5eaf1', sw2: '#f5f8fb' },
+  { id: 'yangpi', name: '仿古', desc: '羊皮纸 · 怀旧', sw: '#e9dec4', sw2: '#f7efdb' },
+  { id: 'ye', name: '夜灯', desc: '暖墨绿 · 深夜', sw: '#2b2e26', sw2: '#2f322a' },
+  { id: 'mo', name: '冷墨', desc: '标准深色', sw: '#2c2c2e', sw2: '#1a1a1c' },
+]
+const themeId = ref(localStorage.getItem('xzj-theme') || (localStorage.getItem('theme') === 'dark' ? 'mo' : 'xuan'))
+const themeMenuOpen = ref(false)
 
-function toggleDark() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+function applyThemeClass(t: string) {
+  const el = document.documentElement
+  el.classList.remove('dark', 'theme-ye', 'theme-qing', 'theme-wu', 'theme-yangpi')
+  if (t === 'mo') el.classList.add('dark')
+  else if (t === 'ye') el.classList.add('dark', 'theme-ye')
+  else if (['qing', 'wu', 'yangpi'].includes(t)) el.classList.add('theme-' + t)
+}
+
+function pickTheme(t: string) {
+  themeId.value = t
+  applyThemeClass(t)
+  localStorage.setItem('xzj-theme', t)
+  localStorage.setItem('theme', (t === 'mo' || t === 'ye') ? 'dark' : 'light') // 旧键兼容其它页面
+  themeMenuOpen.value = false
+}
+
+// 点外部收起
+function onDocClickCloseTheme() { themeMenuOpen.value = false }
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', onDocClickCloseTheme)
 }
 </script>
 
@@ -129,6 +167,10 @@ function toggleDark() {
   display: flex;
   align-items: center;
   padding: 0 20px;
+  /* backdrop-filter 会创建层叠上下文，把弹层（主题选择）困在 header 层；
+     提到右栏(300)/搭子窗(900) 之间——主题弹层要压右栏 */
+  position: relative;
+  z-index: 950;
   gap: 16px;
   border-bottom: 1px solid var(--border, #e5e5ea);
   background: var(--bg-secondary, #ffffff);
@@ -261,4 +303,51 @@ function toggleDark() {
   .header-actions .btn:not(.icon-btn) { display: none; }
   .header-actions { gap: 4px; }
 }
+
+/* 主题选择弹层：贴在调色盘按钮下方（header-actions 尾部，向左展开） */
+.theme-pop {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  z-index: 660;
+  background: var(--ed-panel, #f8f3e8);
+  border: 1px solid var(--ed-line, #e2d8c2);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px var(--ed-shadow, rgba(96, 74, 40, 0.16));
+  padding: 6px;
+  min-width: 190px;
+}
+.tp-title {
+  font-size: 10px;
+  color: var(--ed-ink-soft, #a39a86);
+  padding: 4px 8px 6px;
+  letter-spacing: 2px;
+}
+.tp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 7px 8px;
+  cursor: pointer;
+  color: var(--ed-ink, #33302a);
+  text-align: left;
+}
+.tp-item:hover { background: var(--ed-hover, rgba(150, 130, 100, 0.09)); }
+.tp-item.on { background: var(--ed-hover, rgba(150, 130, 100, 0.09)); }
+.tp-item.on .tp-name { color: #6aa877; font-weight: 700; }
+.tp-sw {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--ed-line, #e2d8c2);
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  padding: 2px;
+  flex-shrink: 0;
+}
+.tp-sw i { width: 10px; height: 10px; border-radius: 3px; display: block; }
+.tp-name { font-size: 12.5px; }
+.tp-sub { font-size: 10px; color: var(--ed-ink-soft, #a39a86); margin-left: auto; }
 </style>

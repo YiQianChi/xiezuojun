@@ -91,9 +91,9 @@ watch(() => props.open, v => {
 .phone-preview-drawer {
   position: absolute; top: 0; right: 0; bottom: 0;
   width: 440px; max-width: 92vw;
-  background: var(--panel, #f8f3e8);
-  border-left: 1px solid #e2d8c2;
-  box-shadow: -12px 0 40px rgba(60, 45, 20, 0.18);
+  background: var(--ed-panel, #f8f3e8);
+  border-left: 1px solid var(--ed-line, #e2d8c2);
+  box-shadow: -12px 0 40px var(--ed-shadow, rgba(60, 45, 20, 0.18));
   display: flex; flex-direction: column;
   animation: pp-slide 0.22s ease;
 }
@@ -186,14 +186,6 @@ watch(() => props.open, v => {
 
 @media (max-width: 768px) {
   .phone-preview-drawer { width: 100vw; max-width: 100vw; border-left: none; }
-}
-
-/* 深色适配 v1.3：手机预览抽屉暖米底 → 暗面 */
-html.dark .phone-preview-drawer {
-  --panel: #2c2c2e;
-  background: #2c2c2e;
-  border-left-color: #ffffff14;
-  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.6);
 }
 
 </style>

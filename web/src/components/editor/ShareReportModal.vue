@@ -179,14 +179,14 @@ function download() {
   display: flex; align-items: center; justify-content: center;
 }
 .report-modal {
-  /* 色彩统一 v1.2：Teleport 弹层带一套暖米变量（同搭子窗做法） */
-  --bg-secondary: #f8f3e8;
-  --text-secondary: #7a7263;
-  --text-tertiary: #a39a86;
-  background: #f8f3e8;
-  border: 1px solid #e2d8c2;
+  /* 主题 token 化（六主题通吃） */
+  --bg-secondary: var(--ed-panel, #f8f3e8);
+  --text-secondary: var(--ed-ink-mid, #7a7263);
+  --text-tertiary: var(--ed-ink-soft, #a39a86);
+  background: var(--ed-panel, #f8f3e8);
+  border: 1px solid var(--ed-line, #e2d8c2);
   border-radius: 20px; padding: 18px;
-  box-shadow: 0 20px 60px rgba(60, 45, 20, 0.28);
+  box-shadow: 0 20px 60px var(--ed-shadow, rgba(60, 45, 20, 0.28));
   max-width: 92vw; max-height: 92dvh;
   display: flex; flex-direction: column; align-items: center;
 }
@@ -203,15 +203,5 @@ function download() {
   box-shadow: 0 4px 14px rgba(129,187,142,0.4);
 }
 .rm-save:active { transform: scale(0.97); }
-
-/* 深色适配 v1.3 */
-html.dark .report-modal {
-  --bg-secondary: #2c2c2e;
-  --text-secondary: #d1d1d6;
-  --text-tertiary: #8e8e93;
-  background: #2c2c2e;
-  border-color: #ffffff1a;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-}
 
 </style>

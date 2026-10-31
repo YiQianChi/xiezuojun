@@ -875,17 +875,16 @@ onBeforeUnmount(() => {
 .buddy-window {
   position: fixed; right: 24px; bottom: 44px; z-index: 900;
   width: 230px; border-radius: 14px; overflow: hidden;
-  /* 色彩统一 v1.2：Teleport 到 body 处于 .editor-page 之外，token 翻转够不着，
-     自带一套暖米变量让窗内所有 var() 引用就地变暖（与编辑器皮肤同值） */
-  --bg-secondary: #f8f3e8;
-  --bg-tertiary: #efe7d5;
-  --bg-hover: rgba(150, 130, 100, 0.09);
-  --text-primary: #3a352c;
-  --text-secondary: #7a7263;
-  --text-tertiary: #a39a86;
-  --border-subtle: #e2d8c2;
-  background: #f8f3e8;
-  box-shadow: 0 6px 22px rgba(96, 74, 40, 0.16), 0 0 0 1px #e2d8c2;
+  /* 主题 token 化：Teleport 弹层直接引用 html 级 --ed-*（六主题通吃） */
+  --bg-secondary: var(--ed-panel, #f8f3e8);
+  --bg-tertiary: var(--ed-panel-2, #efe7d5);
+  --bg-hover: var(--ed-hover, rgba(150, 130, 100, 0.09));
+  --text-primary: var(--ed-ink, #3a352c);
+  --text-secondary: var(--ed-ink-mid, #7a7263);
+  --text-tertiary: var(--ed-ink-soft, #a39a86);
+  --border-subtle: var(--ed-line, #e2d8c2);
+  background: var(--ed-panel, #f8f3e8);
+  box-shadow: var(--ed-float-shadow, 0 6px 22px rgba(96, 74, 40, 0.16), 0 0 0 1px #e2d8c2);
   user-select: none;
 }
 .bw-head {
@@ -1188,18 +1187,5 @@ onBeforeUnmount(() => {
   .bs-btn, .bs-opt, .bs-chip { min-height: 34px; }
 }
 
-
-/* 深色适配 v1.3：Teleport 弹层，深色下回标准暗面（压过 v1.2 自带的暖米） */
-html.dark .buddy-window {
-  --bg-secondary: #2c2c2e;
-  --bg-tertiary: #3a3a3c;
-  --bg-hover: rgba(255, 255, 255, 0.06);
-  --text-primary: #f5f5f7;
-  --text-secondary: #d1d1d6;
-  --text-tertiary: #8e8e93;
-  --border-subtle: #ffffff14;
-  background: #2c2c2e;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55), 0 0 0 1px #ffffff14;
-}
 
 </style>

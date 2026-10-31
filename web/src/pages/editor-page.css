@@ -16,7 +16,9 @@
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
   gap: 16px;
-  z-index: 10;
+  /* backdrop-filter 建层叠上下文；需压过右栏(300)/正文浮层(400)，
+     让 header 里的弹层（主题选择）不被右栏盖住。buddy 窗(900)/SSE 弹层更高不受影响 */
+  z-index: 950;
 }
 
 .back-btn {
@@ -1740,23 +1742,23 @@
   .editor-page {
     background-image:
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='.09'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Cpath fill='white' filter='url(%23g)' d='M0 0h160v160H0z'/%3E%3C/svg%3E"),
-      linear-gradient(165deg, #f2ebdb 0%, #ece1cb 100%);
+      linear-gradient(165deg, var(--ed-desk-a, #f2ebdb) 0%, var(--ed-desk-b, #ece1cb) 100%);
   }
 
   /* 顶栏：暖纸底 */
   .editor-page .editor-header {
-    background: rgba(251, 247, 238, 0.92);
-    border-bottom: 1px solid #e2d8c2;
+    background: var(--ed-header-bg, rgba(251,247,238,.92));
+    border-bottom: 1px solid var(--ed-line, #e2d8c2);
   }
 
   /* 左栏：整栏暖面板 + 明确分界 */
   .editor-page .doc-tree {
-    background: #f8f3e8;
-    border-right: 1px solid #e2d8c2;
+    background: var(--ed-panel, #f8f3e8);
+    border-right: 1px solid var(--ed-line, #e2d8c2);
   }
   .editor-page .branch-switcher {
     background: transparent;
-    border-bottom: 1px solid #e2d8c2;
+    border-bottom: 1px solid var(--ed-line, #e2d8c2);
   }
 
   /* 右侧 AI 面板：从浮动圆角卡改为贴边整栏（可收起细条不变） */
@@ -1768,8 +1770,8 @@
     width: 300px;
     border-radius: 0;
     box-shadow: none;
-    border-left: 1px solid #e2d8c2;
-    background: #f8f3e8;
+    border-left: 1px solid var(--ed-line, #e2d8c2);
+    background: var(--ed-panel, #f8f3e8);
   }
   .editor-page .context-panel.collapsed,
   .editor-page .reference-panel.collapsed {
@@ -1795,13 +1797,13 @@
     box-sizing: border-box;
     min-height: 62vh;
     padding: 52px 60px 72px;
-    background: #fbf7ee;
-    border: 1px solid #e6dcc6;
+    background: var(--ed-paper, #fbf7ee);
+    border: 1px solid var(--ed-paper-line, #e6dcc6);
     border-radius: 6px;
-    outline: 1px solid rgba(230, 220, 198, 0.55);
+    outline: 1px solid var(--ed-paper-outline, rgba(230,220,198,.55));
     outline-offset: -9px;
-    box-shadow: 0 2px 14px rgba(96, 74, 40, 0.10);
-    color: #33302a;
+    box-shadow: 0 2px 14px var(--ed-shadow, rgba(96,74,40,.10));
+    color: var(--ed-ink, #33302a);
   }
   /* 带虚拟章名头的章节：纸面顶留白加高，让章名头落在双线纸边之下、不压线 */
   .editor-page .tiptap-container.has-ch-heading > :deep(div .ProseMirror) {
@@ -1816,7 +1818,7 @@
   .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > ul::before,
   .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > ol::before,
   .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > pre::before {
-    color: #a89a80;
+    color: var(--ed-num, #a89a80);
   }
   /* 行号模式给纸张加宽左内边距，让 -76px 的行号落回纸内 */
   .editor-page .editor-wrapper.show-line-numbers .tiptap-container > :deep(div .ProseMirror) {
@@ -1825,8 +1827,8 @@
 
   /* 状态栏：暖纸收底 */
   .editor-page .status-bar {
-    background: #f3ecdd;
-    border-top: 1px solid #e2d8c2;
+    background: var(--ed-statusbar, #f3ecdd);
+    border-top: 1px solid var(--ed-line, #e2d8c2);
   }
 
   /* 专注模式沿用纸桌（原规则盖成纯色背景，这里放开透出 .editor-page 的纸纹） */
@@ -1841,11 +1843,11 @@
     --accent-light: #81bb8e24;
     --accent-subtle: #81bb8e14;
     /* 设定区配色并入米宣纸系 */
-    --setting-bg: #f4eee2;
-    --setting-card-bg: #fbf7ee;
-    --setting-border: #e6dcc6;
-    --setting-children-border: #e0d5bc;
-    --setting-hover: rgba(150, 130, 100, 0.08);
+    --setting-bg: var(--ed-panel-2, #f4eee2);
+    --setting-card-bg: var(--ed-paper, #fbf7ee);
+    --setting-border: var(--ed-paper-line, #e6dcc6);
+    --setting-children-border: var(--ed-line, #e0d5bc);
+    --setting-hover: var(--ed-hover, rgba(150,130,100,.08));
   }
 
   /* 纸内章名：首个 H1 居中 + 品牌绿装饰线（demo 的 title-rule） */
@@ -1882,17 +1884,17 @@
   .editor-page .chapter-virtual-heading .vh-dash {
     flex: 0 0 64px;
     height: 1px;
-    background: linear-gradient(90deg, transparent, #c9bfa6);
+    background: linear-gradient(90deg, transparent, var(--ed-dash, #c9bfa6));
   }
   .editor-page .chapter-virtual-heading .vh-dash-r {
-    background: linear-gradient(90deg, #c9bfa6, transparent);
+    background: linear-gradient(90deg, var(--ed-dash, #c9bfa6), transparent);
   }
   .editor-page .chapter-virtual-heading .vh-title {
     font-size: 21px;
     font-weight: 600;
     line-height: 30px;
     letter-spacing: 2px;
-    color: #4a4438;
+    color: var(--ed-ink, #4a4438);
   }
   .editor-page .chapter-virtual-heading .vh-num {
     color: #6aa877;
@@ -1902,11 +1904,11 @@
   .editor-page .context-panel .context-header {
     margin: 10px 10px 4px;
     padding: 10px 12px 8px;
-    border: 1px solid #e6dcc6;
+    border: 1px solid var(--ed-paper-line, #e6dcc6);
     border-radius: 10px;
-    background: #fbf7ee;
+    background: var(--ed-paper, #fbf7ee);
   }
-  .editor-page .context-panel .context-header h4 { color: #94897a; }
+  .editor-page .context-panel .context-header h4 { color: var(--ed-ink-soft, #94897a); }
 }
 
 /* ═══ 状态栏新控件：敏感词 / 码字锁 / 伏笔弹窗（2026-10-29 A+B 批） ═══ */
@@ -1965,20 +1967,20 @@
 .editor-page .sprint-banner {
   display: flex; align-items: center; gap: 12px; flex-shrink: 0;
   height: 42px; padding: 0 16px;
-  background: rgba(251, 247, 238, 0.96); border-bottom: 1px solid #e2d8c2;
+  background: rgba(251, 247, 238, 0.96); border-bottom: 1px solid var(--ed-line, #e2d8c2);
   font-size: 12.5px; font-weight: 700; color: #3a352c;
 }
 .editor-page .sprint-banner .sb-cd {
   font-size: 15px; font-weight: 800; color: #d97706;
   font-variant-numeric: tabular-nums; letter-spacing: 0.5px;
 }
-.editor-page .sprint-banner .sb-sep { width: 1px; height: 15px; background: #e2d8c2; }
+.editor-page .sprint-banner .sb-sep { width: 1px; height: 15px; background: var(--ed-line, #e2d8c2); }
 .editor-page .sprint-banner .sb-me { color: #5a9668; }
-.editor-page .sprint-banner .sb-lead { color: #7a7263; font-weight: 600; }
+.editor-page .sprint-banner .sb-lead { color: var(--ed-ink-mid, #7a7263); font-weight: 600; }
 .editor-page .sprint-banner .sb-btn {
   margin-left: auto; border: none; background: rgba(0, 0, 0, 0.05);
   border-radius: 8px; padding: 4px 10px; font-size: 11px;
-  color: #7a7263; cursor: pointer; font-weight: 600;
+  color: var(--ed-ink-mid, #7a7263); cursor: pointer; font-weight: 600;
 }
 .editor-page .sprint-banner .sb-btn:hover { background: rgba(129, 187, 142, 0.16); color: #5a9668; }
 
@@ -1989,7 +1991,7 @@
 }
 .editor-page .sprint-rail .sr-dot {
   width: 52px; padding: 4px 2px 3px; text-align: center; cursor: default;
-  background: rgba(255, 253, 248, 0.92); border: 1px solid #e6dcc6;
+  background: rgba(255, 253, 248, 0.92); border: 1px solid var(--ed-paper-line, #e6dcc6);
   border-radius: 10px; transition: transform 0.15s ease;
 }
 .editor-page .sprint-rail .sr-dot:hover { transform: translateX(-3px); }
@@ -2004,7 +2006,7 @@
 }
 .editor-page .sprint-rail .sr-dot.me .sr-av { background: linear-gradient(135deg, #8fc59b, #6aa877); }
 .editor-page .sprint-rail .sr-dot .sr-wc {
-  display: block; font-size: 9.5px; font-weight: 800; color: #7a7263;
+  display: block; font-size: 9.5px; font-weight: 800; color: var(--ed-ink-mid, #7a7263);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2038,105 +2040,42 @@
    ===================================================================== */
 @media (min-width: 769px) {
   .editor-page {
-    --bg-secondary: #f8f3e8;      /* 冷白面板 → 暖米面板 */
-    --bg-tertiary: #efe7d5;       /* 折叠条/次级底 */
-    --bg-hover: rgba(150, 130, 100, 0.09);
+    --bg-secondary: var(--ed-panel, #f8f3e8);      /* 冷白面板 → 暖米面板 */
+    --bg-tertiary: var(--ed-panel-2, #efe7d5);       /* 折叠条/次级底 */
+    --bg-hover: var(--ed-hover, rgba(150,130,100,.09));
     --text-primary: #3a352c;      /* 墨字 */
-    --text-secondary: #7a7263;
-    --text-tertiary: #a39a86;
+    --text-secondary: var(--ed-ink-mid, #7a7263);
+    --text-tertiary: var(--ed-ink-soft, #a39a86);
   }
   /* 左栏树：重新夺回暖底（v1 规则被组件 scoped 同特异性盖掉） */
-  .editor-page :deep(.doc-tree) { background: #f8f3e8; }
+  .editor-page :deep(.doc-tree) { background: var(--ed-panel, #f8f3e8); }
   /* 搭子窗：暖底 + 纸系描边阴影（原来是纯白+冷阴影） */
   .editor-page :deep(.buddy-window) {
-    background: #f8f3e8;
-    border: 1px solid #e2d8c2;
+    background: var(--ed-panel, #f8f3e8);
+    border: 1px solid var(--ed-line, #e2d8c2);
     box-shadow: 0 6px 22px rgba(96, 74, 40, 0.16);
   }
   /* 右栏折叠细条：冷灰 → 暖沙 */
-  .editor-page :deep(.context-panel-toggle) { background: #efe7d5; }
+  .editor-page :deep(.context-panel-toggle) { background: var(--ed-panel-2, #efe7d5); }
   .editor-page :deep(.context-panel.collapsed .context-panel-toggle) {
-    background: #f8f3e8;
-    box-shadow: 0 2px 8px rgba(96, 74, 40, 0.14), 0 0 0 1px #e2d8c2;
+    background: var(--ed-panel, #f8f3e8);
+    box-shadow: 0 2px 8px rgba(96, 74, 40, 0.14), 0 0 0 1px var(--ed-line, #e2d8c2);
   }
   /* 面板内输入框/小开关的冷灰边 → 纸系（var 换肤管不到的硬编码 rgba 黑） */
   .editor-page :deep(.context-panel input:not([type='checkbox'])) {
-    background: #fdfaf1;
-    border-color: #e2d8c2;
+    background: var(--ed-input, #fdfaf1);
+    border-color: var(--ed-line, #e2d8c2);
   }
-  .editor-page :deep(.context-panel .row-toggle) { border-color: #c9bfa6; }
+  .editor-page :deep(.context-panel .row-toggle) { border-color: var(--ed-dash, #c9bfa6); }
 }
 
 /* =====================================================================
-   深色适配 v1.3（2026-10-31，Boss：深浅切换还有问题）
-   皮肤 v1/v1.2 无条件硬编码暖米，把 :root.dark 的深色变量压住了。
-   这里在深色下用标准深色 token 镜像一遍（后置+更高特异性，纯追加可回滚）。
+   深色层 v1.3-slim：token 化后深色值由 html.dark / theme-ye 的 --ed-* 提供，
+   这里只剩「关掉桌面渐变」一件事。加主题不再需要碰这个文件。
    ===================================================================== */
 @media (min-width: 769px) {
-  /* 编辑器内 token 回到标准深色（压过 v1.2 的暖米声明） */
   html.dark .editor-page {
-    --bg-secondary: #2c2c2e;
-    --bg-tertiary: #3a3a3c;
-    --bg-hover: rgba(255, 255, 255, 0.06);
-    --text-primary: #f5f5f7;
-    --text-secondary: #d1d1d6;
-    --text-tertiary: #8e8e93;
-    --setting-bg: #2a2622;
-    --setting-card-bg: #322e29;
-    --setting-border: #3a3530;
-    --setting-children-border: #3d3833;
-    --setting-hover: rgba(180, 160, 130, 0.08);
     background-image: none;
-    background: var(--bg-primary, #1a1a1c);
+    background: var(--ed-desk-a, #1a1a1c);
   }
-  html.dark .editor-page .editor-header {
-    background: rgba(26, 26, 28, 0.92);
-    border-bottom-color: #ffffff14;
-  }
-  html.dark .editor-page :deep(.doc-tree) {
-    background: #2c2c2e;
-    border-right-color: #ffffff14;
-  }
-  html.dark .editor-page :deep(.branch-switcher) { border-bottom-color: #ffffff12; }
-  html.dark .editor-page .context-panel,
-  html.dark .editor-page .reference-panel {
-    background: #2c2c2e;
-    border-left-color: #ffffff14;
-  }
-  html.dark .editor-page :deep(.context-panel-toggle) { background: #3a3a3c; }
-  html.dark .editor-page :deep(.context-panel.collapsed .context-panel-toggle) {
-    background: #2c2c2e;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 0 1px #ffffff14;
-  }
-  /* 纸张：深色卡面 + 浅字（双线纸边同步压暗） */
-  html.dark .editor-page .tiptap-container > :deep(div .ProseMirror) {
-    background: #2c2c2e;
-    border-color: #ffffff1a;
-    outline-color: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
-    color: var(--text-primary, #f5f5f7);
-  }
-  /* 行号 / 虚拟章名线：暖沙 → 暗灰 */
-  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > p::before,
-  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h1::before,
-  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h2::before,
-  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h3::before,
-  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > blockquote::before,
-  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > ul::before,
-  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > ol::before,
-  html.dark .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > pre::before {
-    color: #8e8e93;
-  }
-  html.dark .editor-page .chapter-virtual-heading .vh-dash { background: linear-gradient(90deg, transparent, #55555c); }
-  html.dark .editor-page .chapter-virtual-heading .vh-dash-r { background: linear-gradient(90deg, #55555c, transparent); }
-  html.dark .editor-page .status-bar {
-    background: #1f1f21;
-    border-top-color: #ffffff14;
-  }
-  /* v1.2 输入框暖底在深色下压回暗面 */
-  html.dark .editor-page :deep(.context-panel input:not([type='checkbox'])) {
-    background: #1a1a1c;
-    border-color: #ffffff26;
-  }
-  html.dark .editor-page :deep(.context-panel .row-toggle) { border-color: #5a5a5e; }
 }

@@ -279,28 +279,28 @@ defineEmits<{
   margin: 12px 12px 4px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: #fbf7ee;
-  border: 1px solid #e6dcc6;
-  box-shadow: 0 1px 4px rgba(96, 74, 40, 0.06);
+  background: var(--ed-paper, #fbf7ee);
+  border: 1px solid var(--ed-paper-line, #e6dcc6);
+  box-shadow: 0 1px 4px var(--ed-shadow, rgba(96, 74, 40, 0.06));
 }
 .goal-card .row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
 }
-.goal-card .k { font-size: 12px; color: #94897a; }
+.goal-card .k { font-size: 12px; color: var(--ed-ink-soft, #94897a); }
 .goal-card .v {
   font-size: 22px;
   font-weight: 700;
-  color: #33302a;
+  color: var(--ed-ink, #33302a);
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
-.goal-card .v small { font-size: 12px; font-weight: 400; color: #94897a; }
+.goal-card .v small { font-size: 12px; font-weight: 400; color: var(--ed-ink-soft, #94897a); }
 .goal-card .bar {
   height: 5px;
   border-radius: 3px;
-  background: #ece3d0;
+  background: var(--ed-panel-2, #ece3d0);
   margin-top: 8px;
   overflow: hidden;
 }
@@ -316,7 +316,7 @@ defineEmits<{
   justify-content: space-between;
   margin-top: 6px;
   font-size: 11px;
-  color: #94897a;
+  color: var(--ed-ink-soft, #94897a);
 }
 .goal-card .meta .goal-edit {
   cursor: pointer;
@@ -330,8 +330,8 @@ defineEmits<{
   font-size: 11px;
   padding: 1px 5px;
   outline: none;
-  background: #fff;
-  color: #33302a;
+  background: var(--ed-input, #fff);
+  color: var(--ed-ink, #33302a);
   text-align: right;
 }
 /* 达标态：数字与标题转绿 */
@@ -345,25 +345,6 @@ defineEmits<{
   font-weight: 600;
 }
 .goal-card .meta .rush-link:hover { color: #8f5f24; text-decoration: underline; }
-
-/* 深色适配 v1.3：目标卡暖米硬编码 → 暗面 */
-html.dark .goal-card {
-  background: #2c2c2e;
-  border-color: #ffffff1a;
-  box-shadow: none;
-}
-html.dark .goal-card .k { color: #8e8e93; }
-html.dark .goal-card .v { color: #f5f5f7; }
-html.dark .goal-card .v small { color: #8e8e93; }
-html.dark .goal-card .meta { color: #8e8e93; }
-html.dark .goal-card .meta .goal-editing input {
-  background: #1a1a1c;
-  color: #f5f5f7;
-  border-color: #6aa877;
-}
-html.dark .goal-card.done .k,
-html.dark .goal-card.done .v { color: #8fc59b; }
-html.dark .goal-card .meta .rush-link { color: #d9a862; }
 
 /* ===== 书卡（demo：纸张布局 v1） ===== */
 .book-card {
@@ -504,10 +485,10 @@ html.dark .goal-card .meta .rush-link { color: #d9a862; }
   bottom: calc(100% + 4px);
   z-index: 260;
   min-width: 190px;
-  background: #fffdf8;
-  border: 1px solid #e2d8c2;
+  background: var(--ed-paper, #fffdf8);
+  border: 1px solid var(--ed-line, #e2d8c2);
   border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(60, 45, 20, 0.16);
+  box-shadow: 0 8px 28px var(--ed-shadow, rgba(60, 45, 20, 0.16));
   padding: 5px;
 }
 /* Teleport 到 body 的版本：视口定位，压过一切滚动容器/层叠上下文 */
@@ -530,12 +511,5 @@ html.dark .goal-card .meta .rush-link { color: #d9a862; }
 }
 .add-menu > div:hover { background: rgba(129, 187, 142, 0.14); color: #4d8a5c; }
 .add-menu .am-sub { font-size: 10px; color: var(--text-tertiary); }
-
-/* 深色适配 v1.3：Teleport 新建菜单暖底 → 暗面 */
-html.dark .add-menu {
-  background: #2c2c2e;
-  border-color: #ffffff1a;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
-}
 
 </style>

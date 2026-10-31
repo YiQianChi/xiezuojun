@@ -53,8 +53,8 @@ function onAgain() {
 }
 .sp-card {
   width: 400px; max-width: 94vw; max-height: 86vh; overflow-y: auto;
-  background: #fffdf8; border: 1px solid #e6dcc6; border-radius: 20px;
-  box-shadow: 0 24px 70px rgba(40, 30, 10, 0.35);
+  background: var(--ed-paper, #fffdf8); border: 1px solid var(--ed-paper-line, #e6dcc6); border-radius: 20px;
+  box-shadow: 0 24px 70px var(--ed-shadow, rgba(40, 30, 10, 0.35));
   padding: 24px 26px 20px; text-align: center;
 }
 .sp-cup { font-size: 34px; }
@@ -68,7 +68,7 @@ function onAgain() {
 }
 .sp-btn.green { background: linear-gradient(135deg, #8fc59b, #6aa877); color: #fff; }
 .sp-btn.ghost { background: rgba(129, 187, 142, 0.12); color: #5a9668; }
-.sp-btn.line { background: none; border: 1px solid #e2d8c2; color: #7a7263; }
+.sp-btn.line { background: none; border: 1px solid var(--ed-line, #e2d8c2); color: var(--ed-ink-mid, #7a7263); }
 .sp-members { margin-top: 14px; text-align: left; }
 .sp-member {
   display: flex; align-items: center; gap: 10px; padding: 8px 10px;
@@ -91,13 +91,5 @@ function onAgain() {
   .sp-card { width: 100%; padding: 18px 16px 16px; max-height: 82dvh; }
   .sp-members { max-height: 46dvh; overflow-y: auto; }
 }
-
-/* 深色适配 v1.3：结算卡暖米底 → 暗面 */
-html.dark .sp-card {
-  background: #2c2c2e;
-  border-color: #ffffff1a;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
-}
-html.dark .sp-btn.line { border-color: #ffffff26; color: #d1d1d6; }
 
 </style>

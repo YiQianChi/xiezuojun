@@ -238,3 +238,94 @@ h1, h2, h3, h4, h5, h6 { margin: 0; }
   margin-bottom: 20px;
   color: var(--text-primary);
 }
+/* =====================================================================
+   编辑器主题 token（2026-10-31，多主题系统）
+   --ed-* 在 html 级定义：编辑器皮肤、Teleport 弹层（搭子窗/结算卡/预览抽屉）全部引用。
+   主题切换 = 换 html 类名：米宣(默认无类)/theme-qing/theme-wu/theme-yangpi/
+   dark(冷墨)/dark+theme-ye(夜灯)。加新主题=抄一组值。
+   ===================================================================== */
+html,
+html.theme-xuan {
+  --ed-desk-a: #f2ebdb; --ed-desk-b: #ece1cb;          /* 桌面渐变 */
+  --ed-panel: #f8f3e8;                                  /* 面板底（树/右栏/搭子窗） */
+  --ed-panel-2: #efe7d5;                                /* 次级底（折叠条等） */
+  --ed-line: #e2d8c2; --ed-line-soft: #e8dfc8;          /* 分割线 */
+  --ed-paper: #fbf7ee; --ed-paper-line: #e6dcc6;        /* 纸张底/纸边 */
+  --ed-paper-outline: rgba(230, 220, 198, 0.55);
+  --ed-statusbar: #f3ecdd; --ed-header-bg: rgba(251, 247, 238, 0.92);
+  --ed-ink: #33302a; --ed-ink-mid: #7a7263; --ed-ink-soft: #a39a86;
+  --ed-input: #fdfaf1; --ed-hover: rgba(150, 130, 100, 0.09);
+  --ed-num: #a89a80; --ed-dash: #c9bfa6;                /* 行号/章名虚线 */
+  --ed-shadow: rgba(96, 74, 40, 0.10);
+  --ed-float-shadow: 0 6px 22px rgba(96, 74, 40, 0.16), 0 0 0 1px #e2d8c2;
+}
+/* 青竹：淡青绿护眼纸 */
+html.theme-qing {
+  --ed-desk-a: #e8efe9; --ed-desk-b: #dfe9e1;
+  --ed-panel: #f0f6f0; --ed-panel-2: #e4eee4;
+  --ed-line: #cfe0d2; --ed-line-soft: #d8e6da;
+  --ed-paper: #f4faf4; --ed-paper-line: #d5e5d8;
+  --ed-paper-outline: rgba(213, 229, 216, 0.55);
+  --ed-statusbar: #e9f1ea; --ed-header-bg: rgba(244, 250, 244, 0.92);
+  --ed-ink: #2c3830; --ed-ink-mid: #5f7264; --ed-ink-soft: #93a89a;
+  --ed-input: #f8fcf8; --ed-hover: rgba(95, 130, 105, 0.09);
+  --ed-num: #9db3a0; --ed-dash: #b8ccbb;
+  --ed-shadow: rgba(60, 100, 75, 0.10);
+  --ed-float-shadow: 0 6px 22px rgba(60, 100, 75, 0.14), 0 0 0 1px #cfe0d2;
+}
+/* 晨雾：冷灰蓝 */
+html.theme-wu {
+  --ed-desk-a: #e9edf2; --ed-desk-b: #dfe5ec;
+  --ed-panel: #f1f4f8; --ed-panel-2: #e5eaf1;
+  --ed-line: #d3dbe6; --ed-line-soft: #dae1ea;
+  --ed-paper: #f5f8fb; --ed-paper-line: #d8e0ea;
+  --ed-paper-outline: rgba(216, 224, 234, 0.55);
+  --ed-statusbar: #ebf0f5; --ed-header-bg: rgba(245, 248, 251, 0.92);
+  --ed-ink: #2e3440; --ed-ink-mid: #647082; --ed-ink-soft: #9aa6b8;
+  --ed-input: #f9fbfd; --ed-hover: rgba(100, 112, 130, 0.09);
+  --ed-num: #a0abbf; --ed-dash: #c2cddd;
+  --ed-shadow: rgba(70, 85, 110, 0.10);
+  --ed-float-shadow: 0 6px 22px rgba(70, 85, 110, 0.14), 0 0 0 1px #d3dbe6;
+}
+/* 仿古：深米黄羊皮纸 */
+html.theme-yangpi {
+  --ed-desk-a: #eadfc8; --ed-desk-b: #e0d2b4;
+  --ed-panel: #f3ead5; --ed-panel-2: #e9dec4;
+  --ed-line: #d8c8a4; --ed-line-soft: #ddcfaf;
+  --ed-paper: #f7efdb; --ed-paper-line: #dccfae;
+  --ed-paper-outline: rgba(220, 207, 174, 0.55);
+  --ed-statusbar: #efe4c9; --ed-header-bg: rgba(247, 239, 219, 0.92);
+  --ed-ink: #3d3222; --ed-ink-mid: #7c6d50; --ed-ink-soft: #a89a78;
+  --ed-input: #faf4e5; --ed-hover: rgba(150, 125, 80, 0.10);
+  --ed-num: #ab9a75; --ed-dash: #c9b98e;
+  --ed-shadow: rgba(120, 95, 50, 0.12);
+  --ed-float-shadow: 0 6px 22px rgba(120, 95, 50, 0.16), 0 0 0 1px #d8c8a4;
+}
+/* 冷墨：标准深色（= 原 dark） */
+html.dark {
+  --ed-desk-a: #1a1a1c; --ed-desk-b: #1a1a1c;
+  --ed-panel: #2c2c2e; --ed-panel-2: #3a3a3c;
+  --ed-line: #ffffff14; --ed-line-soft: #ffffff12;
+  --ed-paper: #2c2c2e; --ed-paper-line: #ffffff1a;
+  --ed-paper-outline: rgba(255, 255, 255, 0.05);
+  --ed-statusbar: #1f1f21; --ed-header-bg: rgba(26, 26, 28, 0.92);
+  --ed-ink: #f5f5f7; --ed-ink-mid: #d1d1d6; --ed-ink-soft: #8e8e93;
+  --ed-input: #1a1a1c; --ed-hover: rgba(255, 255, 255, 0.06);
+  --ed-num: #8e8e93; --ed-dash: #4a4a50;
+  --ed-shadow: rgba(0, 0, 0, 0.5);
+  --ed-float-shadow: 0 6px 22px rgba(0, 0, 0, 0.55), 0 0 0 1px #ffffff14;
+}
+/* 夜灯：暖墨绿深色（深夜码字不刺眼） */
+html.dark.theme-ye {
+  --ed-desk-a: #23251f; --ed-desk-b: #23251f;
+  --ed-panel: #2b2e26; --ed-panel-2: #34372e;
+  --ed-line: #3a3e33; --ed-line-soft: #363a30;
+  --ed-paper: #2f322a; --ed-paper-line: #3a3e33;
+  --ed-paper-outline: rgba(80, 90, 70, 0.35);
+  --ed-statusbar: #262922; --ed-header-bg: rgba(43, 46, 38, 0.92);
+  --ed-ink: #e8dfc8; --ed-ink-mid: #a89f7d; --ed-ink-soft: #6f7660;
+  --ed-input: #23251f; --ed-hover: rgba(190, 205, 170, 0.08);
+  --ed-num: #6f7660; --ed-dash: #4a4f40;
+  --ed-shadow: rgba(0, 0, 0, 0.45);
+  --ed-float-shadow: 0 6px 22px rgba(0, 0, 0, 0.5), 0 0 0 1px #3a3e33;
+}
