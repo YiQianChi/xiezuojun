@@ -58,7 +58,7 @@ function onAgain() {
   padding: 24px 26px 20px; text-align: center;
 }
 .sp-cup { font-size: 34px; }
-.sp-title { font-size: 18px; font-weight: 800; margin-top: 4px; color: #3a352c; }
+.sp-title { font-size: 18px; font-weight: 800; margin-top: 4px; color: var(--ed-ink, #3a352c); }
 .sp-sub { font-size: 12px; color: #7a7263; margin-top: 4px; }
 .sp-row3 { display: flex; gap: 8px; }
 .sp-row3.foot { margin-top: 18px; }
@@ -81,9 +81,9 @@ function onAgain() {
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 800;
 }
-.sp-m-name { font-weight: 700; color: #3a352c; flex: 1; }
+.sp-m-name { font-weight: 700; color: var(--ed-ink, #3a352c); flex: 1; }
 .sp-m-rk { width: 24px; text-align: center; font-size: 16px; }
-.sp-m-wc { font-size: 15px; font-weight: 800; color: #3a352c; font-variant-numeric: tabular-nums; }
+.sp-m-wc { font-size: 15px; font-weight: 800; color: var(--ed-ink, #3a352c); font-variant-numeric: tabular-nums; }
 
 /* 手机端：结算卡收紧（dvh 防地址栏收缩溢出） */
 @media (max-width: 768px) {

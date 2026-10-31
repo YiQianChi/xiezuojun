@@ -192,7 +192,7 @@
     font-size: 17px;
     font-weight: 600;
     letter-spacing: 1.5px;
-    color: #4a4438;
+    color: var(--ed-ink, #4a4438);
   }
   .editor-page .chapter-virtual-heading .vh-num {
     color: #6aa877;
@@ -1980,8 +1980,8 @@
 .editor-page .sprint-banner {
   display: flex; align-items: center; gap: 12px; flex-shrink: 0;
   height: 42px; padding: 0 16px;
-  background: rgba(251, 247, 238, 0.96); border-bottom: 1px solid var(--ed-line, #e2d8c2);
-  font-size: 12.5px; font-weight: 700; color: #3a352c;
+  background: var(--ed-header-bg, rgba(251, 247, 238, 0.96)); border-bottom: 1px solid var(--ed-line, #e2d8c2);
+  font-size: 12.5px; font-weight: 700; color: var(--ed-ink, #3a352c);
 }
 .editor-page .sprint-banner .sb-cd {
   font-size: 15px; font-weight: 800; color: #d97706;
@@ -1991,7 +1991,7 @@
 .editor-page .sprint-banner .sb-me { color: #5a9668; }
 .editor-page .sprint-banner .sb-lead { color: var(--ed-ink-mid, #7a7263); font-weight: 600; }
 .editor-page .sprint-banner .sb-btn {
-  margin-left: auto; border: none; background: rgba(0, 0, 0, 0.05);
+  margin-left: auto; border: none; background: var(--ed-hover, rgba(0, 0, 0, 0.05));
   border-radius: 8px; padding: 4px 10px; font-size: 11px;
   color: var(--ed-ink-mid, #7a7263); cursor: pointer; font-weight: 600;
 }
@@ -2056,7 +2056,7 @@
     --bg-secondary: var(--ed-panel, #f8f3e8);      /* 冷白面板 → 暖米面板 */
     --bg-tertiary: var(--ed-panel-2, #efe7d5);       /* 折叠条/次级底 */
     --bg-hover: var(--ed-hover, rgba(150,130,100,.09));
-    --text-primary: #3a352c;      /* 墨字 */
+    --text-primary: var(--ed-ink, #3a352c);      /* 墨字（随主题：深色主题为浅字） */
     --text-secondary: var(--ed-ink-mid, #7a7263);
     --text-tertiary: var(--ed-ink-soft, #a39a86);
   }
