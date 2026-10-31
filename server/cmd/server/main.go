@@ -332,6 +332,8 @@ func main() {
 	// 三层记忆
 	authd.GET("/memory/relationships", memHandler.GetRelationships)
 	authd.PUT("/memory/relationships", memHandler.PutRelationships)
+	authd.GET("/memory/canvas", memHandler.GetCanvas)
+	authd.PUT("/memory/canvas", memHandler.PutCanvas)
 
 	authd.GET("/memory/:project_id", memHandler.GetProjectMemory)
 	authd.PUT("/memory/:project_id/:file", memHandler.UpdateMemoryFile)

@@ -174,6 +174,7 @@
           @update:open="contextPanelOpen = $event"
           @jump="jumpToSetting"
           @insp-insert="insertInspToEditor"
+          @open-canvas="canvasOpen = true"
         />
 
         <!-- B5: 分屏参考面板 -->
@@ -632,6 +633,17 @@
         </div>
       </div>
     </div>
+
+    <!-- 设定画布：全屏覆盖层（入口=右栏「设定」页签） -->
+    <StoryCanvas
+      v-if="canvasOpen"
+      :project-id="projectId"
+      :chapters="chapterList.map((d: any) => ({ id: d.id, title: chapterDisplayTitle(d, documents) }))"
+      :current-chapter="currentChapterIndex"
+      :get-selection="getSelectionForCanvas"
+      @close="canvasOpen = false"
+      @open-graph="canvasOpen = false; graphOpen = true"
+    />
   </div>
 </template>
 
@@ -659,6 +671,7 @@ import ReviewView from '../components/ReviewView.vue'
 import EditorHeader from '../components/editor/EditorHeader.vue'
 import EditorSidebar from '../components/editor/EditorSidebar.vue'
 import AIContextPanel from '../components/editor/AIContextPanel.vue'
+import StoryCanvas from '../components/editor/StoryCanvas.vue'
 import AIChatPanel from '../components/editor/AIChatPanel.vue'
 import ReferencePanel from '../components/editor/ReferencePanel.vue'
 import MemoryPanel from '../components/editor/MemoryPanel.vue'
@@ -736,6 +749,21 @@ function insertInspToEditor(text: string) {
     editor.value?.commands?.insertContent(text + '\n')
     toast.success('已插入到光标处')
   } catch { toast.error('插入失败，请手动复制') }
+}
+
+/* ═══ 设定画布 ═══ */
+const canvasOpen = ref(false)
+// 画布摘录：读当前编辑器选区文字 + 所在章节
+function getSelectionForCanvas(): { text: string; chapterTitle: string; chapterNo: number } | null {
+  try {
+    if (!editor.value) return null
+    const { from, to } = editor.value.state.selection
+    if (from >= to) return null
+    const text = editor.value.state.doc.textBetween(from, to, '\n')
+    if (!text.trim()) return null
+    const d = documents.value.find((x: any) => x.id === activeDocId.value)
+    return { text, chapterTitle: d ? chapterDisplayTitle(d, documents.value) : '当前章', chapterNo: currentChapterIndex.value || 1 }
+  } catch { return null }
 }
 sprintInited.then((restored: number) => {
   // 断线/刷新恢复：本局已上报的字数作为种子，当前章基线直接以现值立住（不等 watch）

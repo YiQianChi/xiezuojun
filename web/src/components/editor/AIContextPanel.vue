@@ -28,6 +28,7 @@
         <template v-if="tab === 'set'">
           <div class="quick-search">
             <input v-model="quickQuery" placeholder="搜索角色 / 设定 / 伏笔…" />
+            <button class="canvas-entry" title="打开设定画布：卡片自由摆放整理" @click="$emit('open-canvas')">📐 画布</button>
           </div>
 
           <div v-if="loading" class="context-empty">
@@ -41,6 +42,17 @@
           </div>
 
           <template v-else>
+            <!-- 画布钉选的卡片（置顶对照） -->
+            <div v-if="!quickQuery && pinnedCards.length" class="quick-section">
+              <div class="quick-cap">📌 画布钉选<span class="cap-sub">画布里钉的卡，写这章对照</span></div>
+              <div v-for="p in pinnedCards" :key="'pin' + p.id" class="qc-char">
+                <div class="qc-ava pin">{{ p.kind === 'quote' ? '❝' : (p.title || '📌')[0] }}</div>
+                <div class="qc-main">
+                  <div class="qc-name" @click="jumpPinned(p)">{{ p.title }}</div>
+                  <div class="qc-desc">{{ (p.text || p.desc || '').slice(0, 70) }}</div>
+                </div>
+              </div>
+            </div>
             <!-- 上一章结尾（接梗用，非搜索时置顶） -->
             <div v-if="!quickQuery && prevChapterId" class="quick-section">
               <div class="quick-cap">上一章结尾<span class="cap-sub">接梗用</span></div>
@@ -175,7 +187,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { documentApi, threadApi, stickyApi, aiApi, type StoryThread } from '../../core/api'
+import { documentApi, threadApi, stickyApi, aiApi, memoryApi, type StoryThread } from '../../core/api'
 import { streamChat, friendlyAIError } from '../../core/sse'
 import { toast } from '../../composables/useToast'
 
@@ -205,6 +217,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [v: boolean]
   jump: [docId: number]
+  'open-canvas': []
   'insp-insert': [text: string]
 }>()
 
@@ -484,7 +497,25 @@ async function runCheck() {
 
 /* 数据加载入口：放在所有声明之后（immediate watch 同步执行，
    若写在灵感 refs 之前会在初始化竞态下触发 TDZ——踩过：Cannot access 'B' before initialization） */
-watch(() => props.projectId, () => { loadSettings(); loadInspirations() }, { immediate: true })
+watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPinned() }, { immediate: true })
+
+/* ─── 画布钉选：读取画布布局里 pinned 的卡片，置顶展示 ─── */
+const pinnedCards = ref<{ id: string; kind: string; title: string; text?: string; desc?: string; docId?: number }[]>([])
+async function loadPinned() {
+  if (!props.projectId) { pinnedCards.value = []; return }
+  try {
+    const res = await memoryApi.getCanvas(props.projectId)
+    const d = res.data?.data || res.data
+    pinnedCards.value = (Array.isArray(d?.cards) ? d.cards : []).filter((c: any) => c.pinned)
+  } catch { pinnedCards.value = [] }
+}
+function jumpPinned(p: { docId?: number }) {
+  if (p.docId) emit('jump', p.docId)
+}
+// 画布关闭回来自动刷新钉选（Editor 上 canvasOpen 变化会重挂/触发不了这里，用窗口事件兜底）
+function onCanvasClosed() { loadPinned() }
+onMounted(() => window.addEventListener('xzj-canvas-closed', onCanvasClosed))
+onBeforeUnmount(() => window.removeEventListener('xzj-canvas-closed', onCanvasClosed))
 </script>
 
 <style scoped>
@@ -599,9 +630,10 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations() }, { imm
 .context-empty .ctx-icon { font-size: 24px; margin-bottom: 8px; opacity: 0.6; }
 .context-empty .hint { color: var(--text-tertiary, #aeaeb2); opacity: 0.8; font-size: 11px; }
 /* ─── 设定页签 ─── */
-.quick-search { padding: 2px 0 6px; }
+.quick-search { padding: 2px 0 6px; display: flex; gap: 6px; }
 .quick-search input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.03);
@@ -611,6 +643,19 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations() }, { imm
   outline: none;
   transition: all 0.15s;
 }
+.canvas-entry {
+  border: 1px solid rgba(106, 168, 119, 0.45);
+  border-radius: 8px;
+  background: rgba(106, 168, 119, 0.1);
+  color: var(--accent, #5a9668);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 0 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.canvas-entry:hover { background: rgba(106, 168, 119, 0.2); }
+.qc-ava.pin { background: linear-gradient(160deg, #e8d89a, #c9a34e); }
 .quick-search input:focus { border-color: var(--accent, #6aa877); background: #fff; }
 .quick-search input::placeholder { color: var(--text-tertiary, #aeaeb2); }
 .prev-tail { margin-top: 2px; font-size: 12px; line-height: 1.8; max-height: 150px; overflow-y: auto; }

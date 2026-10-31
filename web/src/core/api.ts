@@ -286,6 +286,13 @@ export const memoryApi = {
   saveRelationships(projectId: string, data: any) {
     return api.put('/memory/relationships', data, { params: { project_id: projectId } })
   },
+  // 设定画布：整份布局 JSON（cards/zones/view），后端透明存储
+  getCanvas(projectId: string | number) {
+    return api.get('/memory/canvas', { params: { project_id: String(projectId) } })
+  },
+  saveCanvas(projectId: string | number, data: any) {
+    return api.put('/memory/canvas', data, { params: { project_id: String(projectId) } })
+  },
 }
 
 // 回收站
