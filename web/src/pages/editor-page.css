@@ -2028,3 +2028,41 @@
   .editor-page .sprint-banner .sb-lead { display: none; }
   .editor-page .sprint-focus-pill { right: 130px; }
 }
+
+/* =====================================================================
+   色彩统一 v1.2（2026-10-31，Boss 拍板：布局不动，只把冷暖拼接收敛成一套暖米）
+   两招：①编辑器内把全局冷灰 token 改指向暖米值——左栏/右栏/搭子窗/弹层里
+           所有引用 var(--bg-secondary 等) 的面板一次性变暖（就近声明优先于 :root）；
+        ②:deep 强权补掉硬编码纯白（左栏树根 scoped 特异性同分注入顺序输的旧账）。
+   与皮肤 v1 同口径：仅桌面 ≥769px；回滚 = 删除本段。
+   ===================================================================== */
+@media (min-width: 769px) {
+  .editor-page {
+    --bg-secondary: #f8f3e8;      /* 冷白面板 → 暖米面板 */
+    --bg-tertiary: #efe7d5;       /* 折叠条/次级底 */
+    --bg-hover: rgba(150, 130, 100, 0.09);
+    --text-primary: #3a352c;      /* 墨字 */
+    --text-secondary: #7a7263;
+    --text-tertiary: #a39a86;
+  }
+  /* 左栏树：重新夺回暖底（v1 规则被组件 scoped 同特异性盖掉） */
+  .editor-page :deep(.doc-tree) { background: #f8f3e8; }
+  /* 搭子窗：暖底 + 纸系描边阴影（原来是纯白+冷阴影） */
+  .editor-page :deep(.buddy-window) {
+    background: #f8f3e8;
+    border: 1px solid #e2d8c2;
+    box-shadow: 0 6px 22px rgba(96, 74, 40, 0.16);
+  }
+  /* 右栏折叠细条：冷灰 → 暖沙 */
+  .editor-page :deep(.context-panel-toggle) { background: #efe7d5; }
+  .editor-page :deep(.context-panel.collapsed .context-panel-toggle) {
+    background: #f8f3e8;
+    box-shadow: 0 2px 8px rgba(96, 74, 40, 0.14), 0 0 0 1px #e2d8c2;
+  }
+  /* 面板内输入框/小开关的冷灰边 → 纸系（var 换肤管不到的硬编码 rgba 黑） */
+  .editor-page :deep(.context-panel input:not([type='checkbox'])) {
+    background: #fdfaf1;
+    border-color: #e2d8c2;
+  }
+  .editor-page :deep(.context-panel .row-toggle) { border-color: #c9bfa6; }
+}

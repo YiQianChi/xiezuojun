@@ -179,9 +179,14 @@ function download() {
   display: flex; align-items: center; justify-content: center;
 }
 .report-modal {
-  background: var(--bg-secondary, #fff);
+  /* 色彩统一 v1.2：Teleport 弹层带一套暖米变量（同搭子窗做法） */
+  --bg-secondary: #f8f3e8;
+  --text-secondary: #7a7263;
+  --text-tertiary: #a39a86;
+  background: #f8f3e8;
+  border: 1px solid #e2d8c2;
   border-radius: 20px; padding: 18px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  box-shadow: 0 20px 60px rgba(60, 45, 20, 0.28);
   max-width: 92vw; max-height: 92dvh;
   display: flex; flex-direction: column; align-items: center;
 }

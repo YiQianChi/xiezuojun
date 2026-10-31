@@ -875,8 +875,17 @@ onBeforeUnmount(() => {
 .buddy-window {
   position: fixed; right: 24px; bottom: 44px; z-index: 900;
   width: 230px; border-radius: 14px; overflow: hidden;
-  background: var(--bg-secondary, #fff);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.06);
+  /* 色彩统一 v1.2：Teleport 到 body 处于 .editor-page 之外，token 翻转够不着，
+     自带一套暖米变量让窗内所有 var() 引用就地变暖（与编辑器皮肤同值） */
+  --bg-secondary: #f8f3e8;
+  --bg-tertiary: #efe7d5;
+  --bg-hover: rgba(150, 130, 100, 0.09);
+  --text-primary: #3a352c;
+  --text-secondary: #7a7263;
+  --text-tertiary: #a39a86;
+  --border-subtle: #e2d8c2;
+  background: #f8f3e8;
+  box-shadow: 0 6px 22px rgba(96, 74, 40, 0.16), 0 0 0 1px #e2d8c2;
   user-select: none;
 }
 .bw-head {
