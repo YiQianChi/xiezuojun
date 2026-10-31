@@ -352,7 +352,7 @@ defineEmits<{
   gap: 10px;
   align-items: center;
   padding: 10px 14px 12px;
-  border-top: 1px solid #e2d8c2;
+  border-top: 1px solid var(--ed-line, #e2d8c2);
   flex-shrink: 0;
 }
 .book-card .cover {
@@ -372,12 +372,12 @@ defineEmits<{
 .book-card .bt {
   font-size: 13px;
   font-weight: 600;
-  color: #33302a;
+  color: var(--ed-ink, #33302a);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.book-card .st { font-size: 11px; color: #94897a; margin-top: 3px; }
+.book-card .st { font-size: 11px; color: var(--ed-ink-soft, #94897a); margin-top: 3px; }
 
 .doc-tree {
   width: 240px;

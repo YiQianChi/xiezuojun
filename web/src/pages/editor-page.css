@@ -1842,12 +1842,25 @@
     --accent-hover: #5a9668;
     --accent-light: #81bb8e24;
     --accent-subtle: #81bb8e14;
-    /* 设定区配色并入米宣纸系 */
+    /* 设定区配色并入主题 token（--ed-* 随六主题换值） */
     --setting-bg: var(--ed-panel-2, #f4eee2);
     --setting-card-bg: var(--ed-paper, #fbf7ee);
     --setting-border: var(--ed-paper-line, #e6dcc6);
     --setting-children-border: var(--ed-line, #e0d5bc);
-    --setting-hover: var(--ed-hover, rgba(150,130,100,.08));
+    --setting-hover: var(--ed-hover, rgba(150, 130, 100, 0.08));
+    --setting-text: var(--ed-ink-mid, #8a7d6e);
+    --setting-title: var(--ed-ink-soft, #a89888);
+  }
+
+  /* 分卷/文件夹行：原用全局 --bg-primary（冷灰），切主题不跟随——改用主题次级底 */
+  .editor-page :deep(.doc-tree-node.folder > .tree-row) {
+    background: var(--ed-panel-2, #efe7d5);
+  }
+  /* 设定区紧凑行 active：硬编码蓝 → 主题 accent */
+  .editor-page :deep(.compact > .tree-row.active) {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   /* 纸内章名：首个 H1 居中 + 品牌绿装饰线（demo 的 title-rule） */
