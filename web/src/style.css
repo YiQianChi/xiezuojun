@@ -261,6 +261,11 @@ html.theme-xuan {
 }
 /* 青竹：淡青绿护眼纸 */
 html.theme-qing {
+  /* 全站跟随：书架/首页等全局 token */
+  --bg-primary: #e8efe9; --bg-secondary: #f0f6f0; --bg-tertiary: #dfe9df;
+  --text-primary: #2c3830; --text-secondary: #5f7264; --text-tertiary: #93a89a;
+  --border: rgba(70, 110, 85, 0.12); --border-subtle: rgba(70, 110, 85, 0.06);
+  --glass-bg-solid: #f0f6f0e6; --hover-bg: rgba(70, 110, 85, 0.05);
   --ed-desk-a: #e8efe9; --ed-desk-b: #dfe9e1;
   --ed-panel: #f0f6f0; --ed-panel-2: #e4eee4;
   --ed-line: #cfe0d2; --ed-line-soft: #d8e6da;
@@ -275,6 +280,10 @@ html.theme-qing {
 }
 /* 晨雾：冷灰蓝 */
 html.theme-wu {
+  --bg-primary: #e9edf2; --bg-secondary: #f1f4f8; --bg-tertiary: #dfe5ec;
+  --text-primary: #2e3440; --text-secondary: #647082; --text-tertiary: #9aa6b8;
+  --border: rgba(70, 85, 110, 0.12); --border-subtle: rgba(70, 85, 110, 0.06);
+  --glass-bg-solid: #f1f4f8e6; --hover-bg: rgba(70, 85, 110, 0.05);
   --ed-desk-a: #e9edf2; --ed-desk-b: #dfe5ec;
   --ed-panel: #f1f4f8; --ed-panel-2: #e5eaf1;
   --ed-line: #d3dbe6; --ed-line-soft: #dae1ea;
@@ -289,6 +298,10 @@ html.theme-wu {
 }
 /* 仿古：深米黄羊皮纸 */
 html.theme-yangpi {
+  --bg-primary: #eadfc8; --bg-secondary: #f3ead5; --bg-tertiary: #e0d2b4;
+  --text-primary: #3d3222; --text-secondary: #7c6d50; --text-tertiary: #a89a78;
+  --border: rgba(120, 95, 50, 0.14); --border-subtle: rgba(120, 95, 50, 0.07);
+  --glass-bg-solid: #f3ead5e6; --hover-bg: rgba(120, 95, 50, 0.05);
   --ed-desk-a: #eadfc8; --ed-desk-b: #e0d2b4;
   --ed-panel: #f3ead5; --ed-panel-2: #e9dec4;
   --ed-line: #d8c8a4; --ed-line-soft: #ddcfaf;
@@ -317,13 +330,18 @@ html.dark {
 }
 /* 夜灯：暖墨绿深色（深夜码字不刺眼） */
 html.dark.theme-ye {
+  --bg-primary: #23251f; --bg-secondary: #2b2e26; --bg-tertiary: #34372e;
+  --text-primary: #e8dfc8; --text-secondary: #a89f7d; --text-tertiary: #828a72;
+  --border: #ffffff12; --border-subtle: #ffffff0a;
+  --glass-bg-solid: #2b2e26e6; --hover-bg: rgba(190, 205, 170, 0.06);
+  --accent: #81bb8e; --accent-hover: #8fc59b;
   --ed-desk-a: #23251f; --ed-desk-b: #23251f;
   --ed-panel: #2b2e26; --ed-panel-2: #34372e;
   --ed-line: #3a3e33; --ed-line-soft: #363a30;
   --ed-paper: #2f322a; --ed-paper-line: #3a3e33;
   --ed-paper-outline: rgba(80, 90, 70, 0.35);
   --ed-statusbar: #262922; --ed-header-bg: rgba(43, 46, 38, 0.92);
-  --ed-ink: #e8dfc8; --ed-ink-mid: #a89f7d; --ed-ink-soft: #6f7660;
+  --ed-ink: #e8dfc8; --ed-ink-mid: #a89f7d; --ed-ink-soft: #828a72;
   --ed-input: #23251f; --ed-hover: rgba(190, 205, 170, 0.08);
   --ed-num: #6f7660; --ed-dash: #4a4f40;
   --ed-shadow: rgba(0, 0, 0, 0.45);
