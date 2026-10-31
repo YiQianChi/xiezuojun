@@ -67,6 +67,9 @@
             <span class="sr-wc">{{ p.words }}</span>
           </div>
         </div>
+
+        <!-- 便签贴纸（C 方案）：贴在正文纸张右缘，实时量纸张对齐 -->
+        <StickyNotes :project-id="projectId" />
         <div v-if="draftBanner && draftBanner.docId === activeDocId" class="draft-banner" style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#fef3cd;border-bottom:1px solid #f0d57a;font-size:14px;color:#856404;">
           <span>📝 检测到未保存的本地草稿，是否恢复？</span>
           <div class="draft-actions" style="display:flex;gap:8px;">
@@ -165,8 +168,11 @@
           :used-settings="usedSettings"
           :prev-chapter-id="prevChapterId"
           :current-chapter="currentChapterIndex"
+          :get-text="getPlainTextForCheck"
+          :sensitive-total="sensitiveTotal"
           @update:open="contextPanelOpen = $event"
           @jump="jumpToSetting"
+          @insp-insert="insertInspToEditor"
         />
 
         <!-- B5: 分屏参考面板 -->
@@ -662,6 +668,7 @@ import StoryboardView from '../components/editor/StoryboardView.vue'
 import WritingStatsPanel from '../components/editor/WritingStatsPanel.vue'
 import BuddyWindow from '../components/editor/BuddyWindow.vue'
 import SprintPanel from '../components/editor/SprintPanel.vue'
+import StickyNotes from '../components/editor/StickyNotes.vue'
 import { useSprint } from '../composables/useSprint'
 import CharacterCardView from '../components/editor/CharacterCardView.vue'
 import DisplaySettings from '../components/editor/DisplaySettings.vue'
@@ -719,6 +726,16 @@ const sprintSessionWords = computed(() =>
   sprintSettledWords.value + (sprintChBaseline.value >= 0 ? Math.max(0, wordCount.value - sprintChBaseline.value) : 0))
 const sprint = useSprint()
 const sprintInited = sprint.init(sprintSessionWords)
+// 右栏工作台（C 方案）需要的两个桥：自检取正文纯文本 / 灵感「写进本章」插到光标
+function getPlainTextForCheck(): string {
+  try { return getEditorText(editor.value) } catch { return '' }
+}
+function insertInspToEditor(text: string) {
+  try {
+    editor.value?.commands?.insertContent(text + '\n')
+    toast.success('已插入到光标处')
+  } catch { toast.error('插入失败，请手动复制') }
+}
 sprintInited.then((restored: number) => {
   // 断线/刷新恢复：本局已上报的字数作为种子，当前章基线直接以现值立住（不等 watch）
   if (restored > 0) {

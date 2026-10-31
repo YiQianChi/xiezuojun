@@ -27,6 +27,7 @@ import (
 	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/project"
 	"xiezuojun-server/internal/sprint"
+	"xiezuojun-server/internal/sticky"
 	"xiezuojun-server/internal/store"
 	"xiezuojun-server/internal/tts"
 	"xiezuojun-server/internal/user"
@@ -60,6 +61,7 @@ func main() {
 		&model.StoryThread{},
 		&admin.Announcement{},
 		&admin.Feedback{},
+		&sticky.Note{},
 	); err != nil {
 		log.Fatal("auto migrate failed: ", err)
 	}
@@ -353,6 +355,11 @@ func main() {
 
 	// 拼字房（多人拼字）路由
 	sprint.RegisterRoutes(authd)
+
+	// 便签/灵感随手记 + AI 味自检（右栏工作台 C 方案）
+	sticky.SetDB(db)
+	sticky.RegisterRoutes(authd)
+	ai.RegisterSelfCheck(authd, aiClient, gateway.DefaultModels[0].ModelID)
 
 	// 后台管理路由（用户管理/看板/内容监管/公告/反馈）
 	adminHandler := admin.NewHandler(db)

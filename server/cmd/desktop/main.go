@@ -33,6 +33,7 @@ import (
 	"xiezuojun-server/internal/auth"
 	"xiezuojun-server/internal/buddy"
 	"xiezuojun-server/internal/sprint"
+	"xiezuojun-server/internal/sticky"
 	"xiezuojun-server/internal/gateway"
 	"xiezuojun-server/internal/memory"
 	"xiezuojun-server/internal/middleware"
@@ -64,6 +65,7 @@ func main() {
 		&model.Project{}, &model.StoryBranch{}, &model.Document{}, &model.DocumentVersion{},
 		&model.WordCountLog{}, &model.UsageRecord{}, &model.StoryThread{},
 		&model.WritingSession{},
+		&sticky.Note{},
 	); err != nil {
 		log.Fatal("本地建表失败:", err)
 	}
@@ -251,6 +253,11 @@ func main() {
 
 	// 拼字房（多人拼字，纯内存无外部依赖，桌面版同样可用）
 	sprint.RegisterRoutes(authd)
+
+	// 便签/灵感随手记 + AI 味自检（右栏工作台 C 方案）
+	sticky.SetDB(db)
+	sticky.RegisterRoutes(authd)
+	ai.RegisterSelfCheck(authd, aiClient, gateway.DefaultModels[0].ModelID)
 
 	authd.GET("/projects/:id/stats", projectHandler.WritingStats)
 	authd.GET("/projects/:id/threads", projectHandler.ListThreads)

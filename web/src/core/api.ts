@@ -216,6 +216,10 @@ export const documentApi = {
 
 // AI 相关
 export const aiApi = {
+  selfcheck(text: string) {
+    // 推理模型全量输出慢（30-90s），单独放宽超时
+    return api.post('/ai/selfcheck', { text }, { timeout: 180000 })
+  },
   generate(data: { project_id: string; document_id?: string; mode: string; content: string; stream?: boolean }) {
     return api.post('/ai/generate', data, { timeout: 120000 })
   },
@@ -231,6 +235,22 @@ export const ttsApi = {
   },
   synthesize(text: string, voice: string) {
     return api.post('/tts', { text, voice }, { responseType: 'blob', timeout: 30000 })
+  },
+}
+
+// 便签/灵感随手记（右栏工作台 C 方案：note=稿纸贴纸 insp=灵感库）
+export const stickyApi = {
+  list(projectId: number) {
+    return api.get('/sticky', { params: { project_id: projectId } })
+  },
+  create(data: { project_id: number; type: 'note' | 'insp'; content: string; color?: string }) {
+    return api.post('/sticky', data)
+  },
+  update(id: number, data: { content?: string; color?: string }) {
+    return api.patch(`/sticky/${id}`, data)
+  },
+  remove(id: number) {
+    return api.delete(`/sticky/${id}`)
   },
 }
 
