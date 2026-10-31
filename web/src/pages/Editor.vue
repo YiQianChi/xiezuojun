@@ -45,6 +45,7 @@
         @add-prologue="createSpecialChapter('楔子')"
         @add-extra="createSpecialChapter('番外')"
         @add-article="createVolumeAtRoot"
+        @goal-lock="onGoalLock"
         @add-doc-in="createDocInFolder"
         @cycle-status="handleCycleStatus"
       />
@@ -648,7 +649,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
-import { documentApi, projectApi, ttsApi, threadApi } from '../core/api'
+import { documentApi, projectApi, ttsApi, threadApi, buddyApi } from '../core/api'
 import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import SearchPanel from '../components/SearchPanel.vue'
@@ -978,6 +979,11 @@ function clearWordLock() {
   toast.info('已解锁')
 }
 
+/* 目标卡「🔒 还差 N 字」：直接把剩余量设成码字锁冲刺 */
+function onGoalLock(remaining: number) {
+  if (remaining > 0) setWordLock(remaining)
+}
+
 watch(wordCount, () => {
   if (wordLock.value && lockRemaining.value <= 0) {
     const t = wordLock.value.target
@@ -1094,6 +1100,30 @@ watch(wordCount, (n) => {
     todayWords.value = Math.max(0, n - todayBaseline)
   }
 })
+
+/* ═══ 今日码字上报：章内字数变化聚合成净增（切章重立基线不计入），45s 一报 → POST /buddy/report
+   目标卡/统计面板从 /buddy/today 取真今日（跨刷新/跨设备一致） ═══ */
+let reportLastCount = -1
+let reportPending = 0
+watch(activeDocId, () => { reportLastCount = -1 }) // 切章：跨章字数差不计入今日
+watch(wordCount, (n) => {
+  if (reportLastCount < 0) { reportLastCount = n; return }
+  reportPending += n - reportLastCount
+  reportLastCount = n
+})
+async function flushWordsReport() {
+  if (!reportPending) return
+  const d = reportPending
+  reportPending = 0
+  try {
+    await buddyApi.reportWords(d)
+  } catch {
+    reportPending += d // 断网攒着下一拍一起报
+  }
+}
+const reportTimer = setInterval(flushWordsReport, 45000)
+onBeforeUnmount(() => clearInterval(reportTimer))
+window.addEventListener('pagehide', flushWordsReport) // 关页前尽力报最后一笔（axios 同步发不保证，尽力而为）
 const storyboardOpen = ref(false) // 章节大纲卡片视图
 const statsOpen = ref(false) // 写作统计面板
 const chatOpen = ref(false) // AI 对话面板

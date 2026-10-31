@@ -3,17 +3,17 @@
        fallthrough class——Editor 传的 drawer-open 曾被静默丢弃，导致手机端抽屉打不开 -->
   <aside class="doc-tree" v-bind="$attrs">
 
-    <!-- 今日码字卡（数据来自编辑器实时统计：todayWords=本次会话净增，chapterWords=当前章） -->
-    <div class="goal-card">
+    <!-- 今日码字卡：真今日净增（服务端 /buddy/today，跨刷新/跨设备）；
+         目标跟账号走（/buddy/goal，localStorage 兜底）；达标变绿 + 一键上码字锁冲刺剩余字数 -->
+    <div class="goal-card" :class="{ done: goalDone }">
       <div class="row">
-        <span class="k">今日码字</span>
-        <span class="v">{{ todayWords || 0 }}<small> / {{ dailyGoal }}</small></span>
+        <span class="k">{{ goalDone ? '✓ 今日达标' : '今日码字' }}</span>
+        <span class="v">{{ todayDisplay }}<small> / {{ dailyGoal }}</small></span>
       </div>
-      <div class="bar"><i :style="{ width: Math.min(100, ((todayWords || 0) / dailyGoal) * 100) + '%' }"></i></div>
+      <div class="bar"><i :style="{ width: barWidth + '%' }"></i></div>
       <div class="meta">
         <span>本章 {{ chapterWords || 0 }} 字</span>
-        <span v-if="!goalEditing" class="goal-edit" @click="startGoalEdit" title="点此修改每日目标">🎯 目标 {{ dailyGoal }} 字 ✎</span>
-        <span v-else class="goal-editing">
+        <span v-if="goalEditing" class="goal-editing">
           <input
             ref="goalInputRef"
             v-model="goalDraft"
@@ -24,6 +24,11 @@
             @keyup.escape="goalEditing = false"
             @blur="saveGoal"
           />
+        </span>
+        <span v-else-if="goalDone" class="goal-edit" @click="startGoalEdit" title="点此修改每日目标">🎉 已达标 ✎</span>
+        <span v-else class="goal-rush">
+          <a class="rush-link" title="还差这些字达标，点此上码字锁冲刺" @click.prevent="$emit('goal-lock', goalRemaining)">🔒 还差 {{ goalRemaining }} 字</a>
+          <a class="goal-edit" title="点此修改每日目标" @click.prevent="startGoalEdit">✎</a>
         </span>
       </div>
     </div>
@@ -119,8 +124,9 @@ export default { inheritAttrs: false }
 </script>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import DocTreeNode from '../DocTreeNode.vue'
+import { buddyApi } from '../../core/api'
 
 const props = defineProps<{
   documents: any[]
@@ -158,7 +164,7 @@ if (typeof document !== 'undefined') {
   document.addEventListener('click', onDocClickCloseMenu, { capture: true })
 }
 
-/* 每日目标可调：全局 localStorage，默认 2000 */
+/* 每日目标：跟账号走（/buddy/goal），localStorage 兜底（离线/后端不可用），默认 2000 */
 const GOAL_KEY = 'xzj-daily-goal'
 const dailyGoal = ref(2000)
 const goalEditing = ref(false)
@@ -169,6 +175,38 @@ try {
   const saved = Number(localStorage.getItem(GOAL_KEY))
   if (saved >= 100) dailyGoal.value = saved
 } catch { /* ignore */ }
+
+/* 真今日字数：服务端 /buddy/today（净增，跨刷新/跨设备）；没拿到前退回会话计数 */
+const serverToday = ref(-1) // -1 = 还没拿到
+const todayDisplay = computed(() => (serverToday.value >= 0 ? serverToday.value : (props.todayWords || 0)))
+const goalDone = computed(() => todayDisplay.value >= dailyGoal.value && dailyGoal.value > 0)
+const goalRemaining = computed(() => Math.max(0, dailyGoal.value - todayDisplay.value))
+const barWidth = computed(() => Math.min(100, (todayDisplay.value / Math.max(1, dailyGoal.value)) * 100))
+
+let todayTimer: ReturnType<typeof setInterval> | null = null
+async function loadToday() {
+  try {
+    const res = await buddyApi.today()
+    const w = Number(res.data?.data?.today?.words)
+    if (!Number.isNaN(w)) serverToday.value = w
+  } catch { /* 断网保持现状 */ }
+}
+async function loadGoal() {
+  try {
+    const g = Number((await buddyApi.goal()).data?.data?.goal)
+    if (g >= 100) {
+      dailyGoal.value = g
+      try { localStorage.setItem(GOAL_KEY, String(g)) } catch { /* ignore */ }
+    }
+  } catch { /* 离线用 localStorage 值 */ }
+}
+
+onMounted(() => {
+  loadToday()
+  loadGoal()
+  todayTimer = setInterval(loadToday, 60000) // 1 分钟对一次表；写字中的增量由 Editor 45s 一报，服务端值自然走
+})
+onBeforeUnmount(() => { if (todayTimer) clearInterval(todayTimer) })
 
 function startGoalEdit() {
   goalDraft.value = String(dailyGoal.value)
@@ -183,6 +221,7 @@ function saveGoal() {
   if (n >= 100 && n <= 50000 && n !== dailyGoal.value) {
     dailyGoal.value = n
     try { localStorage.setItem(GOAL_KEY, String(n)) } catch { /* ignore */ }
+    buddyApi.setGoal(n).catch(() => {}) // 存账号；失败有 localStorage 兜底
   }
 }
 
@@ -199,6 +238,7 @@ defineEmits<{
   'add-article': []
   'add-doc-in': [folder: any]
   'cycle-status': [node: any]
+  'goal-lock': [remaining: number]
 }>()</script>
 
 <style scoped>
@@ -294,6 +334,36 @@ defineEmits<{
   color: #33302a;
   text-align: right;
 }
+/* 达标态：数字与标题转绿 */
+.goal-card.done .k { color: #4d8a5c; font-weight: 700; }
+.goal-card.done .v { color: #4d8a5c; }
+/* 冲刺入口 */
+.goal-card .meta .goal-rush { display: inline-flex; gap: 7px; align-items: center; }
+.goal-card .meta .rush-link {
+  color: #b07a3a;
+  cursor: pointer;
+  font-weight: 600;
+}
+.goal-card .meta .rush-link:hover { color: #8f5f24; text-decoration: underline; }
+
+/* 深色适配 v1.3：目标卡暖米硬编码 → 暗面 */
+html.dark .goal-card {
+  background: #2c2c2e;
+  border-color: #ffffff1a;
+  box-shadow: none;
+}
+html.dark .goal-card .k { color: #8e8e93; }
+html.dark .goal-card .v { color: #f5f5f7; }
+html.dark .goal-card .v small { color: #8e8e93; }
+html.dark .goal-card .meta { color: #8e8e93; }
+html.dark .goal-card .meta .goal-editing input {
+  background: #1a1a1c;
+  color: #f5f5f7;
+  border-color: #6aa877;
+}
+html.dark .goal-card.done .k,
+html.dark .goal-card.done .v { color: #8fc59b; }
+html.dark .goal-card .meta .rush-link { color: #d9a862; }
 
 /* ===== 书卡（demo：纸张布局 v1） ===== */
 .book-card {

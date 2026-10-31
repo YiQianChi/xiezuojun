@@ -64,6 +64,7 @@ const (
 	keyCheer   = "xzj:buddy:cheer:"
 	keyOnline  = "xzj:buddy:online"
 	keyDaily   = "xzj:buddy:daily:" // + uid + ":" + 2006-01-02（按日分键，跨日自然清零）
+	keyGoal    = "xzj:buddy:goal:"  // + uid（每日码字目标，跟账号走，无 TTL）
 )
 
 func init() {
@@ -101,6 +102,28 @@ func matchedKey(uid string) string { return keyMatched + uid }
 func cheerKey(uid string) string   { return keyCheer + uid }
 func dailyKey(uid string) string {
 	return keyDaily + uid + ":" + time.Now().In(time.Local).Format("2006-01-02")
+}
+
+func goalKey(uid string) string { return keyGoal + uid }
+
+// GetGoal 每日码字目标（0=未设置，前端用默认值）
+func GetGoal(uid string) int {
+	v, err := rdb.Get(rctx, goalKey(uid)).Result()
+	if err != nil {
+		return 0
+	}
+	n, _ := strconv.Atoi(v)
+	return n
+}
+
+// SetGoal 每日码字目标存账号（Redis 持久，无 TTL）
+func SetGoal(uid string, goal int) {
+	rdb.Set(rctx, goalKey(uid), goal, 0)
+}
+
+// ReportWords 裸写上报：只累计今日净增字数（不涉搭子会话/计时状态）
+func ReportWords(uid string, delta int) TodayStat {
+	return updateDaily(uid, int64(delta), 0)
 }
 
 // updateDaily 今日净增统计：单调增量（新-旧>=0）直接累计，回退（新<旧，删字/换章/新一场回退）如实减

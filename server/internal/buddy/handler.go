@@ -21,6 +21,9 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/buddy/nudge", handleNudge)
 	rg.GET("/buddy/state", handleState)
 	rg.GET("/buddy/today", handleToday)  // 今日写作统计（净增字数/净码字时长）
+	rg.GET("/buddy/goal", handleGoalGet)  // 每日码字目标（跟账号）
+	rg.PUT("/buddy/goal", handleGoalSet)
+	rg.POST("/buddy/report", handleWordsReport) // 裸写上报：只累计今日字数（编辑器周期调）
 	rg.GET("/buddy/events", handleEvents) // SSE 实时推送
 }
 
@@ -136,4 +139,34 @@ func handleToday(c *gin.Context) {
 		"today":       GetToday(uid),
 		"server_time": time.Now().UnixMilli(),
 	}})
+}
+
+// handleGoalGet 每日码字目标（0=未设置）
+func handleGoalGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"goal": GetGoal(c.GetString("userID"))}})
+}
+
+// handleGoalSet 目标跟账号走（100~100000）
+func handleGoalSet(c *gin.Context) {
+	var req struct {
+		Goal int `json:"goal"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Goal < 100 || req.Goal > 100000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "goal 取值 100~100000"})
+		return
+	}
+	SetGoal(c.GetString("userID"), req.Goal)
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"goal": req.Goal}})
+}
+
+// handleWordsReport 裸写上报：编辑器把章内字数净增聚合上报（正负都收，删字如实减）
+func handleWordsReport(c *gin.Context) {
+	var req struct {
+		WordsDelta int `json:"words_delta"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.WordsDelta > 100000 || req.WordsDelta < -100000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "words_delta 非法"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"today": ReportWords(c.GetString("userID"), req.WordsDelta)}})
 }

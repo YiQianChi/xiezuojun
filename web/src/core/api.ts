@@ -370,6 +370,15 @@ export const buddyApi = {
   today() {
     return api.get('/buddy/today')
   },
+  goal() {
+    return api.get('/buddy/goal')
+  },
+  setGoal(goal: number) {
+    return api.put('/buddy/goal', { goal })
+  },
+  reportWords(delta: number) {
+    return api.post('/buddy/report', { words_delta: delta })
+  },
 }
 
 // 拼字房（多人拼字）
