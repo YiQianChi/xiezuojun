@@ -231,7 +231,7 @@
   .tiptap-container :deep(.ProseMirror p) { margin: 0.6em 0; }
   /* 状态栏：只留核心项，safe-area 底部留白（提防 base 规则在文件后段覆盖） */
   .editor-page .status-bar { gap: 10px; padding: 0 14px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
-  .status-bar .voice-select { display: none; }
+  .status-bar .voice-select, .status-bar .voice-caret, .status-bar .voice-popup { display: none; }
   /* 编辑器右侧面板：移动端改底部抽屉（不全屏盖正文，AI 自动弹出时正文仍可见）。加 .editor-page 提权防 base 覆盖 */
   .editor-page .context-panel, .editor-page .reference-panel {
     position: fixed;
@@ -1059,6 +1059,21 @@
   cursor: pointer;
 }
 .voice-select:disabled { opacity: 0.5; }
+/* 方案一·瘦身：状态栏左信息右工具 */
+.status-spacer { flex: 1 1 auto; }
+.tts-group { display: inline-flex; align-items: center; }
+.voice-caret {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 2px 3px 2px 1px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.voice-caret:hover { color: var(--accent, #007aff); }
+.voice-popup { min-width: 130px; }
+.voice-popup .voice-select { width: 100%; max-width: none; margin: 4px 2px 2px; }
 .offline-indicator {
   color: #e6a23c;
   font-weight: 500;
@@ -1066,7 +1081,6 @@
 
 /* 工具箱触发器（状态栏右侧） */
 .toolbox-trigger {
-  margin-left: auto;
   position: relative;
 }
 .toolbox-trigger + .toolbox-trigger {
@@ -1445,7 +1459,7 @@
   font-family: 'SF Pro Display', 'PingFang SC', -apple-system, sans-serif;
 }
 .context-panel.collapsed {
-  width: 24px;
+  width: 30px;
   background: transparent;
   box-shadow: none;
 }
@@ -1775,28 +1789,34 @@
   }
   .editor-page .context-panel.collapsed,
   .editor-page .reference-panel.collapsed {
-    width: 24px;
     background: transparent;
     border-left: none;
   }
+  /* 方案一·瘦身：设定工作台收起态=30px 竖排文字条（分屏参考仍是 24px 纯箭头） */
+  .editor-page .context-panel.collapsed { width: 30px; }
+  .editor-page .reference-panel.collapsed { width: 24px; }
   /* 面板展开时正文让位（原 304px 基础上加呼吸留白，纸张仍在可视区居中） */
   .editor-page .editor-main.ai-panel-open .tiptap-container {
     padding-right: 324px;
   }
 
-  /* 中间桌面：滚动容器只负责滚动与留白 */
+  /* 中间桌面：滚动容器只负责滚动与留白。
+     纸张呼吸修正（Boss 报「怪怪的」实测）：纸左右各 ~190px 桌面、上下却 16px/贴状态栏——
+     竖直方向补呼吸：顶 26→56、底 60→96，纸不再被窗口上下夹死。
+     页尾不可见（Boss：打字超过一屏不想看到纸的尽头）：打字机滚动预留改放纸内部底 padding，
+     纸随打字向下延长、底边被推出视口——纸尾只在刻意滚过头时才露出来 */
   .editor-page .tiptap-container {
-    padding: 26px 24px 60px;
-    padding-bottom: var(--ds-bottom-pad, 60px);
+    padding: 56px 24px 96px;
   }
 
-  /* 纸张：居中卡片 + 双线纸边（outline 内缩一圈）+ 暖墨文字 */
+  /* 纸张：居中卡片 + 双线纸边（outline 内缩一圈）+ 暖墨文字。
+     底 padding 吃掉打字机预留（--ds-bottom-pad）：光标行在视线线时纸尾在视口外，纸看起来无限长 */
   .editor-page .tiptap-container > :deep(div .ProseMirror) {
-    max-width: 820px;
+    max-width: var(--paper-w, 820px);
     margin: 0 auto;
     box-sizing: border-box;
     min-height: 62vh;
-    padding: 52px 60px 72px;
+    padding: 52px 60px calc(72px + var(--ds-bottom-pad, 0px));
     background: var(--ed-paper, #fbf7ee);
     border: 1px solid var(--ed-paper-line, #e6dcc6);
     border-radius: 6px;
@@ -2092,3 +2112,61 @@
     background: var(--ed-desk-a, #1a1a1c);
   }
 }
+
+/* =====================================================================
+   纸张响应式（Boss：要考虑所有人的分辨率）：
+   纸宽不再绑死 820px——按视口宽度分档，保证 1280 小本到 2560 大屏都有均衡呼吸。
+   皮肤块的 max-width:820 被这里的 var 覆盖（同特异性、位置在后）。
+   ===================================================================== */
+@media (min-width: 769px) {
+  .editor-page .tiptap-container > :deep(div .ProseMirror) {
+    max-width: var(--paper-w, 820px);
+  }
+}
+/* 小本（1280/1366）：纸收到 760，两侧呼吸 ~140+ */
+@media (min-width: 769px) and (max-width: 1399px) {
+  .editor-page { --paper-w: 760px; }
+}
+/* 中屏（1440-1599）：默认 820 */
+/* 大屏（1600+）：纸加宽到 880，文字列 ~760（约 45 字/行，仍是舒适阅读宽度） */
+@media (min-width: 1600px) {
+  .editor-page { --paper-w: 880px; }
+}
+/* 超大屏（2200+）：960，避免两侧空 desk 过 700px 纸显小 */
+@media (min-width: 2200px) {
+  .editor-page { --paper-w: 960px; }
+}
+/* 矮屏（高度 <820，如 1366x768/1280x800）：顶部呼吸收紧，别浪费竖直空间 */
+@media (min-width: 769px) and (max-height: 820px) {
+  .editor-page .tiptap-container { padding-top: 36px; }
+}
+
+/* =====================================================================
+   打字胶囊：码字时「字数 · 保存态」浮在视线线上方——
+   居中打字不用低头看状态栏（Boss 诉求）。停笔 4s 由 JS 摘除，不占常驻层。
+   ===================================================================== */
+@media (min-width: 769px) {
+  .typing-hud {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 260; /* 低于右栏(300)/AI浮层(400)，高于纸张 */
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 16px;
+    border-radius: 999px;
+    background: var(--ed-panel, #f8f3e8);
+    border: 1px solid var(--ed-line, #e2d8c2);
+    box-shadow: 0 3px 12px var(--ed-shadow, rgba(96, 74, 40, 0.12));
+    font-size: 12px;
+    color: var(--ed-ink-mid, #7a7263);
+    pointer-events: none; /* 永不挡编辑 */
+    user-select: none;
+    animation: th-fade-in 0.25s ease;
+  }
+  .typing-hud .th-num { font-size: 14px; font-weight: 700; color: var(--ed-ink, #3a352c); font-variant-numeric: tabular-nums; }
+  .typing-hud .th-sep { color: var(--ed-ink-soft, #a39a86); }
+  .typing-hud .th-save { font-size: 11px; }
+}
+@keyframes th-fade-in { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }

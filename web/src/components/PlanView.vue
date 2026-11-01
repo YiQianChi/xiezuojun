@@ -77,7 +77,7 @@
           </div>
           <div class="fp-field">
             <label>写入到</label>
-            <div v-if="pickerFolders.length === 0" class="fp-empty">还没有设定文件，请先在左侧「＋ 新建设定」创建</div>
+            <div v-if="pickerFolders.length === 0" class="fp-empty">还没有设定文件，请先在左侧「作品相关」分区标题的 ＋ 创建</div>
             <div v-else class="fp-folder-list">
               <label
                 v-for="f in pickerFolders"

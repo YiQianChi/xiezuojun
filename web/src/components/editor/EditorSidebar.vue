@@ -52,7 +52,8 @@
       <template v-else>
         <!-- Tab：作品相关 -->
         <div v-show="sideTab === 'related' || loadingDocs" class="setting-zone">
-          <div class="zone-caption">作品相关</div>
+          <!-- 方案一·瘦身：常驻「＋新建设定」链接降级为分区标题行的小＋（hover/触屏可见） -->
+          <div class="zone-caption">作品相关<span class="zone-plus" @click.stop="$emit('add-setting')" title="新建设定文档">＋</span></div>
           <DocTreeNode
             v-for="(node, i) in settingRootNodes"
             :key="node.id"
@@ -68,7 +69,6 @@
             @add-child="(folder) => $emit('add-doc-in', folder)"
             @cycle-status="(n) => $emit('cycle-status', n)"
           />
-          <div class="zone-add-link" @click.stop="$emit('add-setting')">＋ 新建设定</div>
         </div>
 
         <!-- 分隔线（双 Tab 后仅作品相关 tab 内展示） -->
@@ -76,7 +76,8 @@
 
         <!-- Tab：正文 -->
         <div v-show="sideTab === 'chapters' || loadingDocs" class="article-zone">
-          <div class="zone-caption">正文</div>
+          <!-- 方案一·瘦身：「＋ 新建 ▾」整行删掉，降级为分区标题行的小＋（分卷/楔子/番外菜单不变） -->
+          <div class="zone-caption">正文<span ref="addMenuAnchor" class="zone-plus" @click.stop="toggleAddMenu" title="新建（分卷 / 楔子 / 番外）">＋</span></div>
           <DocTreeNode
             v-for="(node, i) in articleRootNodes"
             :key="node.id"
@@ -91,9 +92,6 @@
             @add-child="(folder) => $emit('add-doc-in', folder)"
             @cycle-status="(n) => $emit('cycle-status', n)"
           />
-          <div class="zone-add article-wrap">
-            <div ref="addMenuAnchor" class="zone-add-link article" @click.stop="toggleAddMenu">＋ 新建 ▾</div>
-          </div>
         </div>
       </template>
     </div>
@@ -157,7 +155,7 @@ function toggleAddMenu() {
 // 点别处收起菜单（teleport 到 body 后必须自己管）；capture 阶段要放过触发钮/菜单自身，否则切换会被「先关再开」抵消
 function onDocClickCloseMenu(e: MouseEvent) {
   const t = e.target as HTMLElement | null
-  if (t?.closest && (t.closest('.add-menu') || t.closest('.zone-add-link'))) return
+  if (t?.closest && (t.closest('.add-menu') || t.closest('.zone-plus'))) return
   addMenuOpen.value = false
 }
 if (typeof document !== 'undefined') {
@@ -443,30 +441,34 @@ defineEmits<{
   border: 1px solid var(--setting-border);
 }
 
-.zone-add-link {
-  padding: 3px 8px;
-  margin: 2px 4px 0;
-  font-size: 10px;
-  color: var(--setting-title);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.15s ease;
-}
-.zone-add-link:hover {
-  color: var(--accent, #007aff);
-  background: rgba(0,122,255,0.06);
-}
-.zone-add-link.article {
-  color: var(--text-tertiary);
-  margin-top: 4px;
-}
-
+/* 方案一·瘦身：分区标题行 = 文字 + hover 浮现的小＋（触屏常显） */
 .zone-caption {
   font-size: 10px;
   color: var(--text-tertiary);
   padding: 2px 8px 4px;
   letter-spacing: 1px;
   user-select: none;
+  display: flex;
+  align-items: center;
+}
+.zone-caption .zone-plus {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--accent, #007aff);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.tree-list:hover .zone-plus { opacity: 1; }
+.zone-plus:hover { background: rgba(129, 187, 142, 0.14); }
+@media (hover: none) {
+  .zone-caption .zone-plus { opacity: 1; }
 }
 .zone-divider {
   height: 1px;
@@ -478,7 +480,6 @@ defineEmits<{
 }
 
 /* ＋ 新建下拉菜单（对齐炼笔智作：分卷/楔子/番外） */
-.article-wrap { position: relative; }
 .add-menu {
   position: absolute;
   right: 6px;

@@ -142,6 +142,10 @@
             </div>
           </template>
         </div>
+        <!-- 打字胶囊：字数/保存态浮在视线线上方，停笔淡出（Boss：居中打字不看页尾） -->
+        <div v-if="typingHudVisible" class="typing-hud" :style="{ top: `calc(${Math.round(eyeLineRatio * 100)}% - ${activeDoc && activeDoc.type === 'chapter' ? 96 : 76}px)` }">
+          <span class="th-num">{{ wordCount }} 字</span><span class="th-sep">·</span><span class="th-save">{{ saveStatus }}</span>
+        </div>
         <SearchPanel
           :visible="searchVisible"
           :scope="searchScope"
@@ -334,13 +338,22 @@
       <span class="status-item">{{ wordCount }} 字</span>
       <span v-if="isOffline" class="status-item offline-indicator" title="当前离线，内容已自动存在本机，恢复网络后会自动上传">📡 离线</span>
       <span class="status-item">{{ saveStatus }}</span>
-      <button class="status-item speech-btn" :class="{ speaking: isSpeaking }" @click="toggleSpeech" :disabled="ttsLoading" :title="isSpeaking ? '停止朗读' : '朗读（选区优先）'">
-        {{ ttsLoading ? '⏳' : isSpeaking ? '⏹' : '🔊' }}
-      </button>
-      <select v-model="selectedVoice" class="status-item voice-select" title="朗读音色">
-        <option value="zh-CN">默认女声</option>
-        <option v-for="v in voiceList" :key="v.voice" :value="v.voice">{{ v.name }}</option>
-      </select>
+      <!-- 朗读：🔊=播放/停止，▾=音色选择（方案一·瘦身：下拉不再常驻状态栏） -->
+      <div class="toolbox-trigger" :class="{ open: voiceMenuOpen }">
+        <div class="tts-group">
+          <button class="status-item speech-btn tts-play" :class="{ speaking: isSpeaking }" @click="toggleSpeech" :disabled="ttsLoading" :title="isSpeaking ? '停止朗读' : '朗读（选区优先）'">
+            {{ ttsLoading ? '⏳' : isSpeaking ? '⏹' : '🔊' }}
+          </button>
+          <button class="voice-caret" @click.stop="voiceMenuOpen = !voiceMenuOpen" title="朗读音色">▾</button>
+        </div>
+        <div class="toolbox-popup voice-popup" v-show="voiceMenuOpen" @click.stop>
+          <div class="sens-head">朗读音色</div>
+          <select v-model="selectedVoice" class="voice-select" title="朗读音色">
+            <option value="zh-CN">默认女声</option>
+            <option v-for="v in voiceList" :key="v.voice" :value="v.voice">{{ v.name }}</option>
+          </select>
+        </div>
+      </div>
 
       <!-- 敏感词检测：实时扫描，点开看命中清单，点词定位 -->
       <div class="toolbox-trigger" :class="{ open: sensitiveOpen }">
@@ -357,6 +370,9 @@
           <div class="sens-foot">命中 ≠ 必删，发布前结合情节自查</div>
         </div>
       </div>
+
+      <!-- 方案一·瘦身：左=看的信息，右=点的工具 -->
+      <div class="status-spacer"></div>
 
       <!-- 码字锁：目标字数内拦切章/离开 -->
       <div class="toolbox-trigger" :class="{ open: wordLockOpen }">
@@ -536,7 +552,7 @@
 
         <template v-else>
           <h3>要为这本书建哪些作品相关文件？</h3>
-          <p class="si-desc">不建也没关系，以后随时可以在左侧「＋ 新建设定」补。</p>
+          <p class="si-desc">不建也没关系，以后随时可以在左侧「作品相关」分区标题的 ＋ 补。</p>
           <div class="si-options">
             <label v-for="s in settingsInitOptions" :key="s.value" class="si-option">
               <input type="checkbox" v-model="s.checked" /> {{ s.label }}
@@ -970,6 +986,7 @@ async function saveThreadFromSelection() {
 
 /* ═══ B1. 敏感词检测：编辑防抖扫描，点词走全文搜索定位 ═══ */
 const sensitiveOpen = ref(false)
+const voiceMenuOpen = ref(false) // 音色选择弹层（方案一·瘦身：收进 🔊▾）
 const sensitiveHits = ref<{ word: string; count: number }[]>([])
 const sensitiveTotal = computed(() => sensitiveHits.value.reduce((s, h) => s + h.count, 0))
 let sensitiveTimer: ReturnType<typeof setTimeout> | null = null
@@ -1260,7 +1277,7 @@ function onToggleLineNumbers(on: boolean) {
   try { localStorage.setItem(LN_KEY, on ? '1' : '0') } catch {}
 }
 
-const eyeLineRatio = computed(() => (displayOverrides.value.eyeLine ?? 45) / 100)
+const eyeLineRatio = computed(() => (displayOverrides.value.eyeLine ?? 50) / 100) // 默认 50%=屏幕正中（Boss 定）
 const typewriterPad = ref(60)
 let twResizeObs: ResizeObserver | null = null
 
@@ -1282,6 +1299,15 @@ function setupTypewriterObserver() {
   updateTypewriterPad()
 }
 watch(activeDocId, () => { nextTick(setupTypewriterObserver) })
+
+// ---- 打字胶囊：码字时字数/保存态浮在视线线上方，眼睛不离中段（Boss：不能居中打字还得看页尾） ----
+const typingHudVisible = ref(false)
+let typingHudTimer: ReturnType<typeof setTimeout> | null = null
+function bumpTypingHud() {
+  typingHudVisible.value = true
+  if (typingHudTimer) clearTimeout(typingHudTimer)
+  typingHudTimer = setTimeout(() => { typingHudVisible.value = false }, 4000) // 停笔 4s 淡出
+}
 
 // 打字时若光标低于视线线，把容器上滚让光标回到视线线（光标在线上不动，不打扰阅读回看）
 function typewriterScroll() {
@@ -1420,6 +1446,7 @@ async function handleReviewAiFix(issue: any) {
 // ponytail: click outside toolbox closes it; popup @click.stop prevents inner clicks from reaching here
 function closeToolboxOnClickOutside() {
   if (toolboxOpen.value) toolboxOpen.value = false
+  if (voiceMenuOpen.value) voiceMenuOpen.value = false
 }
 
 function switchMode(next: EditorMode) {
@@ -1489,6 +1516,7 @@ onBeforeUnmount(() => {
   try { recog?.stop() } catch {}
   if (sensitiveTimer) clearTimeout(sensitiveTimer)
   if (phonePreviewTimer) clearTimeout(phonePreviewTimer)
+  if (typingHudTimer) clearTimeout(typingHudTimer)
   if (editor.value) editor.value.destroy()
   if (saveTimer) clearTimeout(saveTimer)
   currentAudio?.pause()
@@ -1551,6 +1579,7 @@ function initEditor() {
       if (saveTimer) clearTimeout(saveTimer)
       saveTimer = setTimeout(() => autoSave(), 1500)
       typewriterScroll() // 打字机视线：光标沉过视线线就把页面向上托
+      bumpTypingHud() // 打字胶囊：字数/保存态浮在视线线附近，不用低头看状态栏
     }
   })
 
@@ -2031,6 +2060,17 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
       syncPhonePreview()
       saveStatus.value = fromCache ? '📡 离线读取' : '已保存'
       setTimeout(() => { isSettingContent.value = false }, 100)
+
+      // 续写就位（Boss：码字时视线应在屏幕中段，不在底部）——
+      // 章节打开光标直达末尾续写点，并把光标行滚到视线线；不用等敲第一个键才跳
+      if (doc.type === 'chapter') {
+        nextTick(() => {
+          try {
+            editor.value?.commands.focus('end')
+            typewriterScroll()
+          } catch { /* 空内容无光标时跳过 */ }
+        })
+      }
 
       // ponytail: check for unsaved local draft (browser crashed during 1.5s debounce)
       const draftKey = 'draft-' + doc.id

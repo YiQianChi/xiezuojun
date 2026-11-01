@@ -3,10 +3,14 @@
     <div
       class="context-panel-toggle"
       @click="$emit('update:open', !open)"
-      :title="open ? '收起' : '展开'"
+      :title="open ? '收起' : '展开设定 / 灵感 / 自检'"
     >
       <svg v-if="open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-      <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <template v-else>
+        <!-- 方案一·瘦身：收起态常驻竖排文字，让右栏工作台可被发现（手机端 CSS 隐藏，保留箭头） -->
+        <span class="cpt-label">📖 设定 · 灵感 · 自检</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </template>
     </div>
 
     <div class="context-panel-inner" v-show="open">
@@ -536,7 +540,7 @@ onBeforeUnmount(() => window.removeEventListener('xzj-canvas-closed', onCanvasCl
   font-family: 'SF Pro Display', 'PingFang SC', -apple-system, sans-serif;
 }
 .context-panel.collapsed {
-  width: 24px;
+  width: 30px;
   background: transparent;
   box-shadow: none;
 }
@@ -551,6 +555,21 @@ onBeforeUnmount(() => window.removeEventListener('xzj-canvas-closed', onCanvasCl
   background: var(--bg-tertiary, #f0f0f0);
   border-radius: 6px 0 0 6px;
   transition: background 0.15s;
+}
+/* 方案一·瘦身：收起态=30px 竖排文字条（可发现性），手机端隐藏文字走箭头 */
+.context-panel.collapsed .context-panel-toggle {
+  width: 30px;
+  min-width: 30px;
+  writing-mode: vertical-rl;
+  gap: 6px;
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+}
+.cpt-label { white-space: nowrap; }
+/* 手机端收起态是水平小条：文字放不下，隐藏 label 回到纯箭头 */
+@media (max-width: 768px) {
+  .context-panel.collapsed .context-panel-toggle { writing-mode: horizontal-tb; width: 24px; min-width: 24px; }
+  .cpt-label { display: none; }
 }
 .context-panel.collapsed .context-panel-toggle {
   background: var(--bg-secondary, #ffffff);

@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
-    <!-- 收起态：小圆钮（桌面=计时/拼字中才显示；手机=常驻入口） -->
-    <button v-if="!visible && (state !== 'idle' || sprint.inRoom || isMobile || waiting || !!peer)" class="buddy-fab" @click="visible = true" title="结伴写作 / 拼字">
+    <!-- 收起态：fab 胶囊常驻入口（桌面手机一致；计时/拼字中显示时间/倒计时） -->
+    <button v-if="!visible" class="buddy-fab" @click="visible = true" title="结伴写作 / 拼字">
       <span class="fab-dot"></span>
       <span class="fab-time">{{ sprint.running ? sprint.countdownText : (state !== 'idle' ? displayTime : '搭子') }}</span>
     </button>
@@ -337,7 +337,7 @@ type TimerState = 'idle' | 'running' | 'paused' | 'summary'
 const STORAGE_KEY = 'xzj-buddy-timer'
 const MAX_RESUME_GAP_MS = 60 * 60 * 1000
 
-const visible = ref(true)
+const visible = ref(false) // 方案一·瘦身：默认收成 fab 胶囊，不再默认压稿纸；点 fab 打开
 const state = ref<TimerState>('idle')
 const intervalRef = shallowRef<ReturnType<typeof setInterval> | null>(null)
 const beatRef = shallowRef<ReturnType<typeof setInterval> | null>(null)
@@ -721,7 +721,8 @@ function restoreSnapshot() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return
     const s = JSON.parse(raw)
-    visible.value = s.visible !== false
+    // 方案一·瘦身：visible 不再恢复——每次进编辑器都从 fab 起（计时/拼字状态照常恢复，fab 上有时间显示）
+    visible.value = false
     if (s.win && (s.win.x || s.win.y)) winPos.value = s.win
     if (s.state === 'running') {
       const gap = Date.now() - s.sessionStart

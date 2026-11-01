@@ -64,7 +64,7 @@
         </div>
         <div class="demo-main">
           <div class="demo-header">
-            <span class="demo-back">← 返回书架</span>
+            <span class="demo-back">←</span>
             <span class="demo-proj-name">雨夜追踪</span>
             <span class="demo-doc-sep">·</span>
             <span class="demo-chapter">第一章 · 雨夜</span>
@@ -128,9 +128,9 @@ const allSteps: Step[] = [
   { badge: '第 2 步 / 共 5 步', title: '顶部：两种工作模式', desc: '随时切换模式，从构思到成稿。',
     selector: '.mode-switcher', placement: 'bottom',
     features: [{ icon:'🧠', bg:'#af52de15', name:'构思', desc:'5步AI引导：梗概→世界观→人物→大纲' },{ icon:'✍️', bg:'#007aff15', name:'写作', desc:'沉浸式编辑器，AI续写/改写/润色/扩写' }] },
-  { badge: '第 3 步 / 共 5 步', title: '右侧工具：分屏 · 专注 · 版本历史', desc: '写作模式下，右侧工具栏提供多种辅助功能。',
+  { badge: '第 3 步 / 共 5 步', title: '顶栏工具：专注 · 更多(⋯)', desc: '写作模式下，绿色按钮进入专注；主题/分屏参考/版本功能都在 ⋯ 菜单里。',
     selector: '.header-actions', placement: 'bottom',
-    features: [{ icon:'📖', bg:'#007aff15', name:'分屏参考', desc:'左边写正文，右边看设定素材' },{ icon:'⬜', bg:'#007aff15', name:'专注模式', desc:'隐藏侧栏，全屏写作' },{ icon:'⏱', bg:'#007aff15', name:'版本历史', desc:'随时回到任意历史版本，不怕写错' }] },
+    features: [{ icon:'⬜', bg:'#007aff15', name:'专注模式', desc:'隐藏侧栏，全屏写作' },{ icon:'📖', bg:'#007aff15', name:'分屏参考', desc:'⋯ 菜单里：左边写正文，右边看设定素材' },{ icon:'⏱', bg:'#007aff15', name:'版本历史', desc:'⋯ 菜单里：随时回到任意历史版本' }] },
   { badge: '第 4 步 / 共 5 步', title: '编辑区：选中文字唤起 AI', desc: '中间是正文编辑区。选中任意文字，上方会弹出 AI 工具栏。接下来演示完整流程：',
     selector: '.editor-wrapper', placement: 'right', isLast: true },
   { badge: '第 5 步 / 共 5 步', title: 'AI 写作辅助演示', desc: '选中文字 → 选操作 → 输入方向 → AI 生成 → 采用/丢弃', isDemo: true },

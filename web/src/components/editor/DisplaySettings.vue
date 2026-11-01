@@ -69,8 +69,8 @@ function toggleLineNumbers(e: Event) {
 // 展示用默认值（与 editor-page.css 的各端默认值一致；视线位置两端一致）
 const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
 const DEFAULTS: Record<string, number> = isMobile
-  ? { fontSize: 16, lineHeight: 1.95, letterSpacing: 0, eyeLine: 45 }
-  : { fontSize: 17, lineHeight: 1.9, letterSpacing: 0, eyeLine: 45 }
+  ? { fontSize: 16, lineHeight: 1.95, letterSpacing: 0, eyeLine: 50 }
+  : { fontSize: 17, lineHeight: 1.9, letterSpacing: 0, eyeLine: 50 }
 
 function val(key: string): number {
   return props.overrides[key] ?? DEFAULTS[key]

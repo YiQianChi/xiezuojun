@@ -4,7 +4,7 @@
       <button class="btn icon-btn menu-btn" @click="$emit('toggle-sidebar')" title="目录">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
-      <button @click="$emit('back')" class="back-btn">← 返回书架</button>
+      <button @click="$emit('back')" class="back-btn" title="返回书架">←</button>
     </div>
     <div class="doc-name">
       <span class="proj-name">{{ projectName || '未命名项目' }}</span>
@@ -38,7 +38,7 @@
     </div>
 
     <div class="header-actions">
-      <!-- 主题选择：调色盘弹层（六主题），替代原深浅二态切换 -->
+      <!-- 方案一·瘦身：主题/分屏参考/版本类低频功能全收进 ⋯ 菜单，顶栏只留 模式+专注+⋯ -->
       <div class="theme-picker" v-if="themeMenuOpen" @click.stop />
       <div class="theme-pop" v-if="themeMenuOpen">
         <div class="tp-title">皮肤</div>
@@ -52,44 +52,30 @@
           <span class="tp-sub">{{ t.desc }}</span>
         </button>
       </div>
-      <button
-        @click.stop="themeMenuOpen = !themeMenuOpen"
-        class="btn icon-btn"
-        title="主题（皮肤）"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20 2.35 2.35 0 0 0 1.7-4 2.35 2.35 0 0 1 1.7-4h3.1A4.2 4.2 0 0 0 22 9.8 10 10 0 0 0 12 2z"/></svg>
-      </button>
-      <button
-        v-if="mode === 'write'"
-        @click="$emit('toggle-reference')"
-        class="btn icon-btn"
-        :class="{ active: referenceOpen }"
-        title="分屏参考文档"
-      >📖</button>
+      <div class="more-wrap" @click.stop>
+        <button
+          @click.stop="moreMenuOpen = !moreMenuOpen"
+          class="btn icon-btn"
+          :class="{ active: moreMenuOpen || themeMenuOpen }"
+          title="更多"
+        >⋯</button>
+        <div class="more-pop" v-if="moreMenuOpen">
+          <button class="mp-item" @click="moreMenuOpen = false; themeMenuOpen = true">🎨 主题（皮肤）</button>
+          <button v-if="mode === 'write'" class="mp-item" @click="moreMenuOpen = false; $emit('toggle-reference')">📖 分屏参考</button>
+          <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId || savingVersion" @click="moreMenuOpen = false; $emit('save-version')">💾 保存版本</button>
+          <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId" @click="moreMenuOpen = false; $emit('open-history')">🕒 版本历史</button>
+        </div>
+      </div>
       <button
         v-if="mode === 'write'"
         @click="$emit('toggle-focus')"
-        class="btn icon-btn"
+        class="btn icon-btn focus-btn"
         :class="{ active: focusMode }"
         :title="focusMode ? '退出专注模式 (Esc)' : '专注模式 (Ctrl+Shift+Z)'"
       >
         <svg v-if="!focusMode" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
         <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
       </button>
-      <button
-        v-if="mode === 'write'"
-        @click="$emit('save-version')"
-        class="btn"
-        :disabled="!activeDocId || savingVersion"
-      >
-        {{ savingVersion ? '保存中...' : '保存版本' }}
-      </button>
-      <button
-        v-if="mode === 'write'"
-        @click="$emit('open-history')"
-        class="btn"
-        :disabled="!activeDocId"
-      >版本历史</button>
     </div>
   </div>
 </template>
@@ -129,6 +115,7 @@ const THEMES = [
 ]
 const themeId = ref(localStorage.getItem('xzj-theme') || (localStorage.getItem('theme') === 'dark' ? 'mo' : 'xuan'))
 const themeMenuOpen = ref(false)
+const moreMenuOpen = ref(false)
 
 function applyThemeClass(t: string) {
   const el = document.documentElement
@@ -146,8 +133,8 @@ function pickTheme(t: string) {
   themeMenuOpen.value = false
 }
 
-// 点外部收起
-function onDocClickCloseTheme() { themeMenuOpen.value = false }
+// 点外部收起（主题弹层 + ⋯ 菜单）
+function onDocClickCloseTheme() { themeMenuOpen.value = false; moreMenuOpen.value = false }
 if (typeof document !== 'undefined') {
   document.addEventListener('click', onDocClickCloseTheme)
 }
@@ -286,6 +273,42 @@ if (typeof document !== 'undefined') {
   background: var(--accent, #007aff);
   color: #fff;
   border-color: var(--accent, #007aff);
+}
+
+/* ⋯ 更多菜单：低频功能（主题/分屏参考/版本）收纳 */
+.more-wrap { position: relative; }
+.more-pop {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  z-index: 660;
+  background: var(--ed-panel, #f8f3e8);
+  border: 1px solid var(--ed-line, #e2d8c2);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px var(--ed-shadow, rgba(96, 74, 40, 0.16));
+  padding: 6px;
+  min-width: 150px;
+}
+.mp-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--ed-ink, #33302a);
+  text-align: left;
+  cursor: pointer;
+}
+.mp-item:hover { background: var(--ed-hover, rgba(150, 130, 100, 0.09)); }
+.mp-item:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* 专注=顶栏唯一主色按钮 */
+.btn.icon-btn.focus-btn:not(.active) {
+  background: linear-gradient(135deg, #8fc59b, #6aa877);
+  color: #fff;
+  border-color: transparent;
 }
 
 /* ponytail-mobile: 窄屏——汉堡出、返回文字缩、模式切换和操作按钮收紧 */
