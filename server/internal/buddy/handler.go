@@ -93,6 +93,11 @@ func handleReport(c *gin.Context) {
 
 func handleMatch(c *gin.Context) {
 	uid := c.GetString("userID")
+	// 纯陪伴入口（不计时）可能从未发过心跳：先确保 session 存在，
+	// 否则入队后会被对端当"死候选人"丢弃，双方永远配不上
+	if readSession(uid) == nil {
+		writeSession(&Session{UserID: uid, StartedAt: time.Now(), TimerState: "idle"})
+	}
 	matched, peer := MatchRequested(uid)
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{
 		"matched": matched,

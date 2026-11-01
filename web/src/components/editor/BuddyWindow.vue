@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <!-- 收起态：小圆钮（桌面=计时/拼字中才显示；手机=常驻入口） -->
-    <button v-if="!visible && (state !== 'idle' || sprint.inRoom || isMobile)" class="buddy-fab" @click="visible = true" title="结伴写作 / 拼字">
+    <button v-if="!visible && (state !== 'idle' || sprint.inRoom || isMobile || waiting || !!peer)" class="buddy-fab" @click="visible = true" title="结伴写作 / 拼字">
       <span class="fab-dot"></span>
       <span class="fab-time">{{ sprint.running ? sprint.countdownText : (state !== 'idle' ? displayTime : '搭子') }}</span>
     </button>
@@ -16,7 +16,7 @@
           <span class="bw-title">
             <span class="pulse-dot" v-if="state === 'running'"></span>
             {{ displayTime }}
-            <span v-if="state !== 'idle'" class="me-chip" :class="{ negative: wordsDelta < 0, zero: wordsDelta === 0 }">✍ {{ wordsDelta >= 0 ? '+' : '' }}{{ wordsDelta }}</span>
+            <span v-if="state !== 'idle' || peer" class="me-chip" :class="{ negative: wordsDelta < 0, zero: wordsDelta === 0 }">✍ {{ wordsDelta >= 0 ? '+' : '' }}{{ wordsDelta }}</span>
           </span>
           <span class="bw-actions">
             <button v-if="state === 'idle'" class="bw-btn play" @click="start" title="开始计时">▶</button>
@@ -50,13 +50,14 @@
 
       <div class="bw-body">
         <template v-if="tab === 'buddy'">
-        <!-- 未开始 -->
-        <div v-if="state === 'idle'" class="bw-idle">
-          <p class="bw-hint">开始计时后可以找一个<br>同样在写的搭子互相陪伴</p>
+        <!-- 未开始且没有搭子：直接能找（陪伴不依赖计时） -->
+        <div v-if="state === 'idle' && !peer && !waiting && rematchCountdown <= 0" class="bw-idle">
+          <p class="bw-hint">找一个同样在写的搭子互相陪伴<br>计不计时随你，开计时另有场次统计</p>
+          <button class="bw-match-btn" @click="match">🔍 找个搭子</button>
         </div>
 
-        <!-- 计时中：搭子区 -->
-        <div v-else-if="state === 'running' || state === 'paused'" class="bw-buddy">
+        <!-- 陪伴中（计时中或纯陪伴都算）：搭子区 -->
+        <div v-else-if="state !== 'summary'" class="bw-buddy">
           <template v-if="peer">
             <div class="bw-peer">
               <div class="bw-avatar">{{ (peer.nickname || '友')[0] }}</div>
@@ -80,6 +81,7 @@
                 @click="sendNudge(n)"
               >{{ n.icon }} {{ nudgeCdLeft(n.id) > 0 ? nudgeCdLeft(n.id) + 's' : n.label }}</button>
             </div>
+            <button v-if="state === 'idle'" class="bw-btn cancel bw-leave-line" @click="leaveMatch">不陪了</button>
           </template>
           <template v-else-if="waiting">
             <div class="bw-waiting">
@@ -545,7 +547,9 @@ function scheduleBeat(ms: number) {
   beatMs = ms
 }
 async function heartbeat() {
-  if (state.value !== 'running' && state.value !== 'paused') return
+  // 纯陪伴（不计时）也要心跳保活：waiting / 已有搭子即可；timer_state 如实传 idle（服务端只累计计时态时长）
+  const companionActive = waiting.value || !!peer.value
+  if (state.value !== 'running' && state.value !== 'paused' && !companionActive) return
   try {
     const res = await buddyApi.heartbeat({
       nickname: myNickname.value,
@@ -568,7 +572,7 @@ function applyState(d: any) {
   waiting.value = !!s.waiting
   applyPeer(s.peer || null)
   // 排队等待时加快轮询（3s），配上/取消后回到 15s
-  if (state.value === 'running' || state.value === 'paused') {
+  if (state.value === 'running' || state.value === 'paused' || waiting.value || peer.value) {
     scheduleBeat(waiting.value ? 3000 : 15000)
   }
   if (s.peer_cheer > 0) {
@@ -579,6 +583,12 @@ function applyState(d: any) {
 
 async function match() {
   try {
+    // 纯陪伴入口：不开计时也能配——立陪伴期字数基线（me-chip 从 0 起算）+ 启动心跳和事件流
+    if (state.value === 'idle') {
+      resetWordBaseline()
+      scheduleBeat(15000)
+      openEvents()
+    }
     const res = await buddyApi.match()
     if (res.data?.data?.matched) {
       waiting.value = false
@@ -586,6 +596,9 @@ async function match() {
     } else {
       waiting.value = true
     }
+    // match 之后再发首拍心跳（此刻 waiting/peer 已置位，能过 heartbeat 前置检查；
+    // 服务端匹配依赖 session 存在，这拍心跳保证本端 session 落库）
+    if (state.value === 'idle') heartbeat()
   } catch { }
 }
 async function leaveMatch() {
@@ -593,6 +606,11 @@ async function leaveMatch() {
   try { await buddyApi.leaveMatch() } catch { }
   waiting.value = false
   applyPeer(null)
+  // 纯陪伴态退出后没人需要心跳了，收掉定时器（计时态由 stop() 管）
+  if (state.value === 'idle') {
+    if (beatRef.value) { clearInterval(beatRef.value); beatRef.value = null; beatMs = 0 }
+    closeEvents()
+  }
 }
 async function cheer() {
   try {
@@ -630,9 +648,9 @@ async function openEvents() {
       }
     }
   } catch { /* 主动关闭或网络错误都走这里 */ }
-  // 非主动关闭且仍在计时 → 3s 后重连
+  // 非主动关闭且仍在陪伴（计时中或纯陪伴/排队）→ 3s 后重连
   if (esAbort === ac && !ac.signal.aborted &&
-    (state.value === 'running' || state.value === 'paused')) {
+    (state.value === 'running' || state.value === 'paused' || waiting.value || !!peer.value)) {
     setTimeout(() => { if (esAbort === ac) openEvents() }, 3000)
   }
 }
@@ -914,6 +932,8 @@ onBeforeUnmount(() => {
 
 .bw-body { padding: 10px 12px 12px; }
 .bw-idle .bw-hint { font-size: 11.5px; color: var(--text-tertiary, #999); line-height: 1.7; text-align: center; padding: 4px 0; }
+.bw-idle .bw-match-btn { margin-top: 8px; }
+.bw-leave-line { margin-top: 8px; }
 
 .bw-peer { display: flex; align-items: center; gap: 8px; }
 .bw-avatar {

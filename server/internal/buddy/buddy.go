@@ -38,8 +38,10 @@ type Session struct {
 	LastBeat   time.Time `json:"last_beat"`
 	WordsDelta int       `json:"words_delta"`
 	ElapsedSec int       `json:"elapsed_sec,omitempty"`  // 本端累计码字秒数（暂停不计时，新一场归零）
-	TimerState string    `json:"timer_state,omitempty"` // running | paused
+	TimerState string    `json:"timer_state,omitempty"` // running | paused | idle（陪伴不计时态）
 	Matched    string    `json:"matched,omitempty"`     // 配对的搭子 userID；空=未配对
+	// 上一拍心跳时的今日字数快照（今日字数改由 /buddy/report 计，里程碑跨档检测在此对比）
+	PrevTodayWords int `json:"prev_today_words,omitempty"`
 }
 
 // TodayStat 今日写作统计（净增口径：删字/新一场回退都如实减）
@@ -152,10 +154,8 @@ func readDaily(userID string) TodayStat {
 func Heartbeat(userID, nickname string, projectID uint, wordsDelta, elapsedSec int, timerState string) *Session {
 	now := time.Now()
 	s := readSession(userID)
-	prevDelta := 0
 	prevElapsed := 0
 	if s != nil {
-		prevDelta = s.WordsDelta
 		prevElapsed = s.ElapsedSec
 	} else {
 		s = &Session{UserID: userID, StartedAt: now}
@@ -169,11 +169,12 @@ func Heartbeat(userID, nickname string, projectID uint, wordsDelta, elapsedSec i
 	writeSession(s)
 	// 在线表登记
 	rdb.ZAdd(rctx, keyOnline, redis.Z{Score: float64(now.Unix()), Member: userID})
-	// 今日累计（净增口径，仅 running 时累计，防暂停期间心跳刷出重复时间）
-	var today TodayStat
+	// 今日累计：字数统一走 /buddy/report（裸写上报，任何时刻都在跑）——心跳只累计计时时长，
+	// 不再计字（原实现会把计时期间的字再计一遍，与 report 双计，今日码字虚高一倍）
 	prevToday := readDaily(userID)
+	var today TodayStat
 	if timerState == "running" {
-		today = updateDaily(userID, int64(wordsDelta-prevDelta), int64(elapsedSec-prevElapsed)*1000)
+		today = updateDaily(userID, 0, int64(elapsedSec-prevElapsed)*1000)
 	} else {
 		today = prevToday
 	}
@@ -182,12 +183,14 @@ func Heartbeat(userID, nickname string, projectID uint, wordsDelta, elapsedSec i
 		rdb.Expire(rctx, matchedKey(peer), beatTimeout)
 		s.Matched = peer
 		// 里程碑：今日字数每跨 500 的倍数 → 实时推给搭子（负数按 0 算，删字/回退不触发）
-		oldLv := max0(prevToday.Words) / 500
+		// 检测依据：本会话相邻两拍心跳的今日字数快照（首拍只对齐基线不推送，防恢复会话误弹）
+		oldLv := max0(s.PrevTodayWords) / 500
 		newLv := max0(today.Words) / 500
-		if newLv > oldLv {
+		if s.PrevTodayWords != 0 && newLv > oldLv {
 			publishEvent(peer, Event{Type: "peer_milestone", Peer: s, Milestone: newLv * 500})
 		}
 	}
+	s.PrevTodayWords = today.Words
 	return s
 }
 
