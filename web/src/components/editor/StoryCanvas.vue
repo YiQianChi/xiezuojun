@@ -119,7 +119,7 @@
     <div class="sc-timeline" v-if="view === 'timeline'">
       <div class="tl-head"><div v-for="(ch, i) in chapters" :key="i" class="tl-ch">{{ ch.title }}</div></div>
       <div class="tl-grid"><i v-for="i in chapters.length" :key="'g' + i"></i></div>
-      <div class="tl-rows">
+      <div class="tl-rows" :style="{ minHeight: (56 + threadRows.length * 78 + 80) + 'px' }">
         <div v-for="t in threadRows" :key="t.id" class="tl-row" :style="{ top: 56 + t.idx * 78 + 'px' }">
           <div class="tl-rname">{{ t.title }}</div>
           <div class="tl-track">
@@ -253,7 +253,20 @@ function zoomBy(f: number) {
   const r = boardEl.value?.getBoundingClientRect()
   if (r) zoomAt(r.left + r.width / 2, r.top + r.height / 2, f)
 }
-function fitView() { viewT.value = { x: 40, y: 30, scale: 1 }; markDirty() }
+function fitView() {
+  // 真正适配内容边界：取卡片/分区的外包矩形，留边距
+  const els = [...cards.value.map(c => ({ x: c.x, y: c.y, w: 232, h: cardH(c.id) || 150 })),
+    ...zones.value.map(z => ({ x: z.x, y: z.y, w: z.w, h: z.h }))]
+  if (!els.length) { viewT.value = { x: 40, y: 30, scale: 1 }; markDirty(); return }
+  const minX = Math.min(...els.map(e => e.x)), minY = Math.min(...els.map(e => e.y))
+  const maxX = Math.max(...els.map(e => e.x + e.w)), maxY = Math.max(...els.map(e => e.y + e.h))
+  const box = boardEl.value?.getBoundingClientRect()
+  if (!box) return
+  const pad = 40
+  const scale = Math.min(1.4, Math.max(0.3, Math.min((box.width - pad * 2) / (maxX - minX), (box.height - pad * 2) / (maxY - minY))))
+  viewT.value = { scale, x: pad - minX * scale, y: pad - minY * scale }
+  markDirty()
+}
 
 /* ── 拖拽：卡片 / 分区 / 平移 ── */
 let drag: { type: 'card' | 'zone' | 'pan'; c?: CanvasCard; z?: CanvasZone; ox: number; oy: number; sx: number; sy: number; vx: number; vy: number; moved?: boolean } | null = null
@@ -318,7 +331,7 @@ function addDocCard(d: { id: number; title: string; desc?: string }) {
   const p = freeSpot()
   cards.value.push({ id: uid(), kind: 'doc', docId: d.id, title: d.title, desc: d.desc, x: p.x, y: p.y })
   paletteOpen.value = false // 收起抽屉让用户看到新卡
-  markDirty(); toast.success(`「${d.title}」已上画布`)
+  markDirty(); drawEdgesSoon(); toast.success(`「${d.title}」已上画布`)
 }
 function addFreeCard() {
   const p = freeSpot()
@@ -366,6 +379,8 @@ function zoneStyle(z: CanvasZone) { return { left: z.x + 'px', top: z.y + 'px', 
 
 /* ── 关系图引入（只读铺开；关系数据归关系图谱管） ── */
 const graphEdges = ref<{ d: string; mx: number; my: number; label: string; color: string; dash?: string }[]>([])
+const relLinks = ref<any[]>([])
+const relTypes = ref<any[]>([])
 async function importGraph() {
   importing.value = true
   try {
@@ -375,48 +390,45 @@ async function importGraph() {
     const links: any[] = data.links || []
     const types: any[] = data.types || []
     if (!nodes.length) { toast.info('关系图谱里还没有角色，先去图谱里建几个'); return }
-    // 节点 → 卡片（复用同名 doc 卡；缺则建 graph 卡）
-    let added = 0
+    // 节点 → 卡片（复用同名 doc 卡；缺则建 graph 卡；只排布本次新建的卡，不动用户已摆好的）
+    const addedCards: CanvasCard[] = []
     for (const n of nodes) {
       const exist = cards.value.find(c => c.title === n.name && (c.kind === 'doc' || c.kind === 'graph'))
       if (exist) continue
       const doc = allDocs.value.find((d: any) => d.type === 'character' && d.title === n.name)
       const p = freeSpot()
-      cards.value.push({
+      const card: CanvasCard = {
         id: uid(), kind: doc ? 'doc' : 'graph', docId: doc?.id, title: n.name,
         desc: doc ? descOf(doc) : (n.role || ''), x: p.x, y: p.y,
-      })
-      added++
+      }
+      cards.value.push(card)
+      addedCards.push(card)
     }
-    // 卡片排布：首次引入时环形布局更好看
-    if (added > 2) layoutCircle(nodes)
-    ;(window as any).__relLinks = links
-    ;(window as any).__relTypes = types
+    if (addedCards.length > 2) layoutCircle(addedCards)
+    relLinks.value = links
+    relTypes.value = types
     await nextTick(); drawEdges(); markDirty()
     toast.success(`已引入 ${nodes.length} 个角色 · ${links.length} 条关系（只读，编辑去关系图谱）`)
   } catch { toast.error('关系图读取失败') } finally { importing.value = false }
 }
-function layoutCircle(nodes: any[]) {
-  const names = new Set(nodes.map((n: any) => n.name))
-  const mine = cards.value.filter(c => names.has(c.title) && (c.kind === 'doc' || c.kind === 'graph'))
-  const R = 140 + mine.length * 26
-  mine.forEach((c, i) => {
-    const a = (i / mine.length) * Math.PI * 2 - Math.PI / 2
-    c.x = Math.round(420 + R * Math.cos(a)); c.y = Math.round(330 + R * Math.sin(a))
+function layoutCircle(cardsIn: CanvasCard[]) {
+  const R = 140 + cardsIn.length * 26
+  const cx = 420, cy = 330
+  cardsIn.forEach((c, i) => {
+    const a = (i / cardsIn.length) * Math.PI * 2 - Math.PI / 2
+    c.x = Math.round(cx + R * Math.cos(a)); c.y = Math.round(cy + R * Math.sin(a))
   })
 }
 function drawEdges() {
-  const links: any[] = (window as any).__relLinks || []
-  const types: any[] = (window as any).__relTypes || []
   const byTitle = new Map(cards.value.filter(c => c.kind === 'doc' || c.kind === 'graph').map(c => [c.title, c]))
   const out: typeof graphEdges.value = []
-  for (const l of links) {
+  for (const l of relLinks.value) {
     const a = byTitle.get(l.source); const b = byTitle.get(l.target)
     if (!a || !b) continue
     const ha = cardH(a.id) / 2, hb = cardH(b.id) / 2
     const x1 = a.x + 116, y1 = a.y + ha, x2 = b.x + 116, y2 = b.y + hb
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
-    const t = types.find((x: any) => x.key === l.type)
+    const t = relTypes.value.find((x: any) => x.key === l.type)
     out.push({
       d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`,
       mx, my, label: l.label || t?.label || l.type,
@@ -485,8 +497,8 @@ async function flush(manual = false) {
     if (manual) toast.success('画布已保存')
   } catch { saveState.value = 'dirty'; toast.error('画布保存失败') }
 }
-function onClose() {
-  flush()
+async function onClose() {
+  await flush() // 先落盘再广播，避免右栏钉选读到旧数据
   window.dispatchEvent(new CustomEvent('xzj-canvas-closed'))
   emit('close')
 }
@@ -521,8 +533,8 @@ onMounted(async () => {
     }
     if (dres.status === 'fulfilled') allDocs.value = Array.isArray(dres.value.data?.data) ? dres.value.data.data : []
     if (gres.status === 'fulfilled') {
-      (window as any).__relLinks = gres.value.data?.data?.links || []
-      ;(window as any).__relTypes = gres.value.data?.data?.types || []
+      relLinks.value = gres.value.data?.data?.links || gres.value.data?.links || []
+      relTypes.value = gres.value.data?.data?.types || gres.value.data?.types || []
     }
     await nextTick(); drawEdges()
   } finally { loading.value = false }
@@ -561,10 +573,10 @@ watch(() => props.projectId, () => { /* 父组件会重建本组件 */ })
 .sc-close{border:none;background:none;font-size:15px;color:var(--text-tertiary,#aeaeb2);cursor:pointer;padding:6px 10px}
 .sc-close:hover{color:var(--text-primary,#1d1d1f)}
 /* 白板 */
-.sc-board{flex:1;position:relative;overflow:hidden;cursor:grab;
-  background-image:radial-gradient(circle,var(--dot-color,#d8d4c8) 1px,transparent 1px);background-size:26px 26px}
+.sc-board{flex:1;position:relative;overflow:hidden;cursor:grab;background:var(--bg-primary,#f5f5f7)}
 .sc-board.panning{cursor:grabbing}
-.sc-world{position:absolute;left:0;top:0;width:4000px;height:3000px;transform-origin:0 0;will-change:transform}
+.sc-world{position:absolute;left:0;top:0;width:4000px;height:3000px;transform-origin:0 0;will-change:transform;
+  background-image:radial-gradient(circle,var(--dot-color,#d8d4c8) 1px,transparent 1px);background-size:26px 26px}
 .sc-svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 .sc-edge{fill:none;stroke-width:1.6;opacity:.75;pointer-events:stroke;cursor:pointer}
 .sc-elabel{font-size:11px}
@@ -649,7 +661,7 @@ watch(() => props.projectId, () => { /* 父组件会重建本组件 */ })
 .sc-detail .sub{margin-top:4px}
 .sc-detail-x{position:absolute;top:8px;right:10px;border:none;background:none;color:var(--text-tertiary,#aeaeb2);cursor:pointer}
 /* 深色 */
-:global(.dark) .sc-board{background-image:radial-gradient(circle,#3a3a3e 1px,transparent 1px)}
+:global(.dark) .sc-world{background-image:radial-gradient(circle,#3a3a3e 1px,transparent 1px)}
 :global(.dark) .sc-zone{border-color:#4a4a4e;background:rgba(255,255,255,.03)}
 :global(.dark) .sc-zone-label{background:#333338;color:#aeaeb2}
 @media (max-width:768px){ .sc-tools .sc-tbtn{padding:5px 8px;font-size:11px} .sc-hintbar{display:none} }
