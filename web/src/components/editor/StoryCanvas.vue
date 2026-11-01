@@ -247,7 +247,7 @@ function zoomAt(cx: number, cy: number, f: number) {
   const r = boardEl.value!.getBoundingClientRect()
   viewT.value.x = cx - r.left - w.x * viewT.value.scale
   viewT.value.y = cy - r.top - w.y * viewT.value.scale
-  markDirty()
+  markViewDirty()
 }
 function zoomBy(f: number) {
   const r = boardEl.value?.getBoundingClientRect()
@@ -308,6 +308,7 @@ function onPointerMove(e: PointerEvent) {
 }
 function onPointerUp() {
   if (drag && (drag.type === 'card' || drag.type === 'zone') && drag.moved) markDirty()
+  if (drag && drag.type === 'pan') markViewDirty() // 平移结束才保存视图，拖动过程不触发
   drag = null; isPanning.value = false
 }
 function onWheel(e: WheelEvent) {
@@ -483,11 +484,13 @@ function tlStateLabel(t: any): string { return t.state === 'done' ? '已回收' 
 
 /* ── 保存 ── */
 function payload() { return { cards: cards.value, zones: zones.value, view: viewT.value } }
-function markDirty() {
+function markDirty(delay = 900) {
   saveState.value = 'dirty'
   if (saveTimer) clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => flush(), 900)
+  saveTimer = setTimeout(() => flush(), delay)
 }
+// 视图类变化（缩放/平移）用更长节流：连续滚轮不刷保存请求
+function markViewDirty() { markDirty(1800) }
 async function flush(manual = false) {
   if (saveState.value === 'saved' && !manual) return
   saveState.value = 'saving'
@@ -664,5 +667,23 @@ watch(() => props.projectId, () => { /* 父组件会重建本组件 */ })
 :global(.dark) .sc-world{background-image:radial-gradient(circle,#3a3a3e 1px,transparent 1px)}
 :global(.dark) .sc-zone{border-color:#4a4a4e;background:rgba(255,255,255,.03)}
 :global(.dark) .sc-zone-label{background:#333338;color:#aeaeb2}
-@media (max-width:768px){ .sc-tools .sc-tbtn{padding:5px 8px;font-size:11px} .sc-hintbar{display:none} }
+@media (max-width:768px){
+  .sc-topbar{flex-wrap:wrap;height:auto;min-height:52px;padding:8px 10px;row-gap:6px}
+  .sc-brand{font-size:13px}
+  .sc-seg{margin-left:0}
+  .sc-seg button{padding:5px 10px;font-size:12px}
+  .sc-tools{width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+  .sc-tools::-webkit-scrollbar{display:none}
+  .sc-tools .sc-tbtn{flex-shrink:0;padding:5px 9px;font-size:11.5px}
+  .sc-zoom{margin-left:auto}
+  .sc-zoom .sc-tbtn{padding:4px 8px}
+  .sc-zpct{min-width:30px}
+  .sc-status{font-size:10.5px;padding:3px 6px}
+  .sc-close{padding:4px 6px}
+  .sc-hintbar{display:none}
+  .sc-palette{width:216px;left:10px;top:10px}
+  .tl-row{left:96px}
+  .tl-rname{left:-92px;width:86px;font-size:10.5px}
+  .sc-detail{right:10px;left:10px;width:auto}
+}
 </style>
