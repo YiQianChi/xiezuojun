@@ -86,15 +86,17 @@
 
       <p v-if="!showReset" class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
 
-      <!-- 防刷验证码弹层（当日发送超阈值时触发） -->
+      <!-- 防刷滑块验证（当日发送超阈值时触发）：拖动拼图对准缺口松手 -->
       <div v-if="captcha" class="qr-overlay" style="z-index:6">
         <button class="qr-close" @click="captcha = null">×</button>
         <h3>安全验证</h3>
-        <p style="font-size:26px;color:var(--text-primary);margin-bottom:16px;font-weight:700">{{ captcha.q }}</p>
-        <div class="code-row" style="width:220px">
-          <input v-model.trim="captcha.a" inputmode="numeric" maxlength="2" class="input" placeholder="答案" @keyup.enter="sendCode" />
-          <button class="btn primary" @click="sendCode">验证</button>
+        <p class="sl-tip">按住拼图拖到缺口处松手</p>
+        <div class="sl-stage">
+          <div class="sl-bg" v-html="captcha.bg"></div>
+          <div class="sl-piece" :style="{ top: captcha.y + 'px', left: dragX + 'px' }" v-html="captcha.piece"
+               @pointerdown="onSlDown" @pointermove="onSlMove" @pointerup="onSlUp" @pointercancel="onSlUp"></div>
         </div>
+        <p v-if="slFail" class="sl-fail">没对准，再试一次</p>
       </div>
 
       <!-- 扫码浮层：iframe 嵌微信官方二维码页，登录成功后回调页 postMessage 回本页 -->
@@ -150,7 +152,33 @@ onMounted(() => window.addEventListener('message', onWxMsg))
 onUnmounted(() => window.removeEventListener('message', onWxMsg))
 
 const accountType = ref<AccountType>('email')
-const captcha = ref<{ id: string; q: string; a: string } | null>(null)
+// 滑块验证码（防刷）
+type SlCaptcha = { id: string; bg: string; piece: string; y: number; w: number }
+const captcha = ref<SlCaptcha | null>(null)
+const dragX = ref(0)
+const dragging = ref(false)
+const slFail = ref(false)
+let slTrail: [number, number][] = []
+let slStart = { t: 0, x: 0, left: 0 }
+
+function onSlDown(e: PointerEvent) {
+  dragging.value = true
+  slFail.value = false
+  slTrail = [[0, dragX.value + 24]]
+  slStart = { t: performance.now(), x: e.clientX, left: dragX.value }
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+}
+function onSlMove(e: PointerEvent) {
+  if (!dragging.value || !captcha.value) return
+  dragX.value = Math.max(0, Math.min(captcha.value.w - 48, slStart.left + e.clientX - slStart.x))
+  slTrail.push([Math.round(performance.now() - slStart.t), dragX.value + 24])
+}
+function onSlUp() {
+  if (!dragging.value) return
+  dragging.value = false
+  slTrail.push([Math.round(performance.now() - slStart.t), dragX.value + 24])
+  sendCode()
+}
 const mode = ref<LoginMode>('password')
 const account = ref('')
 const password = ref('')
@@ -244,7 +272,9 @@ async function sendCode() {
   if (fieldErrors.account) return
   sendingCode.value = true
   try {
-    const extra = captcha.value ? { captcha_id: captcha.value.id, captcha_answer: captcha.value.a } : {}
+    const extra = captcha.value
+      ? { captcha_id: captcha.value.id, captcha_answer: JSON.stringify({ x: dragX.value + 24, trail: slTrail }) }
+      : {}
     if (accountType.value === 'phone') {
       const res = await userApi.sendSmsCode({ phone: account.value.trim(), scene: 'login', ...extra })
       const c = res.data?.data?.code
@@ -254,11 +284,17 @@ async function sendCode() {
       successMsg.value = '验证码已发送，请查看邮箱'
     }
     captcha.value = null
+    dragX.value = 0
+    slFail.value = false
     startCountdown()
   } catch (err: any) {
     const r = err.response
     if ((r?.status === 412 || r?.status === 428) && r.data?.captcha) {
-      captcha.value = { id: r.data.captcha.id, q: r.data.captcha.q, a: '' }
+      // 换新题重来；只有本页刚拖过（有轨迹）还失败时提示没对准
+      slFail.value = slTrail.length > 1
+      captcha.value = r.data.captcha
+      dragX.value = 0
+      slTrail = []
     } else {
       captcha.value = null
       errorMsg.value = normalizeError(err)
@@ -390,5 +426,11 @@ async function handleReset() {
 .qr-frame { width:300px; height:340px; border:none; }
 .qr-tip { font-size:13px; color:var(--text-secondary); margin-top:14px; text-align:center; line-height:1.8; }
 .qr-tip b { color:#07c160; }
+.sl-tip { font-size:12px; color:var(--text-secondary); margin-bottom:12px; }
+.sl-stage { position:relative; width:280px; user-select:none; }
+.sl-bg svg { display:block; border-radius:8px; }
+.sl-piece { position:absolute; width:48px; height:48px; cursor:grab; touch-action:none; }
+.sl-piece:active { cursor:grabbing; }
+.sl-fail { color:#ff3b30; font-size:12px; margin-top:10px; }
 .switch-text { text-align:center; margin-top:24px; color:var(--text-secondary); font-size:14px; }
 </style>
