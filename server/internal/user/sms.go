@@ -1,82 +1,141 @@
 package user
 
-// 腾讯云短信发送（验证码）。
-// 配置（.env）：TENCENT_SMS_SECRET_ID / TENCENT_SMS_SECRET_KEY / TENCENT_SMS_SDK_APP_ID /
-//               TENCENT_SMS_SIGN_NAME / TENCENT_SMS_TEMPLATE_ID
-// 模板需含 {1} 占位验证码，如：您的验证码为{1}，10分钟内有效，请勿泄露。
+// 火山引擎短信发送（验证码）。
+// 配置（.env）：VOLC_SMS_ACCESS_KEY / VOLC_SMS_SECRET_KEY / VOLC_SMS_ACCOUNT /
+//               VOLC_SMS_SIGN / VOLC_SMS_TEMPLATE_ID
+// 模板示例（变量名必须是 code）：您的验证码为${code}，5分钟内有效，请勿泄露。
+// 签名按火山 V4 规范手写（官方 signature demo 移植），不引 SDK。
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
-	"sync"
-
-	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
-	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
-	sms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms/v20210111"
+	"strings"
+	"time"
 )
 
 type smsConfig struct {
-	SecretID   string
+	AccessKey  string
 	SecretKey  string
-	SdkAppID   string
-	SignName   string
+	SmsAccount string
+	Sign       string
 	TemplateID string
 }
 
 func loadSmsConfig() smsConfig {
 	return smsConfig{
-		SecretID:   os.Getenv("TENCENT_SMS_SECRET_ID"),
-		SecretKey:  os.Getenv("TENCENT_SMS_SECRET_KEY"),
-		SdkAppID:   os.Getenv("TENCENT_SMS_SDK_APP_ID"),
-		SignName:   os.Getenv("TENCENT_SMS_SIGN_NAME"),
-		TemplateID: os.Getenv("TENCENT_SMS_TEMPLATE_ID"),
+		AccessKey:  os.Getenv("VOLC_SMS_ACCESS_KEY"),
+		SecretKey:  os.Getenv("VOLC_SMS_SECRET_KEY"),
+		SmsAccount: os.Getenv("VOLC_SMS_ACCOUNT"),
+		Sign:       os.Getenv("VOLC_SMS_SIGN"),
+		TemplateID: os.Getenv("VOLC_SMS_TEMPLATE_ID"),
 	}
 }
 
 func (c smsConfig) configured() bool {
-	return c.SecretID != "" && c.SecretKey != "" && c.SdkAppID != "" && c.SignName != "" && c.TemplateID != ""
+	return c.AccessKey != "" && c.SecretKey != "" && c.SmsAccount != "" && c.Sign != "" && c.TemplateID != ""
 }
 
-var (
-	smsClientOnce sync.Once
-	smsClient     *sms.Client
-	smsClientErr  error
-)
+func hmacSHA256(key []byte, content string) []byte {
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(content))
+	return mac.Sum(nil)
+}
 
-func getSmsClient(cfg smsConfig) (*sms.Client, error) {
-	smsClientOnce.Do(func() {
-		cred := common.NewCredential(cfg.SecretID, cfg.SecretKey)
-		cp := profile.NewClientProfile()
-		cp.HttpProfile.Endpoint = "sms.tencentcloudapi.com"
-		smsClient, smsClientErr = sms.NewClient(cred, "ap-guangzhou", cp)
-	})
-	return smsClient, smsClientErr
+func hashSHA256Hex(data []byte) string {
+	h := sha256.New()
+	h.Write(data)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // sendSmsCode 发短信验证码；返回 error 时调用方应释放限频名额让用户可重试
 func sendSmsCode(phone, code string) error {
 	cfg := loadSmsConfig()
-	client, err := getSmsClient(cfg)
+	body, _ := json.Marshal(map[string]string{
+		"SmsAccount":    cfg.SmsAccount,
+		"Sign":          cfg.Sign,
+		"TemplateID":    cfg.TemplateID,
+		"TemplateParam": fmt.Sprintf(`{"code":%q}`, code),
+		"PhoneNumbers":  phone,
+	})
+	queries := url.Values{}
+	queries.Set("Action", "SendSms")
+	queries.Set("Version", "2020-01-01")
+	req, err := http.NewRequest(http.MethodPost, "https://sms.volcengineapi.com/?"+queries.Encode(), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
-	req := sms.NewSendSmsRequest()
-	req.SmsSdkAppId = common.StringPtr(cfg.SdkAppID)
-	req.SignName = common.StringPtr(cfg.SignName)
-	req.TemplateId = common.StringPtr(cfg.TemplateID)
-	req.PhoneNumberSet = common.StringPtrs([]string{"+86" + phone})
-	req.TemplateParamSet = common.StringPtrs([]string{code})
-	resp, err := client.SendSms(req)
+
+	const (
+		volcService = "volcSMS"
+		volcRegion  = "cn-north-1"
+	)
+	date := time.Now().UTC().Format("20060102T150405Z")
+	payload := hashSHA256Hex(body)
+	req.Header.Set("X-Date", date)
+	req.Header.Set("X-Content-Sha256", payload)
+	req.Header.Set("Content-Type", "application/json")
+
+	queryString := strings.Replace(queries.Encode(), "+", "%20", -1)
+	signedHeaders := []string{"host", "x-date", "x-content-sha256", "content-type"}
+	var hl []string
+	for _, h := range signedHeaders {
+		if h == "host" {
+			hl = append(hl, h+":"+req.Host)
+		} else {
+			hl = append(hl, h+":"+strings.TrimSpace(req.Header.Get(h)))
+		}
+	}
+	canonical := strings.Join([]string{
+		http.MethodPost, "/", queryString,
+		strings.Join(hl, "\n") + "\n",
+		strings.Join(signedHeaders, ";"),
+		payload,
+	}, "\n")
+	credentialScope := date[:8] + "/" + volcRegion + "/" + volcService + "/request"
+	signString := strings.Join([]string{
+		"HMAC-SHA256", date, credentialScope, hashSHA256Hex([]byte(canonical)),
+	}, "\n")
+
+	kSigning := hmacSHA256(hmacSHA256(hmacSHA256(hmacSHA256([]byte(cfg.SecretKey), date[:8]), volcRegion), volcService), "request")
+	signature := hex.EncodeToString(hmacSHA256(kSigning, signString))
+	req.Header.Set("Authorization", "HMAC-SHA256 Credential="+cfg.AccessKey+"/"+credentialScope+
+		", SignedHeaders="+strings.Join(signedHeaders, ";")+", Signature="+signature)
+
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
 	if err != nil {
 		return err
 	}
-	for _, st := range resp.Response.SendStatusSet {
-		if st.Code != nil && *st.Code != "Ok" {
-			msg := ""
-			if st.Message != nil {
-				msg = *st.Message
-			}
-			return fmt.Errorf("sms send failed: %s %s", *st.Code, msg)
+	defer resp.Body.Close()
+	var out struct {
+		ResponseMetadata struct {
+			Error *struct {
+				Code    string `json:"Code"`
+				Message string `json:"Message"`
+			} `json:"Error"`
+		} `json:"ResponseMetadata"`
+		Result struct {
+			SendResults []struct {
+				Code    string `json:"Code"`
+				Message string `json:"Message"`
+			} `json:"SendResults"`
+		} `json:"Result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return err
+	}
+	if e := out.ResponseMetadata.Error; e != nil {
+		return fmt.Errorf("volc sms: %s %s", e.Code, e.Message)
+	}
+	for _, r := range out.Result.SendResults {
+		if r.Code != "" && r.Code != "OK" {
+			return fmt.Errorf("volc sms: %s %s", r.Code, r.Message)
 		}
 	}
 	return nil
