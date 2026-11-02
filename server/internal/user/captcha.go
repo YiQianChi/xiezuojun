@@ -38,10 +38,10 @@ var captchaColors = [][2]string{
 	{"#fbcfe8", "#fce7f3"}, {"#bfdbfe", "#dbeafe"},
 }
 
-// 三个图形：固定点击顺序 star → triangle → diamond
+// 三个图形：固定点击顺序 star → triangle → diamond；随机旋转 + 伪立体着色
 var clickShapes = []struct {
 	glyph string
-	draw  func(img *image.RGBA, cx, cy, r int, c color.RGBA)
+	draw  func(img *image.RGBA, cx, cy, r int, ang float64, c color.RGBA)
 }{
 	{"★", drawStar},
 	{"▲", drawTriangle},
@@ -78,41 +78,59 @@ func hexToRGB(s string) color.RGBA {
 	return color.RGBA{uint8(r), uint8(g), uint8(b), 255}
 }
 
-// fillShape 以 alpha 混合填充，inside 判定像素是否属于图形
-func fillShape(img *image.RGBA, cx, cy, r int, c color.RGBA, inside func(dx, dy int) bool) {
-	for py := cy - r - 2; py <= cy+r+2; py++ {
-		for px := cx - r - 2; px <= cx+r+2; px++ {
+// fillShape 伪立体着色填充：inside 判定（dx,dy 已按 ang 反旋转），亮度沿光照方向渐变
+func fillShape(img *image.RGBA, cx, cy, r int, ang float64, c color.RGBA, inside func(dx, dy float64) bool) {
+	ca, sa := math.Cos(ang), math.Sin(ang)
+	for py := cy - r - 3; py <= cy+r+3; py++ {
+		for px := cx - r - 3; px <= cx+r+3; px++ {
 			if px < 0 || py < 0 || px >= img.Rect.Dx() || py >= img.Rect.Dy() {
 				continue
 			}
 			dx, dy := px-cx, py-cy
-			if !inside(dx, dy) {
+			// 反旋转到图形本地坐标
+			lx := float64(dx)*ca + float64(dy)*sa
+			ly := -float64(dx)*sa + float64(dy)*ca
+			if !inside(lx, ly) {
 				continue
+			}
+			// 伪立体：高光在左上，右下压暗
+			d := math.Hypot(float64(dx), float64(dy)) / float64(r)
+			light := 1.0 + 0.30*(1-d) - 0.18*d - 0.22*(float64(dx)+float64(dy))/(2*float64(r))
+			shade := func(v uint8) uint8 {
+				n := int(float64(v) * light)
+				if n < 0 {
+					return 0
+				}
+				if n > 255 {
+					return 255
+				}
+				return uint8(n)
 			}
 			base := img.RGBAAt(px, py)
 			a := int(c.A)
+			rr, gg, bb := shade(c.R), shade(c.G), shade(c.B)
 			img.SetRGBA(px, py, color.RGBA{
-				uint8((int(c.R)*a + int(base.R)*(255-a)) / 255),
-				uint8((int(c.G)*a + int(base.G)*(255-a)) / 255),
-				uint8((int(c.B)*a + int(base.B)*(255-a)) / 255),
+				uint8((int(rr)*a + int(base.R)*(255-a)) / 255),
+				uint8((int(gg)*a + int(base.G)*(255-a)) / 255),
+				uint8((int(bb)*a + int(base.B)*(255-a)) / 255),
 				255,
 			})
 		}
 	}
 }
 
-func drawStar(img *image.RGBA, cx, cy, r int, c color.RGBA) {
+func drawStar(img *image.RGBA, cx, cy, r int, ang float64, c color.RGBA) {
 	pts := make([][2]float64, 10)
 	for i := 0; i < 10; i++ {
-		ang := -math.Pi/2 + float64(i)*math.Pi/5
+		a := -math.Pi/2 + float64(i)*math.Pi/5
 		rad := float64(r)
 		if i%2 == 1 {
 			rad = float64(r) * 0.45
 		}
-		pts[i] = [2]float64{float64(cx) + rad*math.Cos(ang), float64(cy) + rad*math.Sin(ang)}
+		pts[i] = [2]float64{rad * math.Cos(a), rad * math.Sin(a)}
 	}
-	fillShape(img, cx, cy, r, c, func(dx, dy int) bool {
-		return pointInPoly(float64(cx)+float64(dx), float64(cy)+float64(dy), pts)
+	fillShape(img, cx, cy, r, ang, c, func(dx, dy float64) bool {
+		return pointInPoly(dx, dy, pts)
 	})
 }
 
@@ -129,23 +147,23 @@ func pointInPoly(x, y float64, pts [][2]float64) bool {
 	return in
 }
 
-func drawTriangle(img *image.RGBA, cx, cy, r int, c color.RGBA) {
-	fillShape(img, cx, cy, r, c, func(dx, dy int) bool {
-		if dy < -r || dy > r/2 {
-			return false
-		}
-		return math.Abs(float64(dx)) <= float64(dy+r)*0.58
+func drawTriangle(img *image.RGBA, cx, cy, r int, ang float64, c color.RGBA) {
+	pts := [][2]float64{
+		{0, -float64(r)}, {float64(r) * 0.87, float64(r) / 2}, {-float64(r) * 0.87, float64(r) / 2},
+	}
+	fillShape(img, cx, cy, r, ang, c, func(dx, dy float64) bool {
+		return pointInPoly(dx, dy, pts)
 	})
 }
 
-func drawDiamond(img *image.RGBA, cx, cy, r int, c color.RGBA) {
-	fillShape(img, cx, cy, r, c, func(dx, dy int) bool {
-		return abs(dx)+abs(dy) <= r
+func drawDiamond(img *image.RGBA, cx, cy, r int, ang float64, c color.RGBA) {
+	fillShape(img, cx, cy, r, ang, c, func(dx, dy float64) bool {
+		return math.Abs(dx)+math.Abs(dy) <= float64(r)
 	})
 }
 
 func drawCircle(img *image.RGBA, cx, cy, r int, c color.RGBA) {
-	fillShape(img, cx, cy, r, c, func(dx, dy int) bool { return dx*dx+dy*dy <= r*r })
+	fillShape(img, cx, cy, r, 0, c, func(dx, dy float64) bool { return dx*dx+dy*dy <= float64(r)*float64(r) })
 }
 
 func abs(x int) int {
@@ -177,6 +195,10 @@ func newClickCaptcha() clickChallenge {
 	}
 	colors := []color.RGBA{{220, 38, 38, 235}, {37, 99, 235, 235}, {22, 163, 74, 235}}
 	pos := [3][2]int{}
+	angs := [3]float64{}
+	for i := 0; i < 3; i++ {
+		angs[i] = float64(randIntn(628)) / 100 // 0~2π 随机旋转
+	}
 	for i := 0; i < 3; i++ {
 		// 找一个与已放图形不重叠的位置（中心距 > 2.6R）
 		for try := 0; ; try++ {
@@ -194,7 +216,7 @@ func newClickCaptcha() clickChallenge {
 			}
 		}
 		drawCircle(img, pos[i][0], pos[i][1], R+5, color.RGBA{255, 255, 255, 160}) // 白底衬
-		clickShapes[i].draw(img, pos[i][0], pos[i][1], R, colors[i])
+		clickShapes[i].draw(img, pos[i][0], pos[i][1], R, angs[i], colors[i])
 	}
 	buf := &bytes.Buffer{}
 	png.Encode(buf, img)
