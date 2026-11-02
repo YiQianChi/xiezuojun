@@ -31,13 +31,15 @@
         @click="openBook(project)"
       >
         <div class="book-cover">
-          <div class="book-icon">📖</div>
+          <img v-if="project.cover_url" :src="project.cover_url" alt="" class="cover-img" />
+          <div v-else class="book-icon">📖</div>
         </div>
         <div class="book-info">
           <h3>{{ project.name }}</h3>
           <p class="book-meta">{{ project.description || '暂无简介' }}</p>
         </div>
         <div class="card-actions">
+          <button class="card-btn" data-label="封面" @click.stop="pickCover(project)" title="上传封面">🖼️</button>
           <button class="card-btn" data-label="重命名" @click.stop="startRename(project)" title="重命名">✏️</button>
           <div class="export-dropdown" @click.stop>
             <button class="card-btn" data-label="导出" @click="toggleExportMenu(project.id || project.project_id)" title="导出">📥</button>
@@ -201,6 +203,7 @@
     </div>
 
     <!-- 手机端：书卡片操作走底部文字链接行（见样式 card-actions 手机规则），导出用原下拉 -->
+    <input ref="coverInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" @change="onCoverPicked" />
   </div>
 </template>
 
@@ -343,6 +346,33 @@ async function confirmRename() {
 
 // 导出
 const exportMenuId = ref<number | null>(null)
+
+// ===== 封面上传 =====
+const coverInput = ref<HTMLInputElement | null>(null)
+let coverProject: any = null
+function pickCover(project: any) {
+  coverProject = project
+  if (coverInput.value) {
+    coverInput.value.value = ''
+    coverInput.value.click()
+  }
+}
+async function onCoverPicked(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !coverProject) return
+  if (file.size > 5 * 1024 * 1024) { toast.error('图片不能超过 5MB'); return }
+  const fd = new FormData()
+  fd.append('cover', file)
+  try {
+    const res = await projectApi.uploadCover(coverProject.id || coverProject.project_id, fd)
+    const url = res.data?.data?.cover_url
+    if (url) coverProject.cover_url = url
+    toast.success('封面已更新')
+  } catch (err: any) {
+    toast.error(err?.response?.data?.error || '上传失败')
+  }
+}
 
 function toggleExportMenu(id: number) {
   exportMenuId.value = exportMenuId.value === id ? null : id
@@ -677,6 +707,8 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   font-size: 40px;
   color: var(--text-tertiary);
 }
+
+.cover-img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
 
 .book-card.add-card:hover .book-cover {
   border-color: var(--accent);

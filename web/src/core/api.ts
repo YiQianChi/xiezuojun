@@ -158,6 +158,9 @@ export const projectApi = {
   list() {
     return api.get('/projects')
   },
+  uploadCover(id: number, form: FormData) {
+    return api.post(`/projects/${id}/cover`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
   get(id: string | number) {
     return api.get(`/projects/${id}`)
   },

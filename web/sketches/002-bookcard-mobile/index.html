@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>书卡片手机端方案对比</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif; background:#f2f2f7; padding:20px 14px 60px; color:#1c1c1e; }
+  h1 { font-size:18px; text-align:center; margin-bottom:6px; }
+  .tip { text-align:center; font-size:12px; color:#8e8e93; margin-bottom:24px; }
+  .scheme { margin-bottom:36px; }
+  .scheme h2 { font-size:14px; margin-bottom:4px; }
+  .scheme .desc { font-size:11px; color:#8e8e93; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; max-width:400px; }
+  .card { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.06); }
+  .cover { aspect-ratio:3/4; background:linear-gradient(135deg,#c7d2fe,#e0e7ff); display:flex; align-items:center; justify-content:center; font-size:44px; }
+  .info { padding:10px 12px; }
+  .info b { display:block; font-size:14px; margin-bottom:2px; }
+  .info span { font-size:11px; color:#8e8e93; }
+
+  /* 方案1：底部文字链接行 */
+  .s1 .ops { display:flex; border-top:1px solid #f0f0f3; }
+  .s1 .ops button { flex:1; border:none; background:none; padding:9px 0; font-size:12px; color:#007aff; }
+  .s1 .ops button + button { border-left:1px solid #f0f0f3; }
+  .s1 .ops button.danger { color:#ff3b30; }
+
+  /* 方案2：右上角 ⋯ → 底部 ActionSheet */
+  .s2 .cover { position:relative; }
+  .s2 .more { position:absolute; top:8px; right:8px; width:32px; height:32px; border-radius:50%;
+    background:rgba(0,0,0,.35); color:#fff; border:none; font-size:16px; }
+  .sheet-wrap { position:relative; height:0; }
+  .sheet { position:fixed; left:0; right:0; bottom:0; background:rgba(0,0,0,.35); padding:60px 0 0; z-index:5; }
+  .sheet .panel { background:#f2f2f7; border-radius:16px 16px 0 0; padding:8px; max-width:400px; margin:0 auto; }
+  .sheet .group { background:#fff; border-radius:12px; overflow:hidden; margin-bottom:8px; }
+  .sheet .group button { display:block; width:100%; border:none; background:none; padding:14px; font-size:15px; color:#007aff; }
+  .sheet .group button + button { border-top:1px solid #f0f0f3; }
+  .sheet .group button.danger { color:#ff3b30; }
+  .sheet .cancel { display:block; width:100%; border:none; background:#fff; border-radius:12px; padding:14px; font-size:15px; font-weight:600; color:#007aff; }
+  .sheet .hint { text-align:center; font-size:11px; color:#8e8e93; padding:6px 0 2px; }
+
+  /* 方案3：封面底部渐变横条小图标 */
+  .s3 .cover { position:relative; }
+  .s3 .bar { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:flex-end; gap:4px;
+    padding:18px 8px 6px; background:linear-gradient(transparent, rgba(0,0,0,.45)); }
+  .s3 .bar button { width:34px; height:34px; border-radius:50%; border:none; background:rgba(255,255,255,.85); font-size:15px; }
+</style>
+</head>
+<body>
+<h1>书卡片 · 手机端操作按钮方案</h1>
+<p class="tip">三个方案，点一点感受交互，回复我选哪个</p>
+
+<div class="scheme s1">
+  <h2>方案 1 · 底部文字链接行</h2>
+  <p class="desc">像系统列表的"编辑 | 导出 | 删除"，轻、明确，占一行高</p>
+  <div class="grid">
+    <div class="card">
+      <div class="cover">📖</div>
+      <div class="info"><b>星落长安</b><span>一个关于成长与冒险的故事</span></div>
+      <div class="ops"><button>重命名</button><button>导出</button><button class="danger">删除</button></div>
+    </div>
+    <div class="card">
+      <div class="cover">📖</div>
+      <div class="info"><b>深海旅人</b><span>一个关于成长与冒险的故事</span></div>
+      <div class="ops"><button>重命名</button><button>导出</button><button class="danger">删除</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="scheme s2">
+  <h2>方案 2 · 右上角 ⋯ → 底部动作面板（iOS 风格）</h2>
+  <p class="desc">卡片干净只剩封面和书名，操作收进"⋯"，点下面卡片试试</p>
+  <div class="grid">
+    <div class="card" onclick="document.getElementById('sheet').style.display='block'">
+      <div class="cover">📖<button class="more">⋯</button></div>
+      <div class="info"><b>星落长安</b><span>一个关于成长与冒险的故事</span></div>
+    </div>
+    <div class="card" onclick="document.getElementById('sheet').style.display='block'">
+      <div class="cover">📖<button class="more">⋯</button></div>
+      <div class="info"><b>深海旅人</b><span>一个关于成长与冒险的故事</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="scheme s3">
+  <h2>方案 3 · 封面右下角悬浮小图标</h2>
+  <p class="desc">图标贴在封面渐变上，不占额外行高，点按区稍小</p>
+  <div class="grid">
+    <div class="card">
+      <div class="cover">📖
+        <div class="bar"><button>✏️</button><button>📥</button><button>🗑️</button></div>
+      </div>
+      <div class="info"><b>星落长安</b><span>一个关于成长与冒险的故事</span></div>
+    </div>
+    <div class="card">
+      <div class="cover">📖
+        <div class="bar"><button>✏️</button><button>📥</button><button>🗑️</button></div>
+      </div>
+      <div class="info"><b>深海旅人</b><span>一个关于成长与冒险的故事</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="sheet" class="sheet" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="panel">
+    <div class="group">
+      <button>✏️ 重命名</button>
+      <button>📥 导出 Markdown</button>
+      <button>📥 导出 TXT / EPUB / DOCX</button>
+    </div>
+    <div class="group"><button class="danger">🗑️ 删除这本书</button></div>
+    <button class="cancel" onclick="document.getElementById('sheet').style.display='none'">取消</button>
+  </div>
+</div>
+</body>
+</html>

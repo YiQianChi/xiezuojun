@@ -159,6 +159,7 @@ func main() {
 	api.POST("/auth/sms-login", userHandler.SmsLogin)
 	api.GET("/auth/wx-oauth/start", userHandler.WxOauthStart)
 	api.GET("/auth/wx-oauth/callback", userHandler.WxOauthCallback)
+	api.GET("/covers/:file", projectHandler.CoverFile) // 书封面上传后通过 <img src> 访问，不能要求登录
 	api.POST("/auth/refresh", userHandler.Refresh)
 	api.POST("/auth/reset-password", userHandler.ResetPassword)
 
@@ -183,6 +184,7 @@ func main() {
 	authd.GET("/projects/:id/search", projectHandler.SearchDocuments)
 	authd.GET("/projects/:id", projectHandler.GetProject)
 	authd.PATCH("/projects/:id", projectHandler.UpdateProject)
+	authd.POST("/projects/:id/cover", projectHandler.UploadCover)
 	authd.DELETE("/projects/:id", projectHandler.DeleteProject)
 	authd.GET("/projects/:id/export", projectHandler.ExportProject)
 	authd.GET("/projects/:id/export/epub", projectHandler.ExportEPUB)
