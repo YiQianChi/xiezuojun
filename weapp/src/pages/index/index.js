@@ -10,7 +10,8 @@ Page({
     loadFailed: false
   },
   buildUrl(at, rt) {
-    return app.globalData.site + '?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
+    // 直达书架（Boss：手机版不需要首页中转，登录后就是书架）
+    return app.globalData.site + '/bookshelf?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad() {
     const at = wx.getStorageSync('xzj_token')
