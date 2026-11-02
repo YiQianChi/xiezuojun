@@ -6,6 +6,10 @@
     <button class="btn-wx {{wxLoading ? 'btn-loading' : ''}}" bindtap="onWxLogin" disabled="{{wxLoading}}">
       {{wxLoading ? '登录中…' : '微信一键登录'}}
     </button>
+    <button class="btn-phone {{phoneLoading ? 'btn-loading' : ''}}" open-type="getPhoneNumber"
+            bindgetphonenumber="onPhoneLogin" disabled="{{phoneLoading}}">
+      {{phoneLoading ? '登录中…' : '手机号一键登录（推荐老用户）'}}
+    </button>
     <view class="divider"><text>或邮箱登录</text></view>
     <input class="input" type="text" value="{{email}}" bindinput="onEmail"
            placeholder="邮箱" placeholder-class="ph" />

@@ -4,7 +4,8 @@ Page({
     email: '',
     password: '',
     loading: false,
-    wxLoading: false
+    wxLoading: false,
+    phoneLoading: false
   },
   onEmail(e) { this.setData({ email: e.detail.value }) },
   onPwd(e) { this.setData({ password: e.detail.value }) },
@@ -44,6 +45,44 @@ Page({
       wx.showToast({ title: '网络错误，请重试', icon: 'none' })
     }
     this.setData({ wxLoading: false })
+  },
+
+  // 手机号一键登录：getPhoneNumber 授权拿 code + wx.login code → 后端按手机号并号/登录
+  async onPhoneLogin(e) {
+    if (!e.detail || !e.detail.code) {
+      if (e.detail && e.detail.errMsg && e.detail.errMsg.indexOf('deny') < 0) {
+        wx.showToast({ title: '手机号授权失败，请重试', icon: 'none' })
+      }
+      return // 用户拒绝授权则静默返回
+    }
+    if (this.data.phoneLoading) return
+    this.setData({ phoneLoading: true })
+    try {
+      const loginRes = await new Promise((resolve, reject) => {
+        wx.login({ success: resolve, fail: reject })
+      })
+      if (!loginRes.code) throw new Error('no code')
+      const res = await new Promise((resolve, reject) => {
+        wx.request({
+          url: 'https://xiezuojun.com/api/auth/wx-phone-login',
+          method: 'POST',
+          data: { code: loginRes.code, phone_code: e.detail.code },
+          header: { 'Content-Type': 'application/json' },
+          success: resolve,
+          fail: reject
+        })
+      })
+      const d = res.data && res.data.data
+      if (res.statusCode === 200 && d && d.access_token) {
+        if (d.merged) wx.showToast({ title: '已并入你的老账号', icon: 'none' })
+        this.saveTokens(d)
+        return
+      }
+      wx.showToast({ title: (res.data && res.data.error) || '手机号登录失败', icon: 'none' })
+    } catch (err) {
+      wx.showToast({ title: '网络错误，请重试', icon: 'none' })
+    }
+    this.setData({ phoneLoading: false })
   },
 
   async onLogin() {
