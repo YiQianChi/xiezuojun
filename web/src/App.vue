@@ -195,6 +195,9 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  /* 衬线字体(Noto Serif SC)部分环境下行高指标巨大，会把 normal 行高撑到 ~2.8em 顶出导航栏 */
+  line-height: 1;
+  height: 32px;
 }
 
 .logo-icon {

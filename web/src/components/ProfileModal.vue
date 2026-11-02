@@ -68,27 +68,35 @@
     </div>
     <!-- 账号与安全：绑定状态一览 + 补绑 -->
     <div v-if="secOpen" class="pdlg-overlay" @click.self="secOpen = false">
-      <div class="pdlg">
+      <div class="pdlg sec-dlg">
         <div class="pdlg-head"><span>账号与安全</span><button @click="secOpen = false">✕</button></div>
         <div class="pdlg-body">
-          <div class="sec-row">
-            <span class="sec-name">邮箱</span>
-            <span class="sec-val">{{ sec.email_bound ? (me.email || '已绑定') : '未绑定' }}</span>
-            <span v-if="sec.email_bound" class="sec-ok">✓</span>
-            <button v-else class="btn sec-op" @click="emailOpen = !emailOpen">设置</button>
+          <p class="sec-desc">以下方式都可登录同一个账号，建议至少保留两种</p>
+
+          <div class="sec-card" :class="{ bound: sec.email_bound }">
+            <div class="sec-ico">✉️</div>
+            <div class="sec-info">
+              <b>邮箱</b>
+              <span>{{ sec.email_bound ? (me.email || '已绑定') : '未绑定，可补一个用于登录和找回' }}</span>
+            </div>
+            <span v-if="sec.email_bound" class="sec-badge">已绑定</span>
+            <button v-else class="btn sec-op" @click="emailOpen = !emailOpen">{{ emailOpen ? '收起' : '设置' }}</button>
           </div>
           <div v-if="!sec.email_bound && emailOpen" class="sec-form">
-            <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱" />
+            <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱地址" />
             <input v-model="secPwd" type="password" class="input" placeholder="设置密码（至少 6 位）" />
             <input v-model="secPwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
-            <button class="btn primary" @click="doSetEmail" :disabled="secSaving">保存</button>
+            <button class="btn primary sec-save" @click="doSetEmail" :disabled="secSaving">保存</button>
           </div>
 
-          <div class="sec-row">
-            <span class="sec-name">手机号</span>
-            <span class="sec-val">{{ sec.phone_bound ? (me.phone || '已绑定') : '未绑定' }}</span>
-            <span v-if="sec.phone_bound" class="sec-ok">✓</span>
-            <button v-else class="btn sec-op" @click="phoneOpen = !phoneOpen">绑定</button>
+          <div class="sec-card" :class="{ bound: sec.phone_bound }">
+            <div class="sec-ico">📱</div>
+            <div class="sec-info">
+              <b>手机号</b>
+              <span>{{ sec.phone_bound ? (me.phone || '已绑定') : '未绑定，验证短信后可手机号登录' }}</span>
+            </div>
+            <span v-if="sec.phone_bound" class="sec-badge">已绑定</span>
+            <button v-else class="btn sec-op" @click="phoneOpen = !phoneOpen">{{ phoneOpen ? '收起' : '绑定' }}</button>
           </div>
           <div v-if="!sec.phone_bound && phoneOpen" class="sec-form">
             <div class="sec-code">
@@ -98,16 +106,18 @@
               </button>
             </div>
             <input v-model.trim="bindCode" inputmode="numeric" maxlength="6" class="input" placeholder="短信验证码" @keyup.enter="doBindPhone" />
-            <button class="btn primary" @click="doBindPhone" :disabled="secSaving">绑定</button>
+            <button class="btn primary sec-save" @click="doBindPhone" :disabled="secSaving">绑定</button>
           </div>
 
-          <div class="sec-row">
-            <span class="sec-name">微信</span>
-            <span class="sec-val">{{ sec.wechat_bound ? '已绑定' : '未绑定' }}</span>
-            <span v-if="sec.wechat_bound" class="sec-ok">✓</span>
+          <div class="sec-card" :class="{ bound: sec.wechat_bound }">
+            <div class="sec-ico">💬</div>
+            <div class="sec-info">
+              <b>微信</b>
+              <span>{{ sec.wechat_bound ? '扫码 / 小程序登录同一账号' : '未绑定，扫码后微信登录即本账号' }}</span>
+            </div>
+            <span v-if="sec.wechat_bound" class="sec-badge">已绑定</span>
             <button v-else class="btn sec-op" @click="doWxBind">扫码绑定</button>
           </div>
-          <p class="bind-hint" style="margin-top:14px">绑得越多，换设备登录越方便；一个邮箱/手机号/微信只能属于一个账号。</p>
         </div>
       </div>
     </div>
@@ -484,13 +494,33 @@ async function doBind() {
 .btn.skip { margin-top: 10px; border: none; color: var(--text-tertiary); font-size: 13px; padding: 7px 0; }
 .btn.skip:hover { color: var(--text-secondary); background: var(--bg-tertiary, #f5f5f7); }
 .bind-hint { font-size: 12px; color: var(--text-tertiary, #999); line-height: 1.6; margin: 0 0 12px; }
-.sec-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border,#f0f0f3); }
-.sec-name { width:48px; font-weight:600; font-size:14px; color:var(--text-primary); }
-.sec-val { flex:1; font-size:13px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; }
-.sec-ok { color:#248a3d; font-weight:700; }
-.sec-op { padding:4px 12px; font-size:12px; white-space:nowrap; }
-.sec-form { display:flex; flex-direction:column; gap:8px; padding:10px 0 14px; border-bottom:1px solid var(--border,#f0f0f3); }
+.sec-dlg { width: 400px; }
+.sec-desc { font-size:12px; color:var(--text-tertiary,#999); margin:0 0 12px; }
+.sec-card {
+  display:flex; align-items:center; gap:12px; padding:12px 14px; margin-bottom:10px;
+  background:var(--bg-tertiary,#f7f7fa); border-radius:14px;
+  border:1px solid transparent; transition:border-color .15s;
+}
+.sec-card.bound { border-color:rgba(52,199,89,.25); }
+.sec-ico { width:38px; height:38px; border-radius:12px; background:var(--bg-secondary,#fff);
+  display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0;
+  box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.sec-info { flex:1; min-width:0; }
+.sec-info b { display:block; font-size:14px; color:var(--text-primary); margin-bottom:2px; }
+.sec-info span { display:block; font-size:12px; color:var(--text-secondary);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sec-badge {
+  font-size:11px; font-weight:600; color:#248a3d; background:rgba(52,199,89,.12);
+  padding:3px 10px; border-radius:99px; white-space:nowrap;
+}
+.sec-op { padding:6px 14px; font-size:12px; white-space:nowrap; border-radius:10px;
+  width:auto !important; flex:0 0 auto; align-self:center; margin-top:0; }
+.sec-form {
+  display:flex; flex-direction:column; gap:8px; padding:12px 14px 14px; margin:-4px 0 10px;
+  background:var(--bg-tertiary,#f7f7fa); border-radius:14px;
+}
 .sec-code { display:flex; gap:8px; }
 .sec-code .input { flex:1; }
+.sec-save { margin-top:2px; }
 .wxbind-frame { width:300px; height:340px; border:none; margin:0 auto; }
 </style>
