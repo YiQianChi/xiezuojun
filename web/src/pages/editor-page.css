@@ -229,9 +229,39 @@
   /* ponytail: .tiptap 元素是 tiptap JS 渲染的，没有 scoped data 属性，必须用 :deep 才选得到 */
   .tiptap-container :deep(.ProseMirror) { font-size: var(--ds-font-size, 16px); line-height: var(--ds-line-height, 1.95); letter-spacing: var(--ds-letter-spacing, normal); }
   .tiptap-container :deep(.ProseMirror p) { margin: 0.6em 0; }
-  /* 状态栏：只留核心项，safe-area 底部留白（提防 base 规则在文件后段覆盖） */
-  .editor-page .status-bar { gap: 10px; padding: 0 14px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
+  /* 状态栏：只留核心项，safe-area 底部留白（提防 base 规则在文件后段覆盖）。
+     手机档重做：触控目标 ≥36px、栏高锁 44px（--status-bar-height 全项目从未定义过，base 的 height:var() 一直是 auto；
+     这里补定义让收起面板的 bottom:calc(var(--status-bar-height,32px)+safe-area) 对齐新栏高） */
+  .editor-page { --status-bar-height: 44px; }
+  .editor-page .status-bar { height: 44px; gap: 2px; padding: 0 10px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
   .status-bar .voice-select, .status-bar .voice-caret, .status-bar .voice-popup { display: none; }
+  .editor-page .status-bar .speech-btn,
+  .editor-page .status-bar .memory-btn,
+  .editor-page .status-bar :deep(.memory-btn) {
+    min-width: 36px; min-height: 36px; margin: 0; padding: 0 6px; font-size: 15px;
+    display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;
+  }
+  .editor-page .status-bar .status-item { white-space: nowrap; flex-shrink: 0; }
+  /* 文字按钮（敏感词/码字锁）15px 会把整栏撑出 ~19px 溢出，单独收字号 */
+  .editor-page .status-bar .sens-btn, .editor-page .status-bar .lock-btn { font-size: 12px; padding: 0 4px; }
+  /* 手机档 popup：状态栏 overflow:hidden 会把向上弹的 toolbox-popup 整个裁掉（点开=隐形，实测命中测试全落空）。
+     改 position:fixed 底部面板锚在状态栏上方——fixed 不受祖先 overflow 裁剪；full-width 底部面板也是手机惯例 */
+  .editor-page .status-bar .toolbox-popup,
+  .editor-page .status-bar :deep(.ds-popup) {
+    position: fixed;
+    left: 10px; right: 10px; width: auto;
+    bottom: calc(44px + env(safe-area-inset-bottom));
+    max-height: 50vh; overflow-y: auto;
+    border-radius: 14px;
+    z-index: 400;
+  }
+  /* AI 底栏：base 的 min-width:400px 压过 max-width:92vw（min 赢），≤390 屏必横向溢出——改满宽自适应 */
+  .editor-page .ai-bottom-bar { min-width: 0; width: calc(100vw - 24px); }
+  .ai-direction-input { width: auto; flex: 1; }
+  /* ≤380px 再收紧一档（360 机整栏会溢出 ~12px） */
+  @media (max-width: 380px) {
+    .editor-page .status-bar { gap: 0; padding: 0 6px; }
+  }
   /* 编辑器右侧面板：移动端改底部抽屉（不全屏盖正文，AI 自动弹出时正文仍可见）。加 .editor-page 提权防 base 覆盖 */
   .editor-page .context-panel { height: 62vh; }
   /* 左页页头（分屏时）：手机版基础样式（桌面版规则在下方皮肤块） */
