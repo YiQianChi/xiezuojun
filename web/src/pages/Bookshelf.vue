@@ -945,9 +945,10 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   .subtitle { font-size: 12px; }
   /* 触屏：固定两列，禁止横向溢出 */
   .books-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 14px; }
-  /* 触屏没有 hover：卡片操作按钮常显，并放大到手指可点 */
-  .card-actions { opacity: 1; top: 6px; right: 6px; gap: 6px; }
-  .card-btn { width: 36px; height: 36px; font-size: 15px; background: rgba(0,0,0,.45); }
+  /* 触屏：卡片操作按钮改为卡片底部一排（悬浮按钮会盖住封面且超宽） */
+  .card-actions { position: static; opacity: 1; justify-content: space-between; padding: 8px 2px 2px; }
+  .card-btn { width: 40px; height: 32px; border-radius: 10px; background: var(--bg-tertiary, #f0f0f3); color: var(--text-secondary); font-size: 15px; }
+  .card-btn.delete { background: rgba(255,59,48,.1); color: #ff3b30; }
   .book-cover { font-size: 40px; }
   .book-info h3 { font-size: 14px; }
   .book-info { padding: 10px 12px 12px; }
