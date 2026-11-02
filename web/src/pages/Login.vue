@@ -86,17 +86,18 @@
 
       <p v-if="!showReset" class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
 
-      <!-- 防刷点选验证（当日发送超阈值时触发）：按提示顺序点击图形 -->
+      <!-- 防刷点选验证（当日发送超阈值时触发）：按提示条字的顺序点击大图 -->
       <div v-if="captcha" class="qr-overlay" style="z-index:6">
         <button class="qr-close" @click="captcha = null">×</button>
         <h3>安全验证</h3>
-        <p class="sl-tip">请按顺序点击 <b class="click-hint">{{ captcha.hint }}</b></p>
+        <p class="sl-tip">按顺序点击大图中与<b>上方小条一致</b>的字</p>
         <div class="sl-stage">
+          <img class="sl-thumb" :src="captcha.thumb" alt="" draggable="false" />
           <img class="sl-bg" :src="captcha.img" alt="" draggable="false" @click="onImgClick" />
           <span v-for="(p, i) in clicks" :key="i" class="click-mark" :style="{ left: p[0] + 'px', top: p[1] + 'px' }">{{ i + 1 }}</span>
         </div>
-        <p class="sl-fail" v-if="clFail">点错了，按 <b>{{ captcha.hint }}</b> 的顺序再点</p>
-        <a class="click-reset" v-if="clicks.length && clicks.length < 3" @click.prevent="clicks = []">重新点</a>
+        <p class="sl-fail" v-if="clFail">点错了，按提示条的顺序再点</p>
+        <a class="click-reset" v-if="clicks.length && clicks.length < captcha.n" @click.prevent="clicks = []">重新点</a>
       </div>
 
       <!-- 扫码浮层：iframe 嵌微信官方二维码页，登录成功后回调页 postMessage 回本页 -->
@@ -152,22 +153,22 @@ onMounted(() => window.addEventListener('message', onWxMsg))
 onUnmounted(() => window.removeEventListener('message', onWxMsg))
 
 const accountType = ref<AccountType>('email')
-// 点选验证码（防刷）：按顺序点 ★ ▲ ◆
-type ClickCaptcha = { id: string; img: string; hint: string; w: number; h: number }
+// 点选验证码（防刷）：按提示条字的顺序点击大图
+type ClickCaptcha = { id: string; img: string; thumb: string; n: number; w: number; h: number }
 const captcha = ref<ClickCaptcha | null>(null)
 const clicks = ref<[number, number][]>([])
 const clFail = ref(false)
 let clickT0 = 0
 
 function onImgClick(e: MouseEvent) {
-  if (!captcha.value || clicks.value.length >= 3) return
+  if (!captcha.value || clicks.value.length >= captcha.value.n) return
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
   const scaleX = captcha.value.w / rect.width
   const scaleY = captcha.value.h / rect.height
   if (!clicks.value.length) { clickT0 = performance.now(); clFail.value = false }
   clicks.value.push([(e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY])
-  if (clicks.value.length === 3) {
-    setTimeout(() => sendCode(), 150) // 第三个点的标记渲染完再提交
+  if (clicks.value.length === captcha.value.n) {
+    setTimeout(() => sendCode(), 150) // 最后一个点的标记渲染完再提交
   }
 }
 const mode = ref<LoginMode>('password')
@@ -263,7 +264,7 @@ async function sendCode() {
   if (fieldErrors.account) return
   sendingCode.value = true
   try {
-    const extra = captcha.value && clicks.value.length === 3
+    const extra = captcha.value && captcha.value.n && clicks.value.length === captcha.value.n
       ? { captcha_id: captcha.value.id, captcha_answer: JSON.stringify({ points: clicks.value, dur: Math.round(performance.now() - clickT0) }) }
       : {}
     if (accountType.value === 'phone') {
@@ -417,8 +418,9 @@ async function handleReset() {
 .qr-tip b { color:#07c160; }
 .sl-tip { font-size:13px; color:var(--text-secondary); margin-bottom:12px; }
 .click-hint { color:var(--accent,#007aff); font-size:15px; letter-spacing:2px; }
-.sl-stage { position:relative; width:280px; user-select:none; }
-.sl-bg { display:block; width:280px; height:150px; border-radius:8px; cursor:crosshair; }
+.sl-stage { position:relative; width:300px; user-select:none; }
+.sl-thumb { display:block; width:150px; height:40px; margin:0 auto 10px; border-radius:6px; border:1px solid var(--border,#e5e5eb); }
+.sl-bg { display:block; width:300px; height:220px; border-radius:8px; cursor:crosshair; }
 .click-mark {
   position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%;
   background:#ff3b30; color:#fff; font-size:12px; line-height:22px; text-align:center;
