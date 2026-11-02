@@ -104,7 +104,7 @@ import { projectApi } from '../core/api'
 import { toast } from '../composables/useToast'
 
 const emit = defineEmits<{
-  imported: [projectId: number]
+  imported: [projectId: string | number]
   'update:modelValue': [v: boolean]
 }>()
 
