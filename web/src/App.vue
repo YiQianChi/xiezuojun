@@ -7,8 +7,8 @@
       </router-link>
     </div>
     <div class="nav-right">
-      <button v-if="canInstall" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
-      <button class="nav-link" @click="showQQModal = true">QQ问题反馈群</button>
+      <button v-if="canInstall && !isMiniProgram" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
+      <button v-if="!isMiniProgram" class="nav-link" @click="showQQModal = true">QQ问题反馈群</button>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
       <button v-if="isLoggedIn" ref="profileBtnRef" class="nav-link profile-link" title="账号菜单" @click="profileRef?.openMenu($event.currentTarget as HTMLElement)">
         <span class="nav-avatar">{{ profileAvatar || (profileNickname || '我').slice(0, 1) }}</span>
@@ -117,6 +117,8 @@ watch(() => route.query.sprint, (code) => {
 const showQQModal = ref(false)
 const onboardingRef = ref<{ start: () => void; forceStart: () => void } | null>(null)
 const { canInstall, promptInstall } = usePwaInstall()
+// 小程序 web-view 环境（UA 含 miniProgram）：收掉桌面向控件（安装到桌面/QQ群），顶栏只留 logo+书架+账号
+const isMiniProgram = /miniProgram/i.test(navigator.userAgent)
 
 async function installApp() {
   const outcome = await promptInstall()

@@ -51,6 +51,11 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
+  // 小程序 web-view：营销首页没有存在意义（获客靠小程序商店页），直接去书架
+  if (to.path === '/' && /miniProgram/i.test(navigator.userAgent)) {
+    next('/bookshelf')
+    return
+  }
   if (to.meta.requiresAuth && !localStorage.getItem('access_token')) {
     next('/login')
   } else {
