@@ -1,42 +1,12 @@
 <template>
   <div class="memory-panel">
     <div class="memory-tabs">
-      <button class="mem-tab" :class="{ active: memTab === 'characters' }" @click="memTab = 'characters'">角色</button>
       <button class="mem-tab" :class="{ active: memTab === 'summaries' }" @click="memTab = 'summaries'">摘要</button>
       <button class="mem-tab" :class="{ active: memTab === 'files' }" @click="memTab = 'files'">背景</button>
     </div>
+    <div class="mem-hint">AI 自动记忆 · 保存章节后自动积累，续写时作为参考</div>
 
     <div class="mem-body">
-      <!-- 角色卡 -->
-      <template v-if="memTab === 'characters'">
-        <div v-if="loadingChars" class="mem-loading">加载中...</div>
-        <div v-else-if="characters.length === 0" class="mem-empty">
-          还没有角色卡<br>
-          <span class="hint">保存章节后 AI 会自动提取角色</span>
-        </div>
-        <div v-else class="char-list">
-          <div
-            v-for="name in characters"
-            :key="name"
-            class="char-item"
-            :class="{ active: selectedChar === name }"
-            @click="loadChar(name)"
-          >
-            <span class="char-icon">👤</span>
-            <span class="char-name">{{ name }}</span>
-            <span class="char-del" @click.stop="deleteChar(name)" title="删除">✕</span>
-          </div>
-        </div>
-        <div v-if="selectedChar" class="char-detail">
-          <div class="detail-head">
-            <span>{{ selectedChar }}</span>
-            <button v-if="editingChar" class="btn small primary" @click="saveChar">保存</button>
-            <button v-else class="btn small" @click="editingChar = true">编辑</button>
-          </div>
-          <textarea v-if="editingChar" v-model="charContent" class="mem-textarea"></textarea>
-          <pre v-else class="char-content">{{ charContent }}</pre>
-        </div>
-      </template>
 
       <!-- 章节摘要 -->
       <template v-if="memTab === 'summaries'">
@@ -101,14 +71,7 @@ import { toast } from '../../composables/useToast'
 
 const props = defineProps<{ projectId: string }>()
 
-const memTab = ref<'characters' | 'summaries' | 'files'>('characters')
-
-// 角色卡
-const loadingChars = ref(false)
-const characters = ref<string[]>([])
-const selectedChar = ref('')
-const charContent = ref('')
-const editingChar = ref(false)
+const memTab = ref<'summaries' | 'files'>('summaries')
 
 // 摘要
 const loadingSummaries = ref(false)
@@ -136,51 +99,6 @@ function fileIcon(path: string): string {
 }
 function fileLabel(path: string): string {
   return memFiles.find(f => f.path === path)?.label || path
-}
-
-async function loadCharacters() {
-  loadingChars.value = true
-  try {
-    const res = await memoryApi.listCharacters(props.projectId)
-    characters.value = res.data?.data || []
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || '加载角色失败')
-  } finally {
-    loadingChars.value = false
-  }
-}
-
-async function loadChar(name: string) {
-  selectedChar.value = name
-  editingChar.value = false
-  try {
-    const res = await memoryApi.getCharacter(props.projectId, name)
-    charContent.value = res.data?.data?.content || ''
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || '加载角色卡失败')
-  }
-}
-
-async function saveChar() {
-  try {
-    await memoryApi.writeCharacter(props.projectId, selectedChar.value, charContent.value)
-    editingChar.value = false
-    toast.success('已保存')
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || '保存失败')
-  }
-}
-
-async function deleteChar(name: string) {
-  if (!confirm(`确定删除角色「${name}」？`)) return
-  try {
-    await memoryApi.deleteCharacter(props.projectId, name)
-    characters.value = characters.value.filter(n => n !== name)
-    if (selectedChar.value === name) selectedChar.value = ''
-    toast.success('已删除')
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || '删除失败')
-  }
 }
 
 async function loadSummaries() {
@@ -227,12 +145,11 @@ async function saveFile() {
 }
 
 watch(memTab, (tab) => {
-  if (tab === 'characters' && characters.value.length === 0) loadCharacters()
   if (tab === 'summaries' && summaries.value.length === 0) loadSummaries()
 })
 
 // 初始加载
-loadCharacters()
+loadSummaries()
 </script>
 
 <style scoped>
@@ -247,9 +164,15 @@ loadCharacters()
   display: flex;
   gap: 2px;
   padding: 3px;
-  margin: 10px 12px 6px;
+  margin: 10px 12px 0;
   background: rgba(0, 0, 0, 0.04);
   border-radius: 8px;
+  flex-shrink: 0;
+}
+.mem-hint {
+  margin: 4px 14px 6px;
+  font-size: 10px;
+  color: var(--text-tertiary);
   flex-shrink: 0;
 }
 .mem-tab {
@@ -292,12 +215,12 @@ loadCharacters()
   opacity: 0.8;
 }
 
-.char-list, .summary-list, .file-list {
+.summary-list, .file-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.char-item, .summary-item, .file-item {
+.summary-item, .file-item {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -308,34 +231,26 @@ loadCharacters()
   color: var(--text-primary);
   transition: background 0.12s;
 }
-.char-item:hover, .summary-item:hover, .file-item:hover {
+.summary-item:hover, .file-item:hover {
   background: rgba(0, 0, 0, 0.04);
 }
-.char-item.active, .summary-item.active, .file-item.active {
+.summary-item.active, .file-item.active {
   background: var(--accent-light);
   color: var(--accent);
 }
-.char-icon, .summary-icon, .file-icon {
+.summary-icon, .file-icon {
   font-size: 13px;
   flex-shrink: 0;
 }
-.char-name, .summary-name, .file-name {
+.summary-name, .file-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.char-del {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  padding: 2px 4px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-.char-del:hover { color: #ff3b30; background: rgba(255,59,48,0.1); }
 
-.char-detail, .summary-detail, .file-detail {
+.summary-detail, .file-detail {
   margin-top: 8px;
   border-top: 1px solid var(--border-subtle, rgba(0,0,0,0.06));
   padding-top: 8px;

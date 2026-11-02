@@ -96,12 +96,15 @@
       </template>
     </div>
 
+    <!-- 回收站入口（原工具箱🗑挪到这里，紧贴书卡上方） -->
+    <div class="trash-entry" @click="$emit('open-trash')" title="回收站（恢复误删的章节/文档）">🗑 回收站</div>
+
     <!-- 书卡：当前作品信息 -->
     <div class="book-card">
       <div class="cover">{{ (projectName || '书')[0] }}</div>
       <div class="bc-main">
         <div class="bt">{{ projectName || '未命名作品' }}</div>
-        <div class="st">{{ articleRootNodes.length }} 卷 · {{ documents.length }} 篇</div>
+        <div class="st">{{ volumeCount }} 卷 · {{ chapterCount }} 篇</div>
       </div>
     </div>
   </aside>
@@ -180,6 +183,9 @@ const todayDisplay = computed(() => (serverToday.value >= 0 ? serverToday.value 
 const goalDone = computed(() => todayDisplay.value >= dailyGoal.value && dailyGoal.value > 0)
 const goalRemaining = computed(() => Math.max(0, dailyGoal.value - todayDisplay.value))
 const barWidth = computed(() => Math.min(100, (todayDisplay.value / Math.max(1, dailyGoal.value)) * 100))
+/* 书卡计数口径：卷=volume 容器数（根级散章/楔子/番外不算卷），篇=全部 chapter（含楔子/番外），设定文档不算篇——此前 documents.length 把大纲/人物等设定文档全算进「篇」被 Boss 报障 */
+const volumeCount = computed(() => props.articleRootNodes.filter(n => n.type === 'volume').length)
+const chapterCount = computed(() => props.documents.filter(d => d.type === 'chapter').length)
 
 let todayTimer: ReturnType<typeof setInterval> | null = null
 async function loadToday() {
@@ -237,6 +243,7 @@ defineEmits<{
   'add-doc-in': [folder: any]
   'cycle-status': [node: any]
   'goal-lock': [remaining: number]
+  'open-trash': []
 }>()</script>
 
 <style scoped>
@@ -352,6 +359,27 @@ defineEmits<{
   padding: 10px 14px 12px;
   border-top: 1px solid var(--ed-line, #e2d8c2);
   flex-shrink: 0;
+}
+.trash-entry {
+  margin: 6px 12px 0;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ed-ink-soft, #8a857a);
+  background: var(--ed-panel-2, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--ed-line, rgba(0, 0, 0, 0.06));
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.trash-entry:hover {
+  color: var(--accent, #6aa877);
+  border-color: var(--accent, #6aa877);
+  background: rgba(129, 187, 142, 0.1);
 }
 .book-card .cover {
   width: 34px;

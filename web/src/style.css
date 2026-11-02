@@ -314,6 +314,25 @@ html.theme-yangpi {
   --ed-shadow: rgba(120, 95, 50, 0.12);
   --ed-float-shadow: 0 6px 22px rgba(120, 95, 50, 0.16), 0 0 0 1px #d8c8a4;
 }
+/* iOS：苹果分组灰（systemGroupedBackground + 纯白卡 + 发丝线 + 蓝点缀） */
+html.theme-ios {
+  --bg-primary: #f2f2f7; --bg-secondary: #ffffff; --bg-tertiary: #e5e5ea;
+  --text-primary: #1c1c1e; --text-secondary: #6d6d72; --text-tertiary: #8e8e93;
+  --border: rgba(60, 60, 67, 0.16); --border-subtle: rgba(60, 60, 67, 0.08);
+  --glass-bg-solid: #ffffffeb; --hover-bg: rgba(120, 120, 128, 0.06);
+  --accent: #007aff; --accent-hover: #0071e3;
+  --ed-desk-a: #f2f2f7; --ed-desk-b: #f2f2f7;
+  --ed-panel: #ffffff; --ed-panel-2: #f2f2f7;
+  --ed-line: #d1d1d6; --ed-line-soft: #e5e5ea;
+  --ed-paper: #ffffff; --ed-paper-line: #e5e5ea;
+  --ed-paper-outline: rgba(0, 0, 0, 0.06);
+  --ed-statusbar: #f7f7f9; --ed-header-bg: rgba(248, 248, 250, 0.92);
+  --ed-ink: #1c1c1e; --ed-ink-mid: #6d6d72; --ed-ink-soft: #8e8e93;
+  --ed-input: #ffffff; --ed-hover: rgba(120, 120, 128, 0.08);
+  --ed-num: #8e8e93; --ed-dash: #c7c7cc;
+  --ed-shadow: rgba(0, 0, 0, 0.06);
+  --ed-float-shadow: 0 4px 18px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+}
 /* 冷墨：标准深色（= 原 dark） */
 html.dark {
   --ed-desk-a: #1a1a1c; --ed-desk-b: #1a1a1c;

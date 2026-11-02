@@ -16,7 +16,7 @@
       @save-version="openSaveVersionModal"
       @open-history="openVersionModal"
       @toggle-focus="focusMode = !focusMode"
-      @toggle-reference="referencePanelOpen = !referencePanelOpen"
+      @toggle-reference="toggleReference"
       @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen"
     />
 
@@ -36,7 +36,7 @@
         :chapter-words="wordCount"
         :init-busy="inittingDefault"
         @init-default="initDefaultStructure"
-        @select-doc="openDoc"
+        @select-doc="onSelectDoc"
         @context-menu="openDocContextMenu"
         @drop-node="handleDropNode"
         @add-doc-root="createDocAtRoot"
@@ -46,12 +46,23 @@
         @add-extra="createSpecialChapter('番外')"
         @add-article="createVolumeAtRoot"
         @goal-lock="onGoalLock"
+        @open-trash="trashOpen = true"
         @add-doc-in="createDocInFolder"
         @cycle-status="handleCycleStatus"
       />
 
       <!-- 编辑器 -->
-      <div class="editor-main" :class="{ 'ai-panel-open': contextPanelOpen }" v-show="mode === 'write'">
+      <div
+        class="editor-main"
+        :class="{ 'ai-panel-open': contextPanelOpen, 'split-h': referencePanelOpen && splitDir === 'h', 'split-v': referencePanelOpen && splitDir === 'v' }"
+        :style="referencePanelOpen ? { '--split-w': splitW + 'px', '--split-mh': splitH + 'px' } : undefined"
+        v-show="mode === 'write'"
+      >
+        <!-- 方案二·左页页头：活动页指示 + 章名（分屏打开时才出现） -->
+        <div v-if="referencePanelOpen" class="left-pane-head" :class="{ 'is-active': lastPane === 'left' }">
+          <span class="lph-live" v-if="lastPane === 'left'">正在写</span>
+          <span class="lph-title">{{ currentDocDisplayName || '未选择章节' }}</span>
+        </div>
         <!-- 拼字房 HUD（C 形态）：顶部细横幅 + 右缘迷你榜；专注模式降级为胶囊+底部淡字 -->
         <div v-if="sprint.running && !focusMode" class="sprint-banner">
           <span class="sb-cd">{{ sprint.countdownText }}</span>
@@ -117,7 +128,9 @@
         <div v-else-if="!activeDocId" class="editor-empty">
           <p>👈 请选择或新建一个章节</p>
         </div>
-        <div v-else class="editor-wrapper" :class="{ 'show-line-numbers': lineNumbers }" @contextmenu.prevent="openContextMenu">
+        <div v-else class="editor-wrapper" :class="{ 'show-line-numbers': lineNumbers, 'drop-target': leftDragOver }" @contextmenu.prevent="openContextMenu"
+          @dragover.prevent="onLeftDragOver" @dragleave="onLeftDragLeave" @drop.prevent="onDropLeft">
+          <div v-if="leftDragOver" class="drop-hint-left">📄 松开：在这页打开</div>
           <CharacterCardView
             v-if="activeDoc && activeDoc.type === 'character'"
             :doc="activeDoc"
@@ -181,26 +194,32 @@
           @open-canvas="canvasOpen = true"
         />
 
-        <!-- B5: 分屏参考面板 -->
-        <ReferencePanel
+        <!-- 分屏：对等第二页（⇄可切左右/上下，侧栏可点/可拖进来） -->
+        <SplitEditor
           v-show="referencePanelOpen"
+          ref="splitRef"
           :documents="documents"
-          :project-id="projectId"
+          :active-doc-id="activeDocId"
+          :default-doc-id="splitDefaultId"
+          :dir="splitDir"
+          :active-pane="lastPane === 'right'"
           @close="referencePanelOpen = false"
+          @swap="swapPanes"
+          @toggle-dir="toggleSplitDir"
+          @pane-focus="lastPane = 'right'"
+          @resize-w="splitW = $event"
+          @resize-h="splitH = $event"
         />
       </div>
 
-      <!-- 图谱浮层（编辑器内右下角） -->
-      <div class="graph-fab">
-        <button class="graph-fab-btn" @click="graphOpen = !graphOpen" :title="graphOpen ? '收起图谱' : '关系图谱'">
-          <span v-if="!graphOpen">🔗</span>
-          <span v-else>✕</span>
-        </button>
-        <div class="graph-fab-panel" :class="{ maximized: graphMaximized }" v-show="graphOpen" @click.stop>
+      <!-- 图谱浮层（入口在工具箱「关系图」，右下角圆钮已撤） -->
+      <div class="graph-fab" v-show="graphOpen" @click.stop>
+        <div class="graph-fab-panel" :class="{ maximized: graphMaximized }">
           <button class="graph-resize-btn" @click="graphMaximized = !graphMaximized" :title="graphMaximized ? '缩小' : '放大'">
             <svg v-if="!graphMaximized" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
             <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
           </button>
+          <button class="graph-close-btn" @click="graphOpen = false" title="收起图谱">✕</button>
           <RelationshipGraph
             :project-id="String(projectId)"
             :chapters="chapterList"
@@ -208,9 +227,6 @@
           />
         </div>
       </div>
-
-      <!-- 计划模式 -->
-      <PlanView v-if="mode === 'plan'" :project-name="projectName" :project-id="projectId" @jump-to-doc="jumpToSetting" />
 
       <!-- 审核模式 -->
       <ReviewView v-if="mode === 'review'" :project-id="projectId" @jump-to-source="handleReviewJump" @ai-fix="handleReviewAiFix" />
@@ -413,21 +429,9 @@
               <span class="tool-icon">🧠</span>
               <span class="tool-label">记忆</span>
             </button>
-            <button class="tool-btn" :class="{ active: threadOpen }" @click="threadOpen = !threadOpen; toolboxOpen = false">
-              <span class="tool-icon">🧵</span>
-              <span class="tool-label">伏笔</span>
-            </button>
-            <button class="tool-btn" :class="{ active: trashOpen }" @click="trashOpen = !trashOpen; toolboxOpen = false">
-              <span class="tool-icon">🗑</span>
-              <span class="tool-label">回收站</span>
-            </button>
             <button class="tool-btn" :class="{ active: statsOpen }" @click="statsOpen = !statsOpen; toolboxOpen = false">
               <span class="tool-icon">📊</span>
               <span class="tool-label">统计</span>
-            </button>
-            <button class="tool-btn" :class="{ active: storyboardOpen }" @click="storyboardOpen = !storyboardOpen; toolboxOpen = false">
-              <span class="tool-icon">🎴</span>
-              <span class="tool-label">大纲卡</span>
             </button>
             <button class="tool-btn" :class="{ active: chatOpen }" @click="chatOpen = !chatOpen; toolboxOpen = false">
               <span class="tool-icon">💬</span>
@@ -478,10 +482,6 @@
       <div class="panel-head"><span>🧠 记忆</span><button @click="memoryOpen = false">✕</button></div>
       <MemoryPanel :project-id="String(projectId)" />
     </div>
-    <div v-if="threadOpen" class="panel-popup thread-popup" @click.stop>
-      <div class="panel-head"><span>🧵 伏笔追踪</span><button @click="threadOpen = false">✕</button></div>
-      <ThreadPanel :project-id="String(projectId)" />
-    </div>
     <div v-if="trashOpen" class="panel-popup trash-popup" @click.stop>
       <div class="panel-head"><span>🗑 回收站</span><button @click="trashOpen = false">✕</button></div>
       <TrashPanel ref="trashPanelRef" :project-id="String(projectId)" @restored="onTrashRestored" />
@@ -507,7 +507,6 @@
             <div class="help-row"><kbd>Ctrl+S</kbd><span>保存</span></div>
             <div class="help-row"><kbd>Ctrl+F</kbd><span>搜索（本章）</span></div>
             <div class="help-row"><kbd>Ctrl+Shift+F</kbd><span>搜索（全项目）</span></div>
-            <div class="help-row"><kbd>Ctrl+P</kbd><span>切换模式（构思→写作）</span></div>
             <div class="help-row"><kbd>Ctrl+Shift+Z</kbd><span>专注模式</span></div>
             <div class="help-row"><kbd>Ctrl+/</kbd><span>本帮助</span></div>
             <div class="help-row"><kbd>Esc</kbd><span>关闭弹窗/退出专注</span></div>
@@ -515,16 +514,6 @@
         </div>
       </div>
     </Teleport>
-
-    <!-- 章节大纲卡片视图（写作模式底部浮层） -->
-    <div v-if="storyboardOpen && mode === 'write'" class="storyboard-drawer">
-      <StoryboardView
-        :documents="documents"
-        :active-doc-id="activeDocId"
-        @select-doc="openDoc"
-        @reorder="handleStoryboardReorder"
-      />
-    </div>
 
     <!-- 新建文档弹窗 -->
     <CreateDocModal
@@ -680,8 +669,9 @@ const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
 import { documentApi, projectApi, ttsApi, threadApi, buddyApi } from '../core/api'
 import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
+import { editorContentFromText, stripContentChapterHeading } from '../core/editorContent'
 import SearchPanel from '../components/SearchPanel.vue'
-import PlanView from '../components/PlanView.vue'
+import SplitEditor from '../components/editor/SplitEditor.vue'
 import PhonePreview from '../components/editor/PhonePreview.vue'
 import ReviewView from '../components/ReviewView.vue'
 import EditorHeader from '../components/editor/EditorHeader.vue'
@@ -689,12 +679,9 @@ import EditorSidebar from '../components/editor/EditorSidebar.vue'
 import AIContextPanel from '../components/editor/AIContextPanel.vue'
 import StoryCanvas from '../components/editor/StoryCanvas.vue'
 import AIChatPanel from '../components/editor/AIChatPanel.vue'
-import ReferencePanel from '../components/editor/ReferencePanel.vue'
 import MemoryPanel from '../components/editor/MemoryPanel.vue'
 import RelationshipGraph from '../components/editor/RelationshipGraph.vue'
-import ThreadPanel from '../components/editor/ThreadPanel.vue'
 import TrashPanel from '../components/editor/TrashPanel.vue'
-import StoryboardView from '../components/editor/StoryboardView.vue'
 import WritingStatsPanel from '../components/editor/WritingStatsPanel.vue'
 import BuddyWindow from '../components/editor/BuddyWindow.vue'
 import SprintPanel from '../components/editor/SprintPanel.vue'
@@ -948,10 +935,12 @@ const currentChapterIndex = computed(() => {
   const idx = chapterList.value.findIndex(d => d.id === activeDocId.value)
   return idx >= 0 ? idx + 1 : 0
 })
-/* 方案B速查：上一章 doc id（供右栏「上一章结尾」卡取内容） */
+/* 方案B速查：上一章 doc id（供右栏「上一章结尾」卡取内容）——只认真正的 chapter，
+   chapterList 混着卷容器：第一章的「上一章」其实是卷，会把卷 id 当章传出去 */
 const prevChapterId = computed(() => {
-  const i = currentChapterIndex.value - 2
-  return i >= 0 && i < chapterList.value.length ? chapterList.value[i].id : null
+  const list = chapterList.value.filter((d: any) => d.type === 'chapter')
+  const i = list.findIndex(d => d.id === activeDocId.value) - 1
+  return i >= 0 ? list[i].id : null
 })
 
 /* ═══ A. 伏笔全套：右键记伏笔（弹窗）→ threadApi 落库 → 速查联动刷新 ═══ */
@@ -1102,7 +1091,6 @@ function toggleDictation() {
 
 const memoryOpen = ref(false)
 const graphOpen = ref(false)
-const threadOpen = ref(false)
 const trashOpen = ref(false)
 const trashPanelRef = ref<any>(null)
 const graphMaximized = ref(false)
@@ -1113,7 +1101,7 @@ const renameModal = ref<{ docId: number; title: string } | null>(null)
 const renameInputRef = ref<HTMLInputElement | null>(null)
 
 // 顶部工作模式：计划 / 写作 / 审核
-type EditorMode = 'plan' | 'write' | 'review'
+type EditorMode = 'write' | 'review' // 构思已删（2026-11-01 Boss 指令）；审核隐藏保留
 const mode = ref<EditorMode>('write')
 
 // AI 参考的设定文档（从后端返回）
@@ -1126,7 +1114,71 @@ interface UsedSetting {
 }
 const usedSettings = ref<UsedSetting[]>([])
 const contextPanelOpen = ref(false) // 右侧参考面板默认收起，AI 操作时自动弹出
-const referencePanelOpen = ref(false) // B5: 分屏参考面板
+const referencePanelOpen = ref(false) // 分屏（对等第二页）
+const splitW = ref(360) // 左右分屏面板宽（拖动调整，localStorage 记忆）
+const splitH = ref(400) // 上下分屏面板高
+try { splitH.value = Math.round(window.innerHeight * 0.45) } catch {}
+const splitDir = ref<'h' | 'v'>('h') // 左右 / 上下分屏，localStorage 记忆
+try { splitDir.value = localStorage.getItem('xzj-split-dir') === 'v' ? 'v' : 'h' } catch {}
+const lastPane = ref<'left' | 'right'>('left') // 活动页=最后聚焦的那页，侧栏点章开进它
+const splitRef = ref<any>(null)
+const leftDragOver = ref(false)
+// 点分隔条：两页文档互换（左右位置对调）
+async function swapPanes() {
+  const rightId = splitRef.value?.getSelected?.()
+  const leftId = activeDocId.value
+  if (!rightId || !leftId || rightId === leftId) return
+  const rd = documents.value.find((d: any) => d.id === rightId)
+  const ld = documents.value.find((d: any) => d.id === leftId)
+  if (!rd || !ld) return
+  await openDoc(rd)                 // 左页开右页的章
+  splitRef.value?.openDoc(leftId)   // 右页开左页的章
+  toast.success('已互换两页')
+}
+function toggleSplitDir() {
+  splitDir.value = splitDir.value === 'h' ? 'v' : 'h'
+  try { localStorage.setItem('xzj-split-dir', splitDir.value) } catch {}
+}
+const splitDefaultId = ref<number | null>(null) // 打开分屏时的默认章（上一章）
+// 分屏打开时，容器类型点了不进右页（卷/人物容器没有正文）
+const SPLIT_SKIP = ['volume', 'characters', 'outline', 'worldbuilding', 'chapter_outline']
+// 侧栏点章 → 开进「活动页」（最后聚焦的那页）；点到对面正开着的章则去对面
+function onSelectDoc(doc: any) {
+  if (referencePanelOpen.value && lastPane.value === 'right' && doc && doc.id !== activeDocId.value
+      && !SPLIT_SKIP.includes(doc.type) && doc.type !== 'character') {
+    splitRef.value?.openDoc(doc.id)
+    return
+  }
+  openDoc(doc)
+}
+// 左页拖放目标：侧栏拖章过来松手=在左页打开
+function onLeftDragOver(e: DragEvent) {
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  leftDragOver.value = true
+}
+function onLeftDragLeave(e: DragEvent) {
+  const rt = e.relatedTarget as Node | null
+  if (rt && (e.currentTarget as Node).contains(rt)) return // 子元素间移动不算离开
+  leftDragOver.value = false
+}
+function onDropLeft(e: DragEvent) {
+  leftDragOver.value = false
+  const id = Number(e.dataTransfer?.getData('text/plain'))
+  if (!id) return
+  const doc = documents.value.find((d: any) => d.id === id)
+  if (!doc || SPLIT_SKIP.includes(doc.type)) return
+  openDoc(doc)
+}
+function toggleReference() {
+  referencePanelOpen.value = !referencePanelOpen.value
+  if (referencePanelOpen.value) {
+    // 分屏和右栏 AI 面板同贴右缘，同开互相盖——开分屏先收 AI 面板
+    contextPanelOpen.value = false
+    // 默认章：上一章（对照续写）；当前就是第一章时取下一章——只认 chapter，chapterList 里混着卷容器
+    const others = chapterList.value.filter((d: any) => d.type === 'chapter' && d.id !== activeDocId.value)
+    splitDefaultId.value = prevChapterId.value ?? others[0]?.id ?? null
+  }
+}
 const focusMode = ref(false) // 专注模式：隐藏侧栏+顶栏，编辑器全屏
 // ponytail-mobile: 移动端抽屉侧栏（A 方案）——显示由 CSS @media 管，这里只管开合状态
 const mobileSidebarOpen = ref(false)
@@ -1169,7 +1221,6 @@ async function flushWordsReport() {
 const reportTimer = setInterval(flushWordsReport, 45000)
 onBeforeUnmount(() => clearInterval(reportTimer))
 window.addEventListener('pagehide', flushWordsReport) // 关页前尽力报最后一笔（axios 同步发不保证，尽力而为）
-const storyboardOpen = ref(false) // 章节大纲卡片视图
 const statsOpen = ref(false) // 写作统计面板
 const chatOpen = ref(false) // AI 对话面板
 const helpOpen = ref(false) // E5: 快捷键帮助弹窗
@@ -1586,6 +1637,9 @@ function initEditor() {
   // 注册搜索高亮 ProseMirror 插件
   editor.value.registerPlugin(createSearchHighlightPlugin())
 
+  // 分屏：左编辑器聚焦=左页成为活动页（侧栏点章开进它）
+  editor.value.on('focus', () => { lastPane.value = 'left' })
+
   selectionHandler = () => {
     if (!editor.value || !editor.value.isFocused) return
     if (isSettingContent.value) return
@@ -1614,144 +1668,6 @@ function getSelection() {
   const start = view.posAtDOM(range.startContainer, range.startOffset)
   const end = view.posAtDOM(range.endContainer, range.endOffset)
   return { text, start: Math.min(start, end), end: Math.max(start, end) }
-}
-
-// ponytail: parse Markdown table blocks (| col | col |) into ProseMirror table nodes
-function parseMarkdownTable(lines: string[], startIdx: number): { tableNode: object; consumed: number } | null {
-  const headerLine = lines[startIdx]
-  // need at least header + separator + 1 row
-  if (startIdx + 2 >= lines.length) return null
-  const separatorLine = lines[startIdx + 1]
-  // separator must be like |---|---| or | --- | :---: |
-  if (!/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(separatorLine)) return null
-
-  // ponytail: simpler split — strip leading/trailing | then split
-  const splitCells = (line: string) => {
-    let s = line.trim()
-    if (s.startsWith('|')) s = s.slice(1)
-    if (s.endsWith('|')) s = s.slice(0, -1)
-    return s.split('|').map(c => c.trim())
-  }
-
-  const headers = splitCells(headerLine)
-  if (headers.length < 1) return null
-
-  // ponytail: parse **bold** and *italic* inline marks into ProseMirror text nodes
-  const makeTextContent = (text: string) => {
-    if (!text) return []
-    const nodes: object[] = []
-    // split on **bold** or *italic* patterns
-    const regex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g
-    let last = 0
-    let m: RegExpExecArray | null
-    while ((m = regex.exec(text)) !== null) {
-      if (m.index > last) nodes.push({ type: 'text', text: text.slice(last, m.index) })
-      const matched = m[0]
-      if (matched.startsWith('**')) {
-        nodes.push({ type: 'text', text: matched.slice(2, -2), marks: [{ type: 'bold' }] })
-      } else {
-        nodes.push({ type: 'text', text: matched.slice(1, -1), marks: [{ type: 'italic' }] })
-      }
-      last = m.index + matched.length
-    }
-    if (last < text.length) nodes.push({ type: 'text', text: text.slice(last) })
-    return nodes
-  }
-
-  const rows: object[] = []
-  // header row
-  rows.push({
-    type: 'tableRow',
-    content: headers.map(h => ({ type: 'tableHeader', content: [{ type: 'paragraph', content: makeTextContent(h) }] }))
-  })
-
-  // body rows
-  let consumed = 2 // header + separator
-  for (let i = startIdx + 2; i < lines.length; i++) {
-    const line = lines[i]
-    if (!line.includes('|')) break
-    const cells = splitCells(line)
-    // pad/truncate to header length
-    while (cells.length < headers.length) cells.push('')
-    rows.push({
-      type: 'tableRow',
-      content: cells.slice(0, headers.length).map((c: string) => ({ type: 'tableCell', content: [{ type: 'paragraph', content: makeTextContent(c) }] }))
-    })
-    consumed++
-  }
-
-  if (rows.length < 2) return null // need at least header + 1 body row
-
-  return { tableNode: { type: 'table', content: rows }, consumed }
-}
-
-function editorContentFromText(content: string) {
-  if (!content) return { type: 'doc', content: [{ type: 'paragraph' }] }
-  const lines = content.split('\n')
-  const blocks: object[] = []
-  let i = 0
-  while (i < lines.length) {
-    const line = lines[i]
-    // detect markdown table: line has | and next line is separator
-    if (line.includes('|') && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}:?\s*(\|)/.test(lines[i + 1])) {
-      const result = parseMarkdownTable(lines, i)
-      if (result) {
-        blocks.push(result.tableNode)
-        i += result.consumed
-        continue
-      }
-    }
-    // markdown 标题行：# → h1、## → h2、### → h3（角色卡骨架/导入文本里的标题都能正确渲染）
-    const hm = /^(#{1,3})\s+(.*)$/.exec(line)
-    if (hm) {
-      blocks.push({
-        type: 'heading',
-        attrs: { level: hm[1].length },
-        content: hm[2] ? [{ type: 'text', text: hm[2] }] : [],
-      })
-      i++
-      continue
-    }
-    blocks.push({
-      type: 'paragraph',
-      content: line ? [{ type: 'text', text: line }] : []
-    })
-    i++
-  }
-  return { type: 'doc', content: blocks }
-}
-
-// 分离方案（Boss 2026-10-30）：章节正文不存标题头——顶部的「第N章 标题」是渲染层虚拟头（动态算号）。
-// 加载时把存量正文里的标题头删掉：带号/无号都处理，且剥号/剥头后的文字必须等于章节标题（或为空）才动，
-// 作者自写的其他文字（≠标题的 H1）原样保留。保存时渐进迁移，存量数据无需脚本清洗。
-const CONTENT_CHAPTER_PREFIX_RE = /^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]\s*/
-function stripContentChapterHeading(content: string, title: string): string {
-  if (!content) return content
-  const bareTitle = stripChapterPrefix(String(title || ''))
-  const trimTitle = String(title || '').trim()
-  const drop = (text: string): string | null => {
-    const normalized = text.replace(CONTENT_CHAPTER_PREFIX_RE, '').trim()
-    if (normalized === text && text !== bareTitle && text !== trimTitle) return null // 无号且不是标题 → 作者自己的文字
-    if (!normalized || normalized === bareTitle || normalized === trimTitle) return '' // 标题头 → 删
-    return null // 带号但内容≠标题（作者自拟章名头）→ 保留
-  }
-  const s = content.replace(/^\s+/, '')
-  if (s.startsWith('<h1')) {
-    const openEnd = s.indexOf('>')
-    const closeIdx = s.indexOf('</h1>')
-    if (openEnd < 0 || closeIdx < 0) return content
-    const inner = s.slice(openEnd + 1, closeIdx).replace(/<[^>]+>/g, '').trim()
-    if (drop(inner) === '') return s.slice(closeIdx + 5)
-    return content
-  }
-  const lines = content.split('\n')
-  const md = /^#\s+(.*)$/.exec(lines[0].trim())
-  if (!md) return content
-  if (drop(md[1].trim()) === '') {
-    lines.shift()
-    return lines.join('\n')
-  }
-  return content
 }
 
 function getEditorText(ed = editor.value) {
@@ -2434,11 +2350,6 @@ async function handleDropNode(srcId: number, dstId: number, position: 'before' |
   }
 }
 
-// ponytail: 复用 handleDropNode 的 move 逻辑，storyboard 拖拽只有 before/after
-async function handleStoryboardReorder(payload: { fromId: number; toId: number; position: 'before' | 'after' }) {
-  await handleDropNode(payload.fromId, payload.toId, payload.position)
-}
-
 function openContextMenu(e: MouseEvent) {
   // ponytail: 右键前缓存当前选区，右键动作后编辑器已失焦
   cachedSelection = getSelection()
@@ -2504,14 +2415,6 @@ function handleGlobalKeydown(e: KeyboardEvent) {
     // ponytail: cancel pending debounce so Ctrl+S saves immediately, not twice
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
     autoSave()
-    return
-  }
-  // B4: Ctrl+P 循环切换工作模式
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
-    e.preventDefault()
-    const modes: EditorMode[] = ['plan', 'write'] // 审核暂时隐藏，别被快捷键切进去
-    const idx = modes.indexOf(mode.value)
-    switchMode(modes[(idx + 1) % modes.length])
     return
   }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {

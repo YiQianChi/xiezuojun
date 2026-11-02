@@ -233,7 +233,22 @@
   .editor-page .status-bar { gap: 10px; padding: 0 14px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
   .status-bar .voice-select, .status-bar .voice-caret, .status-bar .voice-popup { display: none; }
   /* 编辑器右侧面板：移动端改底部抽屉（不全屏盖正文，AI 自动弹出时正文仍可见）。加 .editor-page 提权防 base 覆盖 */
-  .editor-page .context-panel, .editor-page .reference-panel {
+  .editor-page .context-panel { height: 62vh; }
+  /* 左页页头（分屏时）：手机版基础样式（桌面版规则在下方皮肤块） */
+  .editor-page .left-pane-head {
+    display: flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 10px;
+    background: var(--ed-panel, #f8f3e8);
+    border-bottom: 1px solid var(--ed-line, #e2d8c2);
+    font-size: 12px; color: var(--ed-ink, #33302a);
+    flex-shrink: 0;
+  }
+  /* 分屏在手机=上下分屏：默认占 45dvh（上半正文仍可写），高度可由抓手拖动（--split-mh） */
+  .editor-page .reference-panel {
+    height: var(--split-mh, 45dvh);
+  }
+  .editor-page .context-panel,
+  .editor-page .reference-panel {
     position: fixed;
     left: 0;
     right: 0;
@@ -242,7 +257,6 @@
     z-index: 130;
     width: auto !important;
     max-width: none !important;
-    height: 62vh;
     border-radius: 14px 14px 0 0;
     box-shadow: 0 -6px 30px rgba(0, 0, 0, 0.18);
     padding-bottom: env(safe-area-inset-bottom);
@@ -1185,17 +1199,6 @@
   background: var(--bg-tertiary, #f0f0f0);
 }
 
-/* 章节大纲卡片视图浮层 */
-.storyboard-drawer {
-  position: absolute;
-  bottom: 40px;
-  left: 240px;
-  right: 0;
-  z-index: 350;
-  border-top: 1px solid var(--border, #e5e5e7);
-  background: var(--bg-secondary, #f5f5f7);
-}
-
 /* 图谱浮层（编辑器内右下角） */
 .graph-fab {
   position: absolute;
@@ -1205,20 +1208,12 @@
   display: flex;
   flex-direction: row-reverse;
   align-items: flex-end;
+  pointer-events: none; /* 容器不挡正文，面板自身恢复接收 */
 }
-.graph-fab-btn {
-  width: 36px; height: 36px;
-  border-radius: 50%; border: none;
-  background: var(--bg-secondary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-  cursor: pointer; font-size: 16px;
-  display: flex; align-items: center; justify-content: center;
-}
-.graph-fab-btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
-.graph-fab:has(.graph-fab-panel.maximized) .graph-fab-btn { display: none; }
 .graph-fab-panel {
   position: relative;
   margin-right: 8px;
+  pointer-events: auto;
   width: 700px; height: 500px;
   background: var(--bg-secondary, #fff);
   border-radius: 14px;
@@ -1235,6 +1230,13 @@
   width: 26px; height: 26px; border-radius: 50%; border: none;
   background: var(--bg-tertiary, #f0f0f0); font-size: 14px; cursor: pointer;
 }
+.graph-close-btn {
+  position: absolute; top: 6px; right: 40px; z-index: 10;
+  width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: var(--bg-tertiary, #f0f0f0); font-size: 13px; cursor: pointer;
+  color: var(--text-secondary, #86868b);
+}
+.graph-close-btn:hover { background: rgba(0,0,0,0.12); color: var(--text-primary); }
 
 /* Modal */
 .modal-overlay {
@@ -1776,8 +1778,11 @@
   }
 
   /* 右侧 AI 面板：从浮动圆角卡改为贴边整栏（可收起细条不变） */
+  /* position 原只在 .context-panel 上有——.reference-panel 一直是流内元素（错位元凶），这里补齐 */
   .editor-page .context-panel,
   .editor-page .reference-panel {
+    position: absolute;
+    z-index: 300;
     top: 0;
     right: 0;
     bottom: 0;
@@ -1798,6 +1803,69 @@
   /* 面板展开时正文让位（原 304px 基础上加呼吸留白，纸张仍在可视区居中） */
   .editor-page .editor-main.ai-panel-open .tiptap-container {
     padding-right: 324px;
+  }
+
+  /* 分屏（方案二·对等双页）：左右方向面板宽可拖（--split-w 由 Editor 绑定），纸张让位同 AI 面板机制 */
+  .editor-page .editor-main.split-h .tiptap-container {
+    padding-right: calc(var(--split-w, 360px) + 24px);
+  }
+  /* 上下方向：第二页贴底整宽，左页纸张底部让出 */
+  .editor-page .reference-panel.split-v {
+    position: absolute;
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: auto !important;
+    height: var(--split-mh, 45dvh);
+    border-left: none;
+    border-top: 1px solid var(--ed-line, #e2d8c2);
+    border-radius: 0;
+    z-index: 300;
+  }
+  .editor-page .editor-main.split-v .tiptap-container {
+    padding-bottom: calc(var(--split-mh, 45dvh) + 64px);
+  }
+
+  /* 左右分屏时左页头条只占左页宽——否则会被右侧面板盖住居中标题（随拖动实时收放） */
+  .editor-page .editor-main.split-h .left-pane-head {
+    margin-right: var(--split-w, 0px);
+  }
+  /* 左页页头（分屏时）：活动页指示 + 章名，与右页 panehead 同款 */
+  .editor-page .left-pane-head {
+    display: flex; align-items: center; gap: 8px;
+    height: 32px;
+    padding: 0 12px;
+    background: var(--ed-panel, #f8f3e8);
+    border-bottom: 1px solid var(--ed-line, #e2d8c2);
+    font-size: 13px; color: var(--ed-ink, #33302a);
+    flex-shrink: 0;
+  }
+  .editor-page .left-pane-head { position: relative; }
+  .editor-page .left-pane-head.is-active::after {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: -1px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #6aa877 18%, #6aa877 82%, transparent);
+  }
+  .editor-page .left-pane-head .lph-title {
+    font-weight: 600; flex: 1; min-width: 0;
+    font-size: 13px;
+    text-align: center;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .editor-page .left-pane-head .lph-live {
+    font-size: 11px; color: #6aa877; white-space: nowrap;
+    background: rgba(129,187,142,.13);
+    border-radius: 99px; padding: 1px 8px;
+  }
+
+  /* 左页拖放高亮 + 提示 */
+  .editor-page .editor-wrapper.drop-target { box-shadow: inset 0 0 0 2px #6aa877; position: relative; }
+  .editor-page .drop-hint-left {
+    position: absolute; z-index: 30;
+    left: 50%; top: 40%; transform: translate(-50%, -50%);
+    background: rgba(106,168,119,.95); color: #fff;
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 14px; pointer-events: none;
+    box-shadow: 0 8px 24px rgba(60,45,20,.25);
   }
 
   /* 中间桌面：滚动容器只负责滚动与留白。

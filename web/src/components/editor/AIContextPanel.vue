@@ -97,20 +97,84 @@
               </div>
             </div>
 
-            <!-- 伏笔 -->
+            <!-- 伏笔（点条目就地编辑；原工具箱伏笔面板已并入这里） -->
             <div class="quick-section">
               <div class="quick-cap">伏笔 · 埋设中<span class="cap-sub">{{ quickQuery ? (filteredThreads.length ? filteredThreads.length + ' 命中' : '无命中') : openThreads.length }}</span></div>
               <template v-if="filteredThreads.length">
-                <div v-for="t in filteredThreads" :key="t.id" class="qc-thread">
-                  <span class="th-type" :class="t.type">{{ THREAD_TYPE_LABELS[t.type] || t.type }}</span>
-                  <span class="th-title">{{ t.title }}</span>
-                  <span v-if="t.planted_chapter" class="th-ch">第{{ t.planted_chapter }}章埋</span>
-                  <button class="th-resolve" title="在当前章回收这条伏笔" @click="resolveThread(t)">✓ 回收</button>
+                <div v-for="t in filteredThreads" :key="t.id">
+                  <div class="qc-thread" title="点开编辑" @click="startThreadEdit(t)">
+                    <span class="th-type" :class="t.type">{{ THREAD_TYPE_LABELS[t.type] || t.type }}</span>
+                    <span class="th-title">{{ t.title }}</span>
+                    <span v-if="t.planted_chapter" class="th-ch">第{{ t.planted_chapter }}章埋</span>
+                    <button class="th-resolve" title="在当前章回收这条伏笔" @click.stop="resolveThread(t)">✓ 回收</button>
+                  </div>
+                  <div v-if="threadEditingId === t.id" class="th-edit">
+                    <select v-model="threadForm.type" class="th-edit-select">
+                      <option v-for="(label, key) in THREAD_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
+                    </select>
+                    <input v-model="threadForm.title" class="th-edit-input" placeholder="标题">
+                    <textarea v-model="threadForm.description" class="th-edit-input" placeholder="描述（可选）" rows="2"></textarea>
+                    <div class="th-edit-row">
+                      <label>埋设章</label>
+                      <input v-model.number="threadForm.planted_chapter" type="number" class="th-edit-num">
+                      <label>回收章</label>
+                      <input v-model.number="threadForm.resolved_chapter" type="number" class="th-edit-num">
+                      <select v-model="threadForm.status" class="th-edit-select">
+                        <option value="open">未回收</option>
+                        <option value="resolved">已回收</option>
+                        <option value="abandoned">已放弃</option>
+                      </select>
+                    </div>
+                    <div class="th-edit-actions">
+                      <button class="th-edit-del" @click="deleteThreadEdit">删除</button>
+                      <button class="th-edit-cancel" @click="threadEditingId = null">取消</button>
+                      <button class="th-edit-save" @click="saveThreadEdit">保存</button>
+                    </div>
+                  </div>
                 </div>
               </template>
               <div v-else-if="!quickQuery" class="th-empty">
                 🧵 还没有埋设中的伏笔<br><b>选中正文 → 右键「记伏笔」</b>随手埋一条
               </div>
+              <!-- 已回收/已放弃（默认收起） -->
+              <template v-if="!quickQuery && doneThreads.length">
+                <div class="quick-cap th-done-cap" @click="showDoneThreads = !showDoneThreads">
+                  已回收 {{ doneThreads.length }} {{ showDoneThreads ? '▴' : '▾' }}
+                </div>
+                <template v-if="showDoneThreads">
+                  <div v-for="t in doneThreads" :key="t.id">
+                    <div class="qc-thread done" title="点开编辑" @click="startThreadEdit(t)">
+                      <span class="th-type" :class="t.type">{{ THREAD_TYPE_LABELS[t.type] || t.type }}</span>
+                      <span class="th-title">{{ t.title }}</span>
+                      <span v-if="t.resolved_chapter" class="th-ch">第{{ t.resolved_chapter }}章收</span>
+                      <span v-else class="th-ch">已放弃</span>
+                    </div>
+                    <div v-if="threadEditingId === t.id" class="th-edit">
+                      <select v-model="threadForm.type" class="th-edit-select">
+                        <option v-for="(label, key) in THREAD_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
+                      </select>
+                      <input v-model="threadForm.title" class="th-edit-input" placeholder="标题">
+                      <textarea v-model="threadForm.description" class="th-edit-input" placeholder="描述（可选）" rows="2"></textarea>
+                      <div class="th-edit-row">
+                        <label>埋设章</label>
+                        <input v-model.number="threadForm.planted_chapter" type="number" class="th-edit-num">
+                        <label>回收章</label>
+                        <input v-model.number="threadForm.resolved_chapter" type="number" class="th-edit-num">
+                        <select v-model="threadForm.status" class="th-edit-select">
+                          <option value="open">未回收</option>
+                          <option value="resolved">已回收</option>
+                          <option value="abandoned">已放弃</option>
+                        </select>
+                      </div>
+                      <div class="th-edit-actions">
+                        <button class="th-edit-del" @click="deleteThreadEdit">删除</button>
+                        <button class="th-edit-cancel" @click="threadEditingId = null">取消</button>
+                        <button class="th-edit-save" @click="saveThreadEdit">保存</button>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </template>
             </div>
 
             <div v-if="quickQuery && !filteredCharacters.length && !filteredSettingDocs.length && !filteredThreads.length" class="context-empty">
@@ -269,6 +333,40 @@ const filteredSettingDocs = computed(() => {
   return settingDocs.value.filter(d => d.title.includes(q))
 })
 const openThreads = computed(() => threads.value.filter(t => t.status === 'open'))
+const doneThreads = computed(() => threads.value.filter(t => t.status !== 'open').slice(0, 20))
+/* 点条目就地编辑（原工具箱伏笔面板能力并入） */
+const threadEditingId = ref<number | null>(null)
+const threadForm = ref<Partial<StoryThread>>({})
+const showDoneThreads = ref(false)
+function startThreadEdit(t: StoryThread) {
+  threadEditingId.value = threadEditingId.value === t.id ? null : t.id!
+  threadForm.value = { ...t }
+}
+async function saveThreadEdit() {
+  const f = threadForm.value
+  const id = threadEditingId.value
+  if (!id || !f.title?.trim()) return
+  try {
+    await threadApi.update(id, f)
+    threads.value = threads.value.map(x => x.id === id ? { ...x, ...f } as StoryThread : x)
+    threadEditingId.value = null
+    toast.success('已保存')
+  } catch {
+    toast.error('保存失败')
+  }
+}
+async function deleteThreadEdit() {
+  const id = threadEditingId.value
+  if (!id || !confirm('删除这条伏笔？')) return
+  try {
+    await threadApi.delete(id)
+    threads.value = threads.value.filter(x => x.id !== id)
+    threadEditingId.value = null
+    toast.success('已删除')
+  } catch {
+    toast.error('删除失败')
+  }
+}
 const filteredThreads = computed(() => {
   const q = quickQuery.value.trim()
   if (!q) return openThreads.value.slice(0, 5)
@@ -394,7 +492,7 @@ async function resolveThread(t: StoryThread) {
           threads.value = threads.value.map(x => x.id === id ? { ...x, status: 'open' as const, resolved_chapter: null } : x)
           toast.success(`已撤回：「${t.title}」`)
         } catch {
-          toast.error('撤回失败，请到工具箱-伏笔面板手动改回')
+          toast.error('撤回失败，点伏笔条目可手动改回')
         }
       },
     })
@@ -795,7 +893,53 @@ onBeforeUnmount(() => window.removeEventListener('xzj-canvas-closed', onCanvasCl
   padding: 6px 4px;
   font-size: 12px;
   border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
+  cursor: pointer;
 }
+.qc-thread:hover .th-title { color: var(--accent, #6aa877); }
+.qc-thread.done .th-title { color: var(--text-tertiary, #aeaeb2); text-decoration: line-through; text-decoration-color: rgba(0,0,0,0.2); }
+.th-done-cap { cursor: pointer; user-select: none; }
+.th-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  margin: 2px 0 6px;
+  border-radius: 8px;
+  background: var(--ed-panel-2, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--ed-line, rgba(0, 0, 0, 0.07));
+}
+.th-edit-select, .th-edit-input, .th-edit-num {
+  padding: 4px 6px;
+  border: 1px solid var(--ed-line, rgba(0, 0, 0, 0.12));
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--ed-paper, #fff);
+  color: var(--ed-ink, inherit);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.th-edit-input { resize: none; }
+.th-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary, #86868b);
+}
+.th-edit-row label { flex-shrink: 0; }
+.th-edit-num { width: 56px; flex: none; }
+.th-edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.th-edit-actions button {
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.th-edit-save { background: var(--accent, #6aa877); color: #fff; }
+.th-edit-cancel { background: rgba(0, 0, 0, 0.06); color: var(--text-secondary, #86868b); }
+.th-edit-del { background: transparent; color: #d05656; }
 .qc-thread:last-child { border-bottom: none; }
 .th-type {
   font-size: 10px;

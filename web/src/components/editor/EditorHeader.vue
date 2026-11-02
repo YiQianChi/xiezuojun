@@ -14,13 +14,8 @@
       </template>
     </div>
 
-    <div class="mode-switcher" role="tablist">
-      <button
-        class="mode-tab plan"
-        :class="{ active: mode === 'plan' }"
-        @click="$emit('switch-mode', 'plan')"
-        title="构思：梗概/世界观/人物/大纲"
-      ><span class="dot"></span>构思</button>
+    <!-- 构思模式已删（2026-11-01 Boss 指令）；只剩写作+隐藏的审核，单一 tab 无意义整个切换器暂藏——恢复审核时去掉 v-if -->
+    <div class="mode-switcher" role="tablist" v-if="false">
       <button
         class="mode-tab write"
         :class="{ active: mode === 'write' }"
@@ -61,7 +56,7 @@
         >⋯</button>
         <div class="more-pop" v-if="moreMenuOpen">
           <button class="mp-item" @click="moreMenuOpen = false; themeMenuOpen = true">🎨 主题（皮肤）</button>
-          <button v-if="mode === 'write'" class="mp-item" @click="moreMenuOpen = false; $emit('toggle-reference')">📖 分屏参考</button>
+          <button v-if="mode === 'write'" class="mp-item" @click="moreMenuOpen = false; $emit('toggle-reference')">📖 分屏</button>
           <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId || savingVersion" @click="moreMenuOpen = false; $emit('save-version')">💾 保存版本</button>
           <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId" @click="moreMenuOpen = false; $emit('open-history')">🕒 版本历史</button>
         </div>
@@ -83,7 +78,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-type EditorMode = 'plan' | 'write' | 'review'
+type EditorMode = 'write' | 'review' // 构思已删（2026-11-01）；审核隐藏保留
 
 defineProps<{
   projectName: string
@@ -107,6 +102,7 @@ defineEmits<{
 
 const THEMES = [
   { id: 'xuan', name: '米宣', desc: '默认 · 暖宣纸', sw: '#f8f3e8', sw2: '#fbf7ee' },
+  { id: 'ios', name: 'iOS', desc: '苹果灰 · 简洁', sw: '#f2f2f7', sw2: '#ffffff' },
   { id: 'qing', name: '青竹', desc: '淡青绿 · 护眼', sw: '#e4eee4', sw2: '#f4faf4' },
   { id: 'wu', name: '晨雾', desc: '冷灰蓝 · 清爽', sw: '#e5eaf1', sw2: '#f5f8fb' },
   { id: 'yangpi', name: '仿古', desc: '羊皮纸 · 怀旧', sw: '#e9dec4', sw2: '#f7efdb' },
@@ -119,10 +115,10 @@ const moreMenuOpen = ref(false)
 
 function applyThemeClass(t: string) {
   const el = document.documentElement
-  el.classList.remove('dark', 'theme-ye', 'theme-qing', 'theme-wu', 'theme-yangpi')
+  el.classList.remove('dark', 'theme-ye', 'theme-qing', 'theme-wu', 'theme-yangpi', 'theme-ios')
   if (t === 'mo') el.classList.add('dark')
   else if (t === 'ye') el.classList.add('dark', 'theme-ye')
-  else if (['qing', 'wu', 'yangpi'].includes(t)) el.classList.add('theme-' + t)
+  else if (['qing', 'wu', 'yangpi', 'ios'].includes(t)) el.classList.add('theme-' + t)
 }
 
 function pickTheme(t: string) {
@@ -243,7 +239,6 @@ if (typeof document !== 'undefined') {
   box-shadow: 0 1px 3px var(--shadow-color);
   font-weight: 600;
 }
-.mode-tab.plan.active { color: #af52de; }
 .mode-tab.write.active { color: #007aff; }
 .mode-tab.review.active { color: #ff9500; }
 
@@ -322,7 +317,7 @@ if (typeof document !== 'undefined') {
   .mode-switcher { margin: 0 4px; }
   .mode-tab { padding: 5px 8px; font-size: 12px; }
   .mode-tab .dot { display: none; }
-  .mode-tab.plan, .mode-tab.review { display: none; }
+  .mode-tab.review { display: none; }
   .header-actions .btn:not(.icon-btn) { display: none; }
   .header-actions { gap: 4px; }
 }
