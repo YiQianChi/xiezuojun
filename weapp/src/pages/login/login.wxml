@@ -3,12 +3,9 @@
   <view class="slogan">一个写故事的地方</view>
 
   <view class="form">
-    <button class="btn-wx {{wxLoading ? 'btn-loading' : ''}}" bindtap="onWxLogin" disabled="{{wxLoading}}">
+    <button class="btn-wx {{wxLoading ? 'btn-loading' : ''}}" open-type="getPhoneNumber"
+            bindgetphonenumber="onWxLogin" disabled="{{wxLoading}}">
       {{wxLoading ? '登录中…' : '微信一键登录'}}
-    </button>
-    <button class="btn-phone {{phoneLoading ? 'btn-loading' : ''}}" open-type="getPhoneNumber"
-            bindgetphonenumber="onPhoneLogin" disabled="{{phoneLoading}}">
-      {{phoneLoading ? '登录中…' : '手机号一键登录（推荐老用户）'}}
     </button>
     <view class="divider"><text>或邮箱登录</text></view>
     <input class="input" type="text" value="{{email}}" bindinput="onEmail"

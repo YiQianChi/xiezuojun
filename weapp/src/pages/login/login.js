@@ -4,8 +4,7 @@ Page({
     email: '',
     password: '',
     loading: false,
-    wxLoading: false,
-    phoneLoading: false
+    wxLoading: false
   },
   onEmail(e) { this.setData({ email: e.detail.value }) },
   onPwd(e) { this.setData({ password: e.detail.value }) },
@@ -16,8 +15,8 @@ Page({
     wx.redirectTo({ url: '/pages/index/index' })
   },
 
-  // 微信一键登录：wx.login 拿 code → 后端换 openid 建号/登录
-  async onWxLogin() {
+  // 微信一键登录：getPhoneNumber 授权 + wx.login 一次完成；用户拒绝手机号授权则降级纯微信登录
+  async onWxLogin(e) {
     if (this.data.wxLoading) return
     this.setData({ wxLoading: true })
     try {
@@ -25,48 +24,14 @@ Page({
         wx.login({ success: resolve, fail: reject })
       })
       if (!loginRes.code) throw new Error('no code')
+      const phoneCode = e.detail && e.detail.code ? e.detail.code : ''
       const res = await new Promise((resolve, reject) => {
         wx.request({
-          url: 'https://xiezuojun.com/api/auth/wx-login',
+          url: phoneCode
+            ? 'https://xiezuojun.com/api/auth/wx-phone-login'
+            : 'https://xiezuojun.com/api/auth/wx-login',
           method: 'POST',
-          data: { code: loginRes.code },
-          header: { 'Content-Type': 'application/json' },
-          success: resolve,
-          fail: reject
-        })
-      })
-      const d = res.data && res.data.data
-      if (res.statusCode === 200 && d && d.access_token) {
-        this.saveTokens(d)
-        return
-      }
-      wx.showToast({ title: (res.data && res.data.error) || '微信登录失败，试试邮箱登录', icon: 'none' })
-    } catch (e) {
-      wx.showToast({ title: '网络错误，请重试', icon: 'none' })
-    }
-    this.setData({ wxLoading: false })
-  },
-
-  // 手机号一键登录：getPhoneNumber 授权拿 code + wx.login code → 后端按手机号并号/登录
-  async onPhoneLogin(e) {
-    if (!e.detail || !e.detail.code) {
-      if (e.detail && e.detail.errMsg && e.detail.errMsg.indexOf('deny') < 0) {
-        wx.showToast({ title: '手机号授权失败，请重试', icon: 'none' })
-      }
-      return // 用户拒绝授权则静默返回
-    }
-    if (this.data.phoneLoading) return
-    this.setData({ phoneLoading: true })
-    try {
-      const loginRes = await new Promise((resolve, reject) => {
-        wx.login({ success: resolve, fail: reject })
-      })
-      if (!loginRes.code) throw new Error('no code')
-      const res = await new Promise((resolve, reject) => {
-        wx.request({
-          url: 'https://xiezuojun.com/api/auth/wx-phone-login',
-          method: 'POST',
-          data: { code: loginRes.code, phone_code: e.detail.code },
+          data: phoneCode ? { code: loginRes.code, phone_code: phoneCode } : { code: loginRes.code },
           header: { 'Content-Type': 'application/json' },
           success: resolve,
           fail: reject
@@ -78,11 +43,11 @@ Page({
         this.saveTokens(d)
         return
       }
-      wx.showToast({ title: (res.data && res.data.error) || '手机号登录失败', icon: 'none' })
-    } catch (err) {
+      wx.showToast({ title: (res.data && res.data.error) || '微信登录失败，试试邮箱登录', icon: 'none' })
+    } catch (e) {
       wx.showToast({ title: '网络错误，请重试', icon: 'none' })
     }
-    this.setData({ phoneLoading: false })
+    this.setData({ wxLoading: false })
   },
 
   async onLogin() {
