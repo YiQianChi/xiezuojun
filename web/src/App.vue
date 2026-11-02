@@ -235,6 +235,20 @@ onMounted(() => {
   color: #fff; font-size: 13px; line-height: 22px; text-align: center; overflow: hidden; flex-shrink: 0;
 }
 .nav-nick { max-width: 6em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 窄屏适配：导航所有项单行排布，防止按钮内文字折行/整行换行 */
+@media (max-width: 560px) {
+  .top-nav { padding: 0 14px; }
+  .logo { font-size: 18px; gap: 6px; height: 28px; letter-spacing: 0; }
+  .logo-icon { width: 22px; height: 22px; border-radius: 6px; }
+  .nav-right { gap: 12px; }
+  .nav-link { font-size: 13px; white-space: nowrap; padding: 4px 0; }
+  .nav-nick { max-width: 4em; }
+}
+@media (max-width: 380px) {
+  .nav-nick { display: none; } /* 极窄屏只留头像+箭头 */
+  .nav-right { gap: 10px; }
+}
 .nav-caret { font-size: 10px; color: var(--text-tertiary); }
 .logout {
   font-family: inherit;
