@@ -21,25 +21,50 @@ import (
 )
 
 type smsConfig struct {
-	AccessKey  string
-	SecretKey  string
-	SmsAccount string
-	Sign       string
-	TemplateID string
+	AccessKey   string
+	SecretKey   string
+	SmsAccount  string
+	Sign        string
+	TemplateID  string // 兜底模板；场景未配置时用它
+	TplLogin    string
+	TplReset    string
+	TplRegister string
 }
 
 func loadSmsConfig() smsConfig {
 	return smsConfig{
-		AccessKey:  os.Getenv("VOLC_SMS_ACCESS_KEY"),
-		SecretKey:  os.Getenv("VOLC_SMS_SECRET_KEY"),
-		SmsAccount: os.Getenv("VOLC_SMS_ACCOUNT"),
-		Sign:       os.Getenv("VOLC_SMS_SIGN"),
-		TemplateID: os.Getenv("VOLC_SMS_TEMPLATE_ID"),
+		AccessKey:   os.Getenv("VOLC_SMS_ACCESS_KEY"),
+		SecretKey:   os.Getenv("VOLC_SMS_SECRET_KEY"),
+		SmsAccount:  os.Getenv("VOLC_SMS_ACCOUNT"),
+		Sign:        os.Getenv("VOLC_SMS_SIGN"),
+		TemplateID:  os.Getenv("VOLC_SMS_TEMPLATE_ID"),
+		TplLogin:    os.Getenv("VOLC_SMS_TPL_LOGIN"),
+		TplReset:    os.Getenv("VOLC_SMS_TPL_RESET"),
+		TplRegister: os.Getenv("VOLC_SMS_TPL_REGISTER"),
 	}
 }
 
 func (c smsConfig) configured() bool {
 	return c.AccessKey != "" && c.SecretKey != "" && c.SmsAccount != "" && c.Sign != "" && c.TemplateID != ""
+}
+
+// templateFor 按场景取模板，未配置场景退兜底模板
+func (c smsConfig) templateFor(scene string) string {
+	switch scene {
+	case "register":
+		if c.TplRegister != "" {
+			return c.TplRegister
+		}
+	case "reset_password":
+		if c.TplReset != "" {
+			return c.TplReset
+		}
+	case "login":
+		if c.TplLogin != "" {
+			return c.TplLogin
+		}
+	}
+	return c.TemplateID
 }
 
 func hmacSHA256(key []byte, content string) []byte {
@@ -54,13 +79,13 @@ func hashSHA256Hex(data []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// sendSmsCode 发短信验证码；返回 error 时调用方应释放限频名额让用户可重试
-func sendSmsCode(phone, code string) error {
+// sendSmsCode 发短信验证码（scene 决定用哪个模板）；返回 error 时调用方应释放限频名额让用户可重试
+func sendSmsCode(phone, code, scene string) error {
 	cfg := loadSmsConfig()
 	body, _ := json.Marshal(map[string]string{
 		"SmsAccount":    cfg.SmsAccount,
 		"Sign":          cfg.Sign,
-		"TemplateID":    cfg.TemplateID,
+		"TemplateID":    cfg.templateFor(scene),
 		"TemplateParam": fmt.Sprintf(`{"code":%q}`, code),
 		"PhoneNumbers":  phone,
 	})

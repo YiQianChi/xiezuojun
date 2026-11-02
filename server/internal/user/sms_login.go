@@ -5,6 +5,7 @@ package user
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -65,7 +66,8 @@ func (h *Handler) SendSmsCode(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save code"})
 		return
 	}
-	if err := sendSmsCode(req.Phone, code); err != nil {
+	if err := sendSmsCode(req.Phone, code, req.Scene); err != nil {
+		log.Printf("[sms] send failed phone=%s scene=%s err=%v", req.Phone, req.Scene, err)
 		releaseSendSlot(req.Scene, req.Phone)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send sms"})
 		return
