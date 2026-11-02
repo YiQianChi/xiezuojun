@@ -14,9 +14,9 @@ Page({
     return app.globalData.site + '/bookshelf?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad(options) {
-    // 协议/隐私页：公开可看，无需登录（小程序提审需要）
+    // 协议/隐私页：公开可看，无需登录（小程序提审需要）。网页是 history 路由，不带 #
     if (options && options.web) {
-      this.setData({ url: app.globalData.site + '/#/' + options.web })
+      this.setData({ url: app.globalData.site + '/' + options.web })
       return
     }
     const at = wx.getStorageSync('xzj_token')
