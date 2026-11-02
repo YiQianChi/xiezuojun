@@ -132,6 +132,10 @@ func (h *Handler) EmptyTrash(c *gin.Context) {
 	h.db.Where("user_id = ? AND status = 0", userID).Find(&deadProjects)
 	dateStr := time.Now().Format("20060102")
 	for _, p := range deadProjects {
+		// 封面文件随书硬删，不留孤儿
+		if p.CoverURL != "" {
+			_ = os.Remove(filepath.Join(h.dataRoot, "covers", filepath.Base(p.CoverURL)))
+		}
 		srcDir := h.paths.ProjectDir(userID, p.ID, p.Name)
 		dstDir := filepath.Join(filepath.Dir(h.paths.DocRoot), "recycleBin", dateStr,
 			fmt.Sprintf("%s_%s", store.SanitizeName(p.Name, p.ID), userID))

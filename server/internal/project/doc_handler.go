@@ -2,6 +2,7 @@ package project
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -80,6 +81,26 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 
 	isFolder := doc.Type == "volume" || doc.Type == "outline" || doc.Type == "characters" ||
 		doc.Type == "worldbuilding" || doc.Type == "storyline" || doc.Type == "chapter_outline"
+
+	// 空文档（0字）直接硬删，不进回收站——空的没必要留着
+	if !isFolder && doc.WordCount == 0 {
+		h.db.Delete(&model.Document{}, doc.ID)
+		if proj, err := h.getProject(doc.ProjectID); err == nil && proj != nil {
+			if doc.ParentID != nil {
+				_ = os.Remove(h.paths.DocPath(proj.UserID, proj.ID, proj.Name, doc.ID, *doc.ParentID))
+			} else {
+				_ = os.Remove(h.paths.DocPath(proj.UserID, proj.ID, proj.Name, doc.ID))
+			}
+			// 顺带清掉可能残留的空父目录
+			h.pruneEmptyFolders(proj.UserID, proj.ID, proj.Name)
+		}
+		_ = store.AppendChangelog(h.paths, userID, store.ChangeEntry{
+			Action: "delete_doc", Project: h.getProjectName(doc.ProjectID),
+			Doc: uintToStr(doc.ID), Summary: "清除空文档: " + doc.Title,
+		})
+		c.JSON(http.StatusOK, gin.H{"message": "deleted"})
+		return
+	}
 
 	trashGroup := doc.ID // ponytail: 用文件夹doc ID作为组号，保证唯一
 	softDeleteIDs := []uint{doc.ID}

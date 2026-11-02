@@ -3,6 +3,8 @@ package project
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -29,13 +31,13 @@ type documentUpdateRequest struct {
 	Force              bool   `json:"force"`
 	CreateVersion      bool   `json:"create_version"`
 	VersionLabel       string `json:"version_label"`
-	AIInclude          *bool  `json:"ai_include"`  // 设定文档是否参与 AI 上下文
+	AIInclude          *bool  `json:"ai_include"` // 设定文档是否参与 AI 上下文
 
-	Icon               string `json:"icon"`         // 用户自选图标
-	DocStatus          string `json:"doc_status"`   // 空字符串=不更新
-	WordGoal           *int   `json:"word_goal"`    // nil=不更新（指针区分 0 和未传）
-	Meta               string `json:"meta"`         // 角色卡元数据 JSON；空=不更新
-	HasContent         bool   `json:"-"`
+	Icon       string `json:"icon"`       // 用户自选图标
+	DocStatus  string `json:"doc_status"` // 空字符串=不更新
+	WordGoal   *int   `json:"word_goal"`  // nil=不更新（指针区分 0 和未传）
+	Meta       string `json:"meta"`       // 角色卡元数据 JSON；空=不更新
+	HasContent bool   `json:"-"`
 }
 
 func (r *documentUpdateRequest) UnmarshalJSON(data []byte) error {
@@ -239,6 +241,32 @@ func (h *Handler) DeleteProject(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
+}
+
+// pruneEmptyFolders 清理项目目录下残留的空 folder-* 目录（对应已删空的卷/文件夹容器）
+func (h *Handler) pruneEmptyFolders(userID string, projectID uint, projectName string) {
+	root := h.paths.ProjectDir(userID, projectID, projectName)
+	for pass := 0; pass < 5; pass++ { // 多层嵌套逐层向上清
+		removed := false
+		_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err != nil || !info.IsDir() || path == root {
+				return nil
+			}
+			if !strings.HasPrefix(info.Name(), "folder-") {
+				return nil
+			}
+			entries, e := os.ReadDir(path)
+			if e == nil && len(entries) == 0 {
+				if os.Remove(path) == nil {
+					removed = true
+				}
+			}
+			return nil
+		})
+		if !removed {
+			return
+		}
+	}
 }
 
 func (h *Handler) ExportProject(c *gin.Context) {
