@@ -66,15 +66,16 @@ func (h *Handler) WxLogin(c *gin.Context) {
 	}
 
 	var user model.User
-	err = h.db.Where("user_id = ?", func() string { // 先查 identity
-		var id model.AuthIdentity
-		if e := h.db.Where("provider = ? AND identifier = ?", "wechat", identifier).First(&id).Error; e == nil {
-			return id.UserID
-		}
-		return ""
-	}()).First(&user).Error
-
+	found, err := h.findWechatUser(sess.UnionID, sess.OpenID)
 	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+	if found != nil {
+		user = *found
+	}
+	err = nil
+	if found == nil {
 		// 新用户：自动建号（昵称走随机笔名，邮箱空）
 		user = model.User{
 			UserID:   uuid.NewString(),
@@ -141,6 +142,37 @@ func (h *Handler) WxLogin(c *gin.Context) {
 			"is_new":        user.ID != 0 && err == nil && user.Email == "" && user.Nickname != "",
 		},
 	})
+}
+
+// findWechatUser 双通道查微信身份：unionid 优先、openid 兜底；命中后补挂缺失的另一个标识（关联开放平台后老 openid 账号平滑过渡到 unionid）
+func (h *Handler) findWechatUser(unionid, openid string) (*model.User, error) {
+	for _, ident := range []string{unionid, openid} {
+		if ident == "" {
+			continue
+		}
+		var iden model.AuthIdentity
+		if e := h.db.Where("provider = ? AND identifier = ?", "wechat", ident).First(&iden).Error; e != nil {
+			continue
+		}
+		var user model.User
+		if e := h.db.Where("user_id = ? AND status = 1", iden.UserID).First(&user).Error; e != nil {
+			return nil, fmt.Errorf("account disabled")
+		}
+		other := openid
+		if ident == openid {
+			other = unionid
+		}
+		if other != "" {
+			var cnt int64
+			h.db.Model(&model.AuthIdentity{}).Where("provider = ? AND identifier = ?", "wechat", other).Count(&cnt)
+			if cnt == 0 {
+				verifiedAt := time.Now()
+				_ = h.db.Create(&model.AuthIdentity{UserID: user.UserID, Provider: "wechat", Identifier: other, VerifiedAt: &verifiedAt}).Error
+			}
+		}
+		return &user, nil
+	}
+	return nil, nil
 }
 
 func (h *Handler) jscode2session(code string) (*wechatSessionResp, error) {

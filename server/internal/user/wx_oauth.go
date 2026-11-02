@@ -149,12 +149,17 @@ if (window !== window.top) {
 
 // wechatUserFromOAuthToken 用 oauth token 的 unionid/openid 查号/建号（回调两种模式共用）
 func (h *Handler) wechatUserFromOAuthToken(tok *oauthTokenResp) (*model.User, error) {
+	if tok.UnionID == "" && tok.OpenID == "" {
+		return nil, fmt.Errorf("empty openid")
+	}
+	if user, err := h.findWechatUser(tok.UnionID, tok.OpenID); err != nil {
+		return nil, err
+	} else if user != nil {
+		return user, nil
+	}
 	identifier := tok.UnionID
 	if identifier == "" {
 		identifier = tok.OpenID
-	}
-	if identifier == "" {
-		return nil, fmt.Errorf("empty openid")
 	}
 	return h.findOrCreateWechatUser(identifier)
 }
