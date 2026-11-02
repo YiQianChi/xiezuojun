@@ -166,7 +166,7 @@ function onImgClick(e: MouseEvent) {
   const scaleX = captcha.value.w / rect.width
   const scaleY = captcha.value.h / rect.height
   if (!clicks.value.length) { clickT0 = performance.now(); clFail.value = false }
-  clicks.value.push([(e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY])
+  clicks.value.push([Math.round((e.clientX - rect.left) * scaleX), Math.round((e.clientY - rect.top) * scaleY)])
   if (clicks.value.length === captcha.value.n) {
     setTimeout(() => sendCode(), 150) // 最后一个点的标记渲染完再提交
   }
