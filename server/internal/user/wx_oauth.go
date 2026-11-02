@@ -65,12 +65,26 @@ func (h *Handler) WxOauthCallback(c *gin.Context) {
 	if strings.HasPrefix(state, "http") {
 		front = state
 	}
-	// embed 模式：在登录页 iframe 内，成功/失败都 postMessage 给父页面，不再整页跳转
+	// embed 模式：成功/失败都回传结果。微信扫码页确认后是顶层跳转（frame-busting），
+	// 此时 iframe 已不存在，检测到自己不在 iframe 里就直接存 token 跳前端
 	if embed {
+		wrap := func(jsPayload, hint string) string {
+			return fmt.Sprintf(`<!doctype html><meta charset="utf-8"><script>
+var p=%s;
+if (window !== window.top) {
+  try { parent.postMessage(p, location.origin) } catch(e) {}
+} else if (p.at) {
+  localStorage.setItem('access_token', p.at);
+  if (p.rt) localStorage.setItem('refresh_token', p.rt);
+  location.href = '/bookshelf';
+} else {
+  location.href = %q + (p.error ? ('?wx_err=' + encodeURIComponent(p.error)) : '');
+}
+</script><p style="font:14px sans-serif;text-align:center;margin-top:40px">%s</p>`, jsPayload, front, hint)
+		}
 		fail := func(msg string) {
-			c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(fmt.Sprintf(
-				`<!doctype html><meta charset="utf-8"><script>parent.postMessage({type:'xzj-wx-login',error:%q},location.origin)</script><p style="font:14px sans-serif;text-align:center;margin-top:40px;color:#c00">%s</p>`,
-				msg, msg)))
+			c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(wrap(
+				fmt.Sprintf(`{type:'xzj-wx-login',error:%q}`, msg), msg)))
 		}
 		if !h.oauthConfigured() || code == "" {
 			fail("微信登录配置异常")
@@ -91,9 +105,8 @@ func (h *Handler) WxOauthCallback(c *gin.Context) {
 			fail("生成登录态失败")
 			return
 		}
-		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(fmt.Sprintf(
-			`<!doctype html><meta charset="utf-8"><script>parent.postMessage({type:'xzj-wx-login',at:%q,rt:%q},location.origin)</script><p style="font:14px sans-serif;text-align:center;margin-top:40px">登录成功，正在进入…</p>`,
-			access, refresh)))
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(wrap(
+			fmt.Sprintf(`{type:'xzj-wx-login',at:%q,rt:%q}`, access, refresh), "登录成功，正在进入…")))
 		return
 	}
 	if !h.oauthConfigured() || code == "" {
