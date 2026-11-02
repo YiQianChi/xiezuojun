@@ -49,12 +49,12 @@ func (h *Handler) SendSmsCode(c *gin.Context) {
 		return
 	}
 
-	// 渐进式验证码：当日该号/IP 已发 >=2 条时，必须先过滑块验证（正常用户无感）
+	// 渐进式验证码：当日该号/IP 已发 >=2 条时，必须先过点选验证（正常用户无感）
 	if smsNeedsCaptcha(req.Phone, c.ClientIP()) {
 		if !verifyCaptcha(req.CaptchaID, req.CaptchaAnswer) {
 			c.JSON(http.StatusPreconditionFailed, gin.H{
 				"error":   "captcha required",
-				"captcha": newSliderCaptcha(),
+				"captcha": newClickCaptcha(),
 			})
 			return
 		}

@@ -2,7 +2,6 @@ package user
 
 import (
 	"encoding/json"
-	"strconv"
 	"testing"
 	"time"
 
@@ -12,16 +11,7 @@ import (
 
 func timeNowDay() string { return time.Now().Format("20060102") }
 
-// humanTrail 模拟人手拖动：多采样、总耗时 >=200ms
-func humanTrail(from, to, ms int) [][2]int {
-	trail := [][2]int{}
-	for i := 0; i <= 8; i++ {
-		trail = append(trail, [2]int{ms * i / 8, from + (to-from)*i/8})
-	}
-	return trail
-}
-
-// 滑块验证码：阈值触发（号/IP 两维度）、落点容差、轨迹校验、一次性消费
+// 点选验证码：阈值触发（号/IP 两维度）、顺序命中、容差、时长、一次性消费
 func TestCaptcha(t *testing.T) {
 	mr := miniredis.NewMiniRedis()
 	if err := mr.Start(); err != nil {
@@ -48,34 +38,36 @@ func TestCaptcha(t *testing.T) {
 		t.Fatal("新号+新 IP 不应要求验证码")
 	}
 
-	// 从 Redis 读答案构造合法提交：落点准 + 人类轨迹 → 过
-	ch := newSliderCaptcha()
-	want, _ := mr.Get(captchaPrefix + ch.ID)
-	target, _ := strconv.Atoi(want)
-	ok, _ := json.Marshal(captchaAnswer{X: target, Trail: humanTrail(24, target, 900)})
+	// 从 Redis 读答案坐标，按顺序点击 → 过
+	ch := newClickCaptcha()
+	var target [][2]int
+	if err := json.Unmarshal([]byte(mr.Get(captchaPrefix+ch.ID)), &target); err != nil || len(target) != 3 {
+		t.Fatalf("答案应存 3 个坐标: %v", err)
+	}
+	ok, _ := json.Marshal(clickAnswer{Points: target, Dur: 1200})
 	if !verifyCaptcha(ch.ID, string(ok)) {
-		t.Fatal("落点准确+人类轨迹应通过")
+		t.Fatal("按顺序点中应通过")
 	}
 	if verifyCaptcha(ch.ID, string(ok)) {
 		t.Fatal("验证码应一次性消费")
 	}
 
-	// 落点超差 → 拒
-	ch2 := newSliderCaptcha()
-	w2, _ := mr.Get(captchaPrefix + ch2.ID)
-	t2, _ := strconv.Atoi(w2)
-	bad, _ := json.Marshal(captchaAnswer{X: t2 + 30, Trail: humanTrail(24, t2+30, 900)})
+	// 顺序点错（交换前两个目标，目标间距>70px 超容差 24px）→ 拒
+	ch2 := newClickCaptcha()
+	var t2 [][2]int
+	json.Unmarshal([]byte(mr.Get(captchaPrefix+ch2.ID)), &t2)
+	bad, _ := json.Marshal(clickAnswer{Points: [][2]int{t2[1], t2[0], t2[2]}, Dur: 1200})
 	if verifyCaptcha(ch2.ID, string(bad)) {
-		t.Fatal("落点偏差 30px 应拒绝")
+		t.Fatal("顺序点错应拒绝")
 	}
 
-	// 轨迹采样少+瞬时完成（机器直填）→ 拒
-	ch3 := newSliderCaptcha()
-	w3, _ := mr.Get(captchaPrefix + ch3.ID)
-	t3, _ := strconv.Atoi(w3)
-	fast, _ := json.Marshal(captchaAnswer{X: t3, Trail: [][2]int{{0, 24}, {10, t3}}})
+	// 100ms 瞬时点完（机器）→ 拒
+	ch3 := newClickCaptcha()
+	var t3 [][2]int
+	json.Unmarshal([]byte(mr.Get(captchaPrefix+ch3.ID)), &t3)
+	fast, _ := json.Marshal(clickAnswer{Points: t3, Dur: 100})
 	if verifyCaptcha(ch3.ID, string(fast)) {
-		t.Fatal("2 个采样+10ms 的机器轨迹应拒绝")
+		t.Fatal("100ms 点完应拒绝")
 	}
 
 	if verifyCaptcha("nonexistent", "{}") {

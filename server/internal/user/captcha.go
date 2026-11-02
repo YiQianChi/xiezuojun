@@ -1,8 +1,7 @@
 package user
 
-// 滑块验证码：服务端生成缺口位置，客户端拖动拼图对准，校验落点容差 + 拖动轨迹（采样数/时长）。
-// 相比明文算术题，答案（缺口 x 坐标）不出服务端，脚本必须做图像分析或伪造人手轨迹；
-// 配合单号/单IP/全站配额，足够防刷短信。
+// 点选验证码：服务端渲染 PNG，图上散布 ★ ▲ ◆ 三个图形，用户按提示顺序点击。
+// 坐标只存服务端（图片是位图，文本读不出），脚本须做图像识别；配合配额足够防刷。
 // 渐进式：手机号/IP 当日发送达到阈值（smsNeedsCaptcha）后才触发，正常用户一天 1~2 条无感。
 
 import (
@@ -15,6 +14,7 @@ import (
 	"image/color"
 	"image/png"
 	"log"
+	"math"
 	"math/big"
 	"strconv"
 	"time"
@@ -23,18 +23,29 @@ import (
 )
 
 const captchaPrefix = "xzj:captcha:"
+const clickTol = 24 // 命中半径 px
 
-type sliderChallenge struct {
-	ID    string `json:"id"`
-	Bg    string `json:"bg"` // 整张底图 SVG（含缺口）
-	Piece string `json:"piece"`
-	Y     int    `json:"y"` // 拼图块 top（px）
-	W     int    `json:"w"` // 底图宽
+type clickChallenge struct {
+	ID   string `json:"id"`
+	Img  string `json:"img"` // PNG data URI（含三个图形）
+	Hint string `json:"hint"`
+	W    int    `json:"w"`
+	H    int    `json:"h"`
 }
 
 var captchaColors = [][2]string{
 	{"#c7d2fe", "#e0e7ff"}, {"#fde68a", "#fef3c7"}, {"#bbf7d0", "#dcfce7"},
 	{"#fbcfe8", "#fce7f3"}, {"#bfdbfe", "#dbeafe"},
+}
+
+// 三个图形：固定点击顺序 star → triangle → diamond
+var clickShapes = []struct {
+	glyph string
+	draw  func(img *image.RGBA, cx, cy, r int, c color.RGBA)
+}{
+	{"★", drawStar},
+	{"▲", drawTriangle},
+	{"◆", drawDiamond},
 }
 
 func randIntn(max int) int {
@@ -59,37 +70,23 @@ func smsNeedsCaptcha(phone, ip string) bool {
 	return false
 }
 
-// newSliderCaptcha 出题：服务端渲染 PNG 底图（缺口坐标不可从文本读出），答案只存 Redis（5 分钟）
-func newSliderCaptcha() sliderChallenge {
-	const W, H, R = 280, 150, 24
-	target := 70 + randIntn(W-140) // 缺口圆心 x
-	y := R + 10 + randIntn(H-2*R-20)
-	c := captchaColors[randIntn(len(captchaColors))]
-	bg := renderSliderBg(W, H, target, y, c)
-	piece := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">`+
-		`<circle cx="%d" cy="%d" r="%d" fill="rgba(255,255,255,0.8)" stroke="rgba(0,0,0,0.35)" stroke-width="2"/></svg>`,
-		2*R, 2*R, R, R, R)
-	id := uuid.NewString()
-	vcodeRdb.Set(vcodeCtx, captchaPrefix+id, strconv.Itoa(target), 5*time.Minute)
-	return sliderChallenge{ID: id, Bg: bg, Piece: piece, Y: y - R, W: W}
-}
+// ---- 画图（纯标准库像素操作）----
 
-// hexToRGB "#rrggbb" → color.RGBA
 func hexToRGB(s string) color.RGBA {
 	var r, g, b int
 	fmt.Sscanf(s, "#%02x%02x%02x", &r, &g, &b)
 	return color.RGBA{uint8(r), uint8(g), uint8(b), 255}
 }
 
-// fillCircle 以 alpha 混合画圆
-func fillCircle(img *image.RGBA, cx, cy, r int, c color.RGBA) {
-	for py := cy - r; py <= cy+r; py++ {
-		for px := cx - r; px <= cx+r; px++ {
+// fillShape 以 alpha 混合填充，inside 判定像素是否属于图形
+func fillShape(img *image.RGBA, cx, cy, r int, c color.RGBA, inside func(dx, dy int) bool) {
+	for py := cy - r - 2; py <= cy+r+2; py++ {
+		for px := cx - r - 2; px <= cx+r+2; px++ {
 			if px < 0 || py < 0 || px >= img.Rect.Dx() || py >= img.Rect.Dy() {
 				continue
 			}
 			dx, dy := px-cx, py-cy
-			if dx*dx+dy*dy > r*r {
+			if !inside(dx, dy) {
 				continue
 			}
 			base := img.RGBAAt(px, py)
@@ -104,13 +101,69 @@ func fillCircle(img *image.RGBA, cx, cy, r int, c color.RGBA) {
 	}
 }
 
-// renderSliderBg 纯标准库画底图：渐变 + 随机噪声圆 + 缺口（含白色描边），输出 data URI
-func renderSliderBg(w, h, target, y int, c [2]string) string {
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
+func drawStar(img *image.RGBA, cx, cy, r int, c color.RGBA) {
+	pts := make([][2]float64, 10)
+	for i := 0; i < 10; i++ {
+		ang := -math.Pi/2 + float64(i)*math.Pi/5
+		rad := float64(r)
+		if i%2 == 1 {
+			rad = float64(r) * 0.45
+		}
+		pts[i] = [2]float64{float64(cx) + rad*math.Cos(ang), float64(cy) + rad*math.Sin(ang)}
+	}
+	fillShape(img, cx, cy, r, c, func(dx, dy int) bool {
+		return pointInPoly(float64(cx)+float64(dx), float64(cy)+float64(dy), pts)
+	})
+}
+
+func pointInPoly(x, y float64, pts [][2]float64) bool {
+	in := false
+	j := len(pts) - 1
+	for i := 0; i < len(pts); i++ {
+		if (pts[i][1] > y) != (pts[j][1] > y) &&
+			x < (pts[j][0]-pts[i][0])*(y-pts[i][1])/(pts[j][1]-pts[i][1])+pts[i][0] {
+			in = !in
+		}
+		j = i
+	}
+	return in
+}
+
+func drawTriangle(img *image.RGBA, cx, cy, r int, c color.RGBA) {
+	fillShape(img, cx, cy, r, c, func(dx, dy int) bool {
+		if dy < -r || dy > r/2 {
+			return false
+		}
+		return math.Abs(float64(dx)) <= float64(dy+r)*0.58
+	})
+}
+
+func drawDiamond(img *image.RGBA, cx, cy, r int, c color.RGBA) {
+	fillShape(img, cx, cy, r, c, func(dx, dy int) bool {
+		return abs(dx)+abs(dy) <= r
+	})
+}
+
+func drawCircle(img *image.RGBA, cx, cy, r int, c color.RGBA) {
+	fillShape(img, cx, cy, r, c, func(dx, dy int) bool { return dx*dx+dy*dy <= r*r })
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// newClickCaptcha 出题：随机底图 + 三个不重叠图形；答案（顺序坐标）存 Redis 5 分钟
+func newClickCaptcha() clickChallenge {
+	const W, H, R = 280, 150, 20
+	c := captchaColors[randIntn(len(captchaColors))]
+	img := image.NewRGBA(image.Rect(0, 0, W, H))
 	c0, c1 := hexToRGB(c[0]), hexToRGB(c[1])
-	for x := 0; x < w; x++ {
-		t := float64(x) / float64(w)
-		for py := 0; py < h; py++ {
+	for x := 0; x < W; x++ {
+		t := float64(x) / float64(W)
+		for py := 0; py < H; py++ {
 			img.SetRGBA(x, py, color.RGBA{
 				uint8(float64(c0.R) + (float64(c1.R)-float64(c0.R))*t),
 				uint8(float64(c0.G) + (float64(c1.G)-float64(c0.G))*t),
@@ -119,34 +172,52 @@ func renderSliderBg(w, h, target, y int, c [2]string) string {
 			})
 		}
 	}
-	for i := 0; i < 4; i++ { // 噪声圆（半透明白）
-		fillCircle(img, randIntn(w), randIntn(h), 8+randIntn(20), color.RGBA{255, 255, 255, 90})
+	for i := 0; i < 5; i++ { // 噪声圆
+		drawCircle(img, randIntn(W), randIntn(H), 8+randIntn(18), color.RGBA{255, 255, 255, 90})
 	}
-	fillCircle(img, target, y, 24, color.RGBA{0, 0, 0, 110}) // 缺口
-	for px := target - 25; px <= target+25; px++ {           // 白色描边环
-		for py := y - 25; py <= y+25; py++ {
-			if px < 0 || py < 0 || px >= w || py >= h {
-				continue
+	colors := []color.RGBA{{220, 38, 38, 235}, {37, 99, 235, 235}, {22, 163, 74, 235}}
+	pos := [3][2]int{}
+	for i := 0; i < 3; i++ {
+		// 找一个与已放图形不重叠的位置（中心距 > 2.6R）
+		for try := 0; ; try++ {
+			x, y := 30+randIntn(W-60), 30+randIntn(H-60)
+			ok := true
+			for j := 0; j < i; j++ {
+				if abs(x-pos[j][0])+abs(y-pos[j][1]) < 70 {
+					ok = false
+					break
+				}
 			}
-			dx, dy := px-target, py-y
-			d2 := dx*dx + dy*dy
-			if d2 <= 25*25 && d2 >= 22*22 {
-				img.SetRGBA(px, py, color.RGBA{255, 255, 255, 200})
+			if ok || try > 50 {
+				pos[i] = [2]int{x, y}
+				break
 			}
 		}
+		drawCircle(img, pos[i][0], pos[i][1], R+5, color.RGBA{255, 255, 255, 160}) // 白底衬
+		clickShapes[i].draw(img, pos[i][0], pos[i][1], R, colors[i])
 	}
 	buf := &bytes.Buffer{}
 	png.Encode(buf, img)
-	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
+	id := uuid.NewString()
+	ans, _ := json.Marshal(pos)
+	vcodeRdb.Set(vcodeCtx, captchaPrefix+id, string(ans), 5*time.Minute)
+	hint := ""
+	for i, s := range clickShapes {
+		if i > 0 {
+			hint += " → "
+		}
+		hint += s.glyph
+	}
+	return clickChallenge{ID: id, Img: "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()), Hint: hint, W: W, H: H}
 }
 
-// captchaAnswer 客户端提交：落点（拼图圆心 x）+ 拖动轨迹 [ [ms偏移, x], ... ]
-type captchaAnswer struct {
-	X     int      `json:"x"`
-	Trail [][2]int `json:"trail"`
+// clickAnswer 客户端提交：按顺序的点击坐标 + 总耗时 ms
+type clickAnswer struct {
+	Points [][2]int `json:"points"`
+	Dur    int      `json:"dur"`
 }
 
-// verifyCaptcha 校验并销毁（一次性）：落点容差 12px，且轨迹基本像人（≥3 采样、120ms~20s）
+// verifyCaptcha 校验并销毁（一次性）：3 个点按顺序各自命中 24px 半径，总时长 400ms~30s
 func verifyCaptcha(id, answerJSON string) bool {
 	if id == "" {
 		return false
@@ -157,26 +228,27 @@ func verifyCaptcha(id, answerJSON string) bool {
 		return false
 	}
 	vcodeRdb.Del(vcodeCtx, key)
-	target, err := strconv.Atoi(want)
-	if err != nil {
+	var target [][2]int
+	if err := json.Unmarshal([]byte(want), &target); err != nil || len(target) != 3 {
 		return false
 	}
-	var ans captchaAnswer
+	var ans clickAnswer
 	if err := json.Unmarshal([]byte(answerJSON), &ans); err != nil {
 		log.Printf("[captcha] reject: bad json (%d bytes)", len(answerJSON))
 		return false
 	}
-	if d := ans.X - target; d < -15 || d > 15 {
-		log.Printf("[captcha] reject: x=%d target=%d 偏差=%dpx samples=%d", ans.X, target, d, len(ans.Trail))
+	if len(ans.Points) != 3 {
+		log.Printf("[captcha] reject: points=%d", len(ans.Points))
 		return false
 	}
-	if len(ans.Trail) < 3 {
-		log.Printf("[captcha] reject: samples=%d (x=%d target=%d)", len(ans.Trail), ans.X, target)
-		return false
+	for i, p := range ans.Points {
+		if abs(p[0]-target[i][0]) > clickTol || abs(p[1]-target[i][1]) > clickTol {
+			log.Printf("[captcha] reject: point%d (%d,%d) 目标(%d,%d)", i+1, p[0], p[1], target[i][0], target[i][1])
+			return false
+		}
 	}
-	dur := ans.Trail[len(ans.Trail)-1][0] - ans.Trail[0][0]
-	if dur < 100 || dur > 20000 {
-		log.Printf("[captcha] reject: dur=%dms samples=%d", dur, len(ans.Trail))
+	if ans.Dur < 400 || ans.Dur > 30000 {
+		log.Printf("[captcha] reject: dur=%dms", ans.Dur)
 		return false
 	}
 	return true
