@@ -93,8 +93,10 @@
         <p class="sl-tip">按顺序点击大图中与<b>上方小条一致</b>的字</p>
         <div class="sl-stage">
           <img class="sl-thumb" :src="captcha.thumb" alt="" draggable="false" />
-          <img class="sl-bg" :src="captcha.img" alt="" draggable="false" @click="onImgClick" />
-          <span v-for="(p, i) in clicks" :key="i" class="click-mark" :style="{ left: p[0] + 'px', top: p[1] + 'px' }">{{ i + 1 }}</span>
+          <div class="sl-imgwrap">
+            <img class="sl-bg" :src="captcha.img" alt="" draggable="false" @click="onImgClick" />
+            <span v-for="(p, i) in clicks" :key="i" class="click-mark" :style="{ left: p[0] + 'px', top: p[1] + 'px' }">{{ i + 1 }}</span>
+          </div>
         </div>
         <p class="sl-fail" v-if="clFail">点错了，按提示条的顺序再点</p>
         <a class="click-reset" v-if="clicks.length && clicks.length < captcha.n" @click.prevent="clicks = []">重新点</a>
@@ -418,8 +420,9 @@ async function handleReset() {
 .qr-tip b { color:#07c160; }
 .sl-tip { font-size:13px; color:var(--text-secondary); margin-bottom:12px; }
 .click-hint { color:var(--accent,#007aff); font-size:15px; letter-spacing:2px; }
-.sl-stage { position:relative; width:300px; user-select:none; }
+.sl-stage { width:300px; user-select:none; }
 .sl-thumb { display:block; width:150px; height:40px; margin:0 auto 10px; border-radius:6px; border:1px solid var(--border,#e5e5eb); }
+.sl-imgwrap { position:relative; }
 .sl-bg { display:block; width:300px; height:220px; border-radius:8px; cursor:crosshair; }
 .click-mark {
   position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%;
