@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>写作菌登录 · 方案C 表单为主+扫码浮层</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f6f2; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    color: #2c3a2e; -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    width: 420px; max-width: 92vw; background: #fff; border-radius: 18px;
+    box-shadow: 0 12px 40px rgba(60, 90, 66, .10); padding: 40px 36px 32px; position: relative;
+  }
+  .logo { font-family: Georgia, "Songti SC", serif; font-size: 30px; font-weight: 700; text-align: center; letter-spacing: 2px; }
+  .sub { font-size: 13px; color: #9aa89c; text-align: center; margin: 6px 0 26px; }
+  /* 右上角扫码入口 */
+  .qr-corner {
+    position: absolute; top: 0; right: 0; width: 64px; height: 64px; cursor: pointer;
+    border-radius: 0 18px 0 18px; background: linear-gradient(225deg, #07c160 50%, transparent 50%);
+    transition: transform .15s;
+  }
+  .qr-corner:hover { transform: scale(1.06); }
+  .qr-corner span {
+    position: absolute; top: 10px; right: 8px; color: #fff; font-size: 20px; line-height: 1;
+    transform: rotate(0deg);
+  }
+  .qr-hint {
+    position: absolute; top: 66px; right: 12px; font-size: 11px; color: #9aa89c;
+  }
+  /* 浮层 */
+  .qr-overlay {
+    position: absolute; inset: 0; background: rgba(255,255,255,.98); border-radius: 18px;
+    display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5;
+  }
+  .qr-overlay.show { display: flex; }
+  .qr-overlay h3 { font-size: 17px; margin-bottom: 20px; }
+  .qr-box {
+    width: 190px; height: 190px; background: #fff; border: 1px solid #e6ede2;
+    border-radius: 12px; padding: 12px; cursor: pointer; position: relative;
+  }
+  .qr-box canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+  .qr-tip { font-size: 13px; color: #7a8a7c; margin-top: 16px; text-align: center; line-height: 1.8; }
+  .qr-tip b { color: #07c160; }
+  .qr-close {
+    position: absolute; top: 16px; right: 20px; font-size: 22px; color: #9aa89c; cursor: pointer;
+    background: none; border: 0;
+  }
+  /* 表单 */
+  .seg { display: flex; gap: 4px; background: #f2f5f0; padding: 4px; border-radius: 10px; margin-bottom: 20px; }
+  .seg button {
+    flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; color: #7a8a7c;
+  }
+  .seg button.active { background: #fff; color: #2c3a2e; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .field { margin-bottom: 14px; }
+  .input {
+    width: 100%; padding: 12px 14px; border: 1.5px solid #e2e9df; border-radius: 10px; font-size: 14px;
+    outline: none; transition: border-color .15s; background: #fbfdfa;
+  }
+  .input:focus { border-color: #6aa877; background: #fff; }
+  .code-row { display: flex; gap: 10px; }
+  .code-row .input { flex: 1; }
+  .code-btn {
+    white-space: nowrap; padding: 0 14px; border: 1.5px solid #6aa877; color: #6aa877; background: #fff;
+    border-radius: 10px; font-size: 13px; cursor: pointer;
+  }
+  .code-btn:disabled { opacity: .5; }
+  .mode-switch { text-align: right; margin: 4px 0 14px; }
+  .mode-switch a { font-size: 12px; color: #6aa877; text-decoration: none; cursor: pointer; }
+  .submit {
+    width: 100%; padding: 13px; border: 0; border-radius: 22px; font-size: 15px; font-weight: 600;
+    background: linear-gradient(135deg, #8fc59b, #6aa877); color: #fff; cursor: pointer;
+  }
+  .links { display: flex; justify-content: space-between; margin-top: 16px; font-size: 13px; }
+  .links a { color: #7a8a7c; text-decoration: none; cursor: pointer; }
+  .links a.reg { color: #6aa877; }
+  .toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+    background: #2c3a2e; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 9;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="qr-corner" onclick="showQr(true)" title="扫码登录"><span>▦</span></div>
+  <div class="qr-hint">扫码登录</div>
+
+  <div class="logo">写作菌</div>
+  <div class="sub">一个写故事的地方</div>
+
+  <div class="seg">
+    <button class="active" id="seg-email" onclick="segTab('email')">邮箱</button>
+    <button id="seg-phone" onclick="segTab('phone')">手机号</button>
+  </div>
+  <div class="field">
+    <input class="input" id="account" placeholder="邮箱">
+  </div>
+  <div class="field" id="pwd-field">
+    <input class="input" type="password" placeholder="密码">
+  </div>
+  <div class="field" id="code-field" style="display:none">
+    <div class="code-row">
+      <input class="input" inputmode="numeric" maxlength="6" placeholder="6 位验证码">
+      <button class="code-btn" id="code-btn" onclick="sendCode()">获取验证码</button>
+    </div>
+  </div>
+  <div class="mode-switch"><a id="mode-toggle" onclick="toggleMode()">使用验证码登录 →</a></div>
+  <button class="submit" onclick="toast('登录成功（demo）')">登 录</button>
+  <div class="links">
+    <a onclick="toast('跳转忘记密码（demo）')">忘记密码？</a>
+    <a class="reg" onclick="toast('跳转注册（demo）')">没有账号？立即注册 →</a>
+  </div>
+
+  <div class="qr-overlay" id="qr-overlay">
+    <button class="qr-close" onclick="showQr(false)">×</button>
+    <h3>微信扫码登录</h3>
+    <div class="qr-box" onclick="drawQr(); toast('二维码已刷新（demo）')">
+      <canvas id="qr"></canvas>
+    </div>
+    <div class="qr-tip">打开<b>微信扫一扫</b>，确认即可登录<br>与小程序账号互通</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+  function drawQr() {
+    const c = document.getElementById('qr'), ctx = c.getContext('2d'), n = 25;
+    c.width = n * 8; c.height = n * 8;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#1a1a1a';
+    let seed = Date.now() % 100000;
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (rnd() > 0.52) ctx.fillRect(x * 8, y * 8, 8, 8);
+    }
+    const finder = (fx, fy) => {
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(fx, fy, 56, 56);
+      ctx.fillStyle = '#fff'; ctx.fillRect(fx + 8, fy + 8, 40, 40);
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(fx + 16, fy + 16, 24, 24);
+    };
+    finder(0, 0); finder(c.width - 56, 0); finder(0, c.height - 56);
+  }
+  drawQr();
+  let mode = 'password', countdown = 0;
+  function showQr(show) {
+    document.getElementById('qr-overlay').classList.toggle('show', show);
+  }
+  function segTab(t) {
+    document.getElementById('seg-email').classList.toggle('active', t === 'email');
+    document.getElementById('seg-phone').classList.toggle('active', t === 'phone');
+    document.getElementById('account').placeholder = t === 'email' ? '邮箱' : '手机号';
+    if (t === 'phone' && mode === 'password') toggleMode();
+    if (t === 'email' && mode === 'code') toggleMode();
+  }
+  function toggleMode() {
+    mode = mode === 'password' ? 'code' : 'password';
+    document.getElementById('pwd-field').style.display = mode === 'password' ? '' : 'none';
+    document.getElementById('code-field').style.display = mode === 'code' ? '' : 'none';
+    document.getElementById('mode-toggle').innerText = mode === 'password' ? '使用验证码登录 →' : '使用密码登录 →';
+  }
+  function sendCode() {
+    if (countdown > 0) return;
+    countdown = 60;
+    const btn = document.getElementById('code-btn');
+    btn.disabled = true;
+    toast('验证码已发送（demo）');
+    const timer = setInterval(() => {
+      btn.innerText = countdown + 's';
+      if (--countdown <= 0) { clearInterval(timer); btn.disabled = false; btn.innerText = '获取验证码'; }
+    }, 1000);
+  }
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+</script>
+</body>
+</html>

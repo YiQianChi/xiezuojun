@@ -124,6 +124,9 @@ export const userApi = {
   changePassword(data: { old_password: string; new_password: string }) {
     return api.post('/user/change-password', data)
   },
+  bindEmail(data: { email: string; password: string }) {
+    return api.post('/auth/bind-email', data)
+  },
   updateProfile(data: { nickname?: string; avatar?: string }) {
     return api.patch('/user/me', data)
   },

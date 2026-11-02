@@ -1,4 +1,4 @@
-# 写作菌：服务器 → 本地 D 盘 工程同步（不依赖 Z 盘映射，直接走 UNC 路径）
+﻿# 写作菌：服务器 → 本地 D 盘 工程同步（不依赖 Z 盘映射，直接走 UNC 路径）
 # 用法：右键"使用 PowerShell 运行"，或：powershell -ExecutionPolicy Bypass -File sync.ps1
 # 可带参数只同步一个模块：sync.ps1 weapp / sync.ps1 harmony / sync.ps1 all（默认 all）
 # robocopy 退出码 0-7 都是成功；脚本结束会显示关键文件版本
@@ -31,11 +31,11 @@ if ($mod -eq "weapp" -or $mod -eq "all")  { $ok = (Sync-Dir "weapp") -and $ok }
 if (-not $ok) { pause; exit 1 }
 
 # 模块自检
-$wx = Get-Content "D:\xiezuojun\weapp\src\pages\login\login.wxml" -TotalCount 8 -ErrorAction SilentlyContinue
-if ($wx -match 'btn-wx') {
-    Write-Host "✓ weapp 登录页含微信一键登录按钮（新版）" -ForegroundColor Green
+$idx = Get-Content "D:\xiezuojun\weapp\src\pages\index\index.js" -Raw -ErrorAction SilentlyContinue
+if ($idx -match '/bookshelf\?xzj_at=') {
+    Write-Host "✓ weapp 登录后直达书架（新版）" -ForegroundColor Green
 } elseif (Test-Path "D:\xiezuojun\weapp") {
-    Write-Host "⚠ weapp 登录页没有微信登录按钮（旧版？），告诉 Hermes" -ForegroundColor Yellow
+    Write-Host "⚠ weapp 还是旧版（没有直达书架），告诉 Hermes" -ForegroundColor Yellow
 }
 $bp = Get-Content "D:\xiezuojun\harmony\entry\build-profile.json5" -TotalCount 2 -ErrorAction SilentlyContinue
 if ($bp -match '"apiType"') {

@@ -5,6 +5,7 @@
     <div v-if="menuOpen" class="pmenu" :style="menuPos" @click.stop>
       <button class="pmenu-item" @click="openEdit">修改信息</button>
       <button class="pmenu-item" @click="openPwd">修改密码</button>
+      <button class="pmenu-item" @click="openBind">绑定邮箱账号</button>
       <div class="pmenu-sep"></div>
       <button class="pmenu-item danger" @click="doLogout">退出登录</button>
     </div>
@@ -49,6 +50,21 @@
         </div>
       </div>
     </div>
+
+    <!-- 绑定已有邮箱账号（微信扫码建的号 → 合并进邮箱账号） -->
+    <div v-if="bindOpen" class="pdlg-overlay" @click.self="bindOpen = false">
+      <div class="pdlg">
+        <div class="pdlg-head"><span>绑定邮箱账号</span><button @click="bindOpen = false">✕</button></div>
+        <div class="pdlg-body">
+          <p class="bind-hint">把当前微信账号并入你的邮箱账号：作品会搬过去，以后微信扫码、小程序、邮箱登录都是同一个号。</p>
+          <label class="field"><span>邮箱</span>
+            <input v-model="bindForm.email" type="email" class="input" placeholder="已注册的邮箱" /></label>
+          <label class="field"><span>密码</span>
+            <input v-model="bindForm.password" type="password" class="input" placeholder="邮箱账号的密码" @keyup.enter="doBind" /></label>
+          <button class="btn primary" @click="doBind" :disabled="binding">{{ binding ? '绑定中…' : '绑定并合并' }}</button>
+        </div>
+      </div>
+    </div>
   </Teleport>
 </template>
 
@@ -75,11 +91,14 @@ defineExpose({ openMenu, openForPenName })
 const editOpen = ref(false)
 const penNameMode = ref(false)  // 首次起笔名模式（needs_pen_name 触发）
 const pwdOpen = ref(false)
+const bindOpen = ref(false)
 const me = ref<any>({})
 const form = ref({ nickname: '', avatar: '' })
 const pwd = ref({ old: '', next: '', confirm: '' })
+const bindForm = ref({ email: '', password: '' })
 const saving = ref(false)
 const changingPwd = ref(false)
+const binding = ref(false)
 
 const initials = computed(() => {
   if (form.value.avatar) return ''
@@ -182,6 +201,32 @@ function doLogout() {
   try { localStorage.removeItem('xzj-nickname'); localStorage.removeItem('xzj-avatar') } catch {}
   router.push('/login')
 }
+
+// 微信扫码建的新号 → 绑定已有邮箱账号（作品随迁，切换登录态到邮箱账号）
+function openBind() {
+  closeMenu()
+  bindForm.value = { email: '', password: '' }
+  bindOpen.value = true
+}
+
+async function doBind() {
+  const email = bindForm.value.email.trim()
+  if (!email || !bindForm.value.password) { toast.error('请填写邮箱和密码'); return }
+  binding.value = true
+  try {
+    const res = await userApi.bindEmail({ email, password: bindForm.value.password })
+    const d = res.data?.data || {}
+    if (d.access_token) localStorage.setItem('access_token', d.access_token)
+    if (d.refresh_token) localStorage.setItem('refresh_token', d.refresh_token)
+    toast.success('绑定成功，已合并到你的邮箱账号')
+    bindOpen.value = false
+    location.reload()
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '绑定失败')
+  } finally {
+    binding.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -277,4 +322,5 @@ function doLogout() {
 .pen-ops .reroll:active { transform: scale(.96); }
 .btn.skip { margin-top: 10px; border: none; color: var(--text-tertiary); font-size: 13px; padding: 7px 0; }
 .btn.skip:hover { color: var(--text-secondary); background: var(--bg-tertiary, #f5f5f7); }
+.bind-hint { font-size: 12px; color: var(--text-tertiary, #999); line-height: 1.6; margin: 0 0 12px; }
 </style>

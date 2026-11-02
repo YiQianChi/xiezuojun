@@ -167,6 +167,7 @@ func main() {
 	authd.Use(middleware.JWTAuth(jwtManager))
 
 	authd.GET("/user/me", userHandler.Me)
+	authd.POST("/auth/bind-email", userHandler.BindEmail)
 	authd.PATCH("/user/me", userHandler.UpdateProfile)
 	authd.POST("/user/change-password", userHandler.ChangePassword)
 	authd.GET("/user/usage", userHandler.UsageStats)
