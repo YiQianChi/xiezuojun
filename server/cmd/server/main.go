@@ -13,12 +13,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
-	"xiezuojun-server/internal/ai"
 	"xiezuojun-server/internal/admin"
+	"xiezuojun-server/internal/ai"
 	"xiezuojun-server/internal/auth"
 	"xiezuojun-server/internal/buddy"
 	"xiezuojun-server/internal/gateway"
@@ -66,11 +67,23 @@ func main() {
 		log.Fatal("auto migrate failed: ", err)
 	}
 
+	// 存量书回填 public_id（一次性，幂等）
+	{
+		var rows []model.Project
+		db.Where("public_id = '' OR public_id IS NULL").Find(&rows)
+		for _, p := range rows {
+			db.Model(&model.Project{}).Where("id = ?", p.ID).
+				Update("public_id", uuid.NewString()[0:8]+uuid.NewString()[0:8])
+		}
+		if len(rows) > 0 {
+			log.Printf("[migrate] backfilled public_id for %d projects", len(rows))
+		}
+	}
+
 	// 首个管理员：ADMIN_EMAIL 环境变量指定的账号自动提权（幂等，可留可删）
 	if adminEmail := os.Getenv("ADMIN_EMAIL"); adminEmail != "" {
 		db.Exec("UPDATE users SET is_admin = 1 WHERE email = ?", adminEmail)
 	}
-
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" || jwtSecret == "change-me-in-production" || len(jwtSecret) < 32 {

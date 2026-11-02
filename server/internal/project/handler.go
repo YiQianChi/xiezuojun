@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/store"
@@ -154,7 +155,7 @@ func (h *Handler) CreateProject(c *gin.Context) {
 	}
 
 	proj := model.Project{
-		UserID: userID.(string), Name: req.Name,
+		PublicID: newProjectPublicID(), UserID: userID.(string), Name: req.Name,
 		CoverURL: req.CoverURL, Genre: req.Genre, Tags: req.Tags, Status: 1,
 	}
 	if err := h.db.Create(&proj).Error; err != nil {
@@ -195,7 +196,11 @@ func (h *Handler) CreateProject(c *gin.Context) {
 }
 
 func (h *Handler) GetProject(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, err := h.resolveProjectParam(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.requireProjectOwner(c, uint(id)) {
 		return
 	}
@@ -208,7 +213,11 @@ func (h *Handler) GetProject(c *gin.Context) {
 }
 
 func (h *Handler) UpdateProject(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, err := h.resolveProjectParam(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.requireProjectOwner(c, uint(id)) {
 		return
 	}
@@ -231,8 +240,29 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "updated"})
 }
 
+// newProjectPublicID 16 位随机对外标识（编辑器 URL 用，替代自增序号）
+func newProjectPublicID() string {
+	return uuid.NewString()[0:8] + uuid.NewString()[0:8]
+}
+
+// resolveProjectParam :id 参数兼容自增 ID 和 public_id（过渡期两种都收，前端逐步切 public_id）
+func (h *Handler) resolveProjectParam(s string) (uint, error) {
+	if id, err := strconv.Atoi(s); err == nil && id > 0 {
+		return uint(id), nil
+	}
+	var p model.Project
+	if err := h.db.Where("public_id = ? AND status = 1", s).First(&p).Error; err != nil {
+		return 0, err
+	}
+	return p.ID, nil
+}
+
 func (h *Handler) DeleteProject(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, err := h.resolveProjectParam(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.requireProjectOwner(c, uint(id)) {
 		return
 	}

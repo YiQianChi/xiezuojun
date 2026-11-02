@@ -24,13 +24,18 @@ import (
 
 const maxCoverSize = 5 << 20 // 5MB
 
-// UploadCover POST /projects/:id/cover
+// UploadCover POST /projects/:id/cover（:id 兼容数字 ID 和 public_id）
 func (h *Handler) UploadCover(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	uid, _ := userID.(string)
 
+	projectID, err := h.resolveProjectParam(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "book not found"})
+		return
+	}
 	var project model.Project
-	if err := h.db.Where("id = ? AND user_id = ? AND status = 1", c.Param("id"), uid).First(&project).Error; err != nil {
+	if err := h.db.Where("id = ? AND user_id = ? AND status = 1", projectID, uid).First(&project).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "book not found"})
 		return
 	}

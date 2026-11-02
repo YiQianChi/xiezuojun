@@ -298,7 +298,8 @@ async function createBook() {
 }
 
 function openBook(project: any) {
-  const id = project.id || project.project_id
+  // 编辑器 URL 用随机 public_id，不暴露自增序号
+  const id = project.public_id || project.id || project.project_id
   router.push(`/editor/${id}`)
 }
 
