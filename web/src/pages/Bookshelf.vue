@@ -708,7 +708,7 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   color: var(--text-tertiary);
 }
 
-.cover-img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.cover-img { width: 100%; height: 100%; object-fit: contain; background: var(--bg-tertiary, #f0f0f3); border-radius: inherit; display: block; }
 
 .book-card.add-card:hover .book-cover {
   border-color: var(--accent);

@@ -50,8 +50,8 @@ func (h *Handler) UploadCover(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "仅支持 jpg/png/webp"})
 		return
 	}
-	// 解码 → 缩放裁剪到 450×600（3:4 封面比例，Retina 足够）→ JPEG q82。
-	// 用户传 20M 原图也压到几十 KB，展示流量扛得住
+	// 解码 → 等比缩到最长边 600 的缩略图 → JPEG q82。
+	// 保持完整构图不裁剪；用户传 20M 原图也压到几十 KB，展示流量扛得住
 	src, err := file.Open()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "读取文件失败"})
@@ -63,7 +63,7 @@ func (h *Handler) UploadCover(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "图片格式无法识别"})
 		return
 	}
-	cover := resizeToCover(img, 450, 600)
+	cover := resizeThumb(img, 600)
 	dir := filepath.Join(h.dataRoot, "covers")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "storage error"})
@@ -88,19 +88,20 @@ func (h *Handler) UploadCover(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{"cover_url": url}})
 }
 
-// resizeToCover 等比缩放到铺满 W×H，再中心裁剪（等效 CSS object-fit: cover）
-func resizeToCover(img image.Image, w, h int) *image.RGBA {
+// resizeThumb 等比缩小到最长边 max（不放大、不裁剪，保完整构图）
+func resizeThumb(img image.Image, max int) image.Image {
 	b := img.Bounds()
-	sw, sh := float64(b.Dx()), float64(b.Dy())
-	scale := sw / float64(w)
-	if k := sh / float64(h); k > scale {
-		scale = k
+	w, h := b.Dx(), b.Dy()
+	if w <= max && h <= max {
+		return img
 	}
-	nw, nh := int(sw/scale+0.5), int(sh/scale+0.5)
-	scaled := image.NewRGBA(image.Rect(0, 0, nw, nh))
-	draw.CatmullRom.Scale(scaled, scaled.Bounds(), img, b, draw.Src, nil)
-	out := image.NewRGBA(image.Rect(0, 0, w, h))
-	draw.Draw(out, out.Bounds(), scaled, image.Pt((nw-w)/2, (nh-h)/2), draw.Src)
+	scale := float64(max) / float64(w)
+	if h > w {
+		scale = float64(max) / float64(h)
+	}
+	nw, nh := int(float64(w)*scale+0.5), int(float64(h)*scale+0.5)
+	out := image.NewRGBA(image.Rect(0, 0, nw, nh))
+	draw.CatmullRom.Scale(out, out.Bounds(), img, b, draw.Src, nil)
 	return out
 }
 
