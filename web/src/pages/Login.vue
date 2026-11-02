@@ -1,6 +1,11 @@
 <template>
   <div class="auth-page">
-    <div class="auth-card">
+    <!-- 小程序 web-view 内：登录态过期，直接跳回壳的原生登录页（网页的微信入口在 web-view 里全是死路） -->
+    <div v-if="isMiniProgram" class="auth-card" style="text-align:center">
+      <p style="font-size:15px;color:var(--text-secondary);margin-bottom:20px">登录已过期</p>
+      <button class="btn primary auth-submit" @click="backToMpLogin">重新登录</button>
+    </div>
+    <div v-else class="auth-card">
       <!-- 右上角扫码入口（微信内置浏览器里改为整宽一键登录按钮） -->
       <template v-if="!showReset">
         <div v-if="!isWechat" class="qr-corner" title="微信扫码登录" @click="showQr = true">
@@ -100,8 +105,19 @@ import { userApi } from '../core/api'
 type LoginMode = 'password' | 'code'
 type AccountType = 'email' | 'phone'
 const router = useRouter()
-// 微信内置浏览器：扫码没意义，显示一键登录按钮走整页授权
-const isWechat = /MicroMessenger/i.test(navigator.userAgent)
+// 小程序 web-view：登录态过期时回壳登录
+const isMiniProgram = /miniProgram/i.test(navigator.userAgent) || (window as any).__wxjs_environment === 'miniProgram'
+// 微信内置浏览器（非小程序）：整页授权一键登录
+const isWechat = /MicroMessenger/i.test(navigator.userAgent) && !isMiniProgram
+function backToMpLogin() {
+  const w = window as any
+  const go = () => w.wx?.miniProgram?.redirectTo?.({ url: '/pages/login/login' })
+  if (w.wx?.miniProgram) { go(); return }
+  const s = document.createElement('script')
+  s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js'
+  s.onload = go
+  document.body.appendChild(s)
+}
 const handleWxLogin = () => {
   window.location.href = '/api/auth/wx-oauth/start?redirect=' + encodeURIComponent(window.location.origin + '/login')
 }
