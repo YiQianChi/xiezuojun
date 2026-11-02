@@ -245,11 +245,8 @@ func newProjectPublicID() string {
 	return uuid.NewString()[0:8] + uuid.NewString()[0:8]
 }
 
-// resolveProjectParam :id 参数兼容自增 ID 和 public_id（过渡期两种都收，前端逐步切 public_id）
+// resolveProjectParam :id 只收 public_id（老的数字 ID 已弃用——对外不暴露自增序号）
 func (h *Handler) resolveProjectParam(s string) (uint, error) {
-	if id, err := strconv.Atoi(s); err == nil && id > 0 {
-		return uint(id), nil
-	}
 	var p model.Project
 	if err := h.db.Where("public_id = ? AND status = 1", s).First(&p).Error; err != nil {
 		return 0, err

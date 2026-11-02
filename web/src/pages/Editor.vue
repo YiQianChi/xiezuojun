@@ -701,8 +701,30 @@ import { toast } from '../composables/useToast'
 const route = useRoute()
 const router = useRouter()
 
-const projectId = Number(route.params.projectId)
-try { localStorage.setItem('xzj-active-project', String(projectId)) } catch {}
+// 路由参数：新链接是 16 位 public_id，旧书签可能是数字 id。
+// projectId 统一解析为内部数字 id（文档/记忆/便签等接口仍用数字）
+const routeProjectParam = String(route.params.projectId || '')
+let projectId = Number(routeProjectParam)
+if (!Number.isFinite(projectId) || projectId <= 0) projectId = 0
+try { if (projectId > 0) localStorage.setItem('xzj-active-project', String(projectId)) } catch {}
+
+// public_id → 内部数字 id（必须在加载文档前完成）
+async function resolveProjectId() {
+  if (projectId > 0) return
+  try {
+    const res = await projectApi.get(routeProjectParam)
+    const data = res.data?.data || res.data
+    projectId = Number(data?.id) || 0
+    try { localStorage.setItem('xzj-active-project', String(projectId)) } catch {}
+  } catch (e: any) {
+    if (e?.response?.status === 403 || e?.response?.status === 404) {
+      toast.error('无权访问该项目')
+      router.push('/bookshelf')
+      throw e
+    }
+    throw e
+  }
+}
 
 const editor = shallowRef<any>(null)
 const documents = ref<any[]>([])
@@ -1521,6 +1543,7 @@ const articleRootNodes = computed(() =>
 )
 
 onMounted(async () => {
+  try { await resolveProjectId() } catch { return }
   initEditor()
   window.addEventListener('keydown', handleGlobalKeydown)
   document.addEventListener('click', closeToolboxOnClickOutside)
@@ -1549,7 +1572,7 @@ onMounted(async () => {
 
 async function loadProjectName() {
   try {
-    const res = await projectApi.get(projectId)
+    const res = await projectApi.get(routeProjectParam)
     const data = res.data?.data || res.data
     projectName.value = data?.name || ''
   } catch (e: any) {

@@ -381,6 +381,7 @@ async function doImport() {
 
     const BATCH = 500
     let projectId: number | null = null
+    let publicId = ''
     let firstBatch = true
 
     for (let i = 0; i < chapterStream.length; i += BATCH) {
@@ -402,6 +403,7 @@ async function doImport() {
         : await projectApi.importBookBatch({ project_id: projectId!, name: bookName.value.trim(), volumes: batchVols })
       const data = res.data?.data || res.data
       projectId = data.project_id ?? projectId
+      publicId = data.public_id || data.project?.public_id || publicId
       importedChapters.value = Math.min(i + slice.length, totalChaptersToImport.value)
       firstBatch = false
     }
@@ -410,7 +412,7 @@ async function doImport() {
     importStatus.value = '导入完成'
     toast.success(`导入完成：${importedChapters.value} 章已上架`)
     emit('update:modelValue', false)
-    emit('imported', projectId!)
+    emit('imported', publicId || projectId!)
   } catch (e: any) {
     importingActive.value = false
     toast.error(e.response?.data?.error || '导入失败，请重试')

@@ -289,7 +289,7 @@ async function createBook() {
     showCreateModal.value = false
     newBookName.value = ''
     newBookDesc.value = ''
-    router.push(`/editor/${project.id || project.project_id}`)
+    router.push(`/editor/${project.public_id || project.id}`)
   } catch (e: any) {
     toast.error(e.response?.data?.error || '创建失败')
   } finally {
@@ -303,8 +303,8 @@ function openBook(project: any) {
   router.push(`/editor/${id}`)
 }
 
-// 导入完成 → 关弹窗直接进新书编辑器
-function onImported(projectId: number) {
+// 导入完成 → 关弹窗直接进新书编辑器（ImportBookPanel 回传 public_id 或数字 id）
+function onImported(projectId: string | number) {
   showCreateModal.value = false
   router.push(`/editor/${projectId}`)
 }
@@ -312,7 +312,7 @@ function onImported(projectId: number) {
 async function deleteBook(project: any) {
   if (!confirm(`确定删除《${project.name}》？删除后可在回收站恢复`)) return
   try {
-    await projectApi.delete(project.id || project.project_id)
+    await projectApi.delete(project.public_id || project.id)
     await loadProjects()
   } catch (e: any) {
     toast.error(e.response?.data?.error || '删除失败')
@@ -366,7 +366,7 @@ async function onCoverPicked(e: Event) {
   const fd = new FormData()
   fd.append('cover', file)
   try {
-    const res = await projectApi.uploadCover(coverProject.id || coverProject.project_id, fd)
+    const res = await projectApi.uploadCover(coverProject.public_id || coverProject.id, fd)
     const url = res.data?.data?.cover_url
     if (url) coverProject.cover_url = url
     toast.success('封面已更新')
