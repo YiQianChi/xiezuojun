@@ -257,7 +257,7 @@ async function sendCode() {
     startCountdown()
   } catch (err: any) {
     const r = err.response
-    if (r?.status === 428 && r.data?.captcha) {
+    if ((r?.status === 412 || r?.status === 428) && r.data?.captcha) {
       captcha.value = { id: r.data.captcha.id, q: r.data.captcha.q, a: '' }
     } else {
       captcha.value = null
