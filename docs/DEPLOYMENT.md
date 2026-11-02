@@ -57,3 +57,17 @@
 2. UI 改动先出 HTML demo（/tmp）多方案对比确认再改代码
 3. 生产事故先止血再查根因
 4. `.env` 改动不重启不生效
+
+## 数据目录规范（2026-11-02 定）
+
+所有持久化用户数据**一律放 DATA_ROOT 下按类型分子目录**，禁止在程序目录或 /opt 其他位置另起炉灶：
+
+| 目录 | 内容 | 访问方式 |
+|---|---|---|
+| DATA_ROOT/documents/ | 书正文（按用户/书分层） | 登录态 API |
+| DATA_ROOT/memory/ | 记忆/设定 | 登录态 API |
+| DATA_ROOT/recycleBin/ | 回收站 | 登录态 API |
+| DATA_ROOT/covers/ | 书封面（{书id}-{随机段}.png 平铺） | GET /api/covers/:file 免登录 |
+| DATA_ROOT/avatars/（预留） | 用户头像 | 同封面模式 |
+
+生产 DATA_ROOT=/opt/data，180 DATA_ROOT=/opt/xiezuojun-data。旧的 /opt/xiezuojun-server/data 空壳已删（早期默认路径残留，别再被它骗）。
