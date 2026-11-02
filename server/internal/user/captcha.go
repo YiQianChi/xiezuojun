@@ -83,7 +83,7 @@ type captchaAnswer struct {
 	Trail [][2]int `json:"trail"`
 }
 
-// verifyCaptcha 校验并销毁（一次性）：落点容差 8px，且轨迹像人（≥5 采样、200ms~20s）
+// verifyCaptcha 校验并销毁（一次性）：落点容差 12px，且轨迹基本像人（≥3 采样、120ms~20s）
 func verifyCaptcha(id, answerJSON string) bool {
 	if id == "" {
 		return false
@@ -102,14 +102,14 @@ func verifyCaptcha(id, answerJSON string) bool {
 	if err := json.Unmarshal([]byte(answerJSON), &ans); err != nil {
 		return false
 	}
-	if ans.X < target-8 || ans.X > target+8 {
+	if ans.X < target-12 || ans.X > target+12 {
 		return false
 	}
-	if len(ans.Trail) < 5 {
+	if len(ans.Trail) < 3 {
 		return false
 	}
 	dur := ans.Trail[len(ans.Trail)-1][0] - ans.Trail[0][0]
-	if dur < 200 || dur > 20000 {
+	if dur < 120 || dur > 20000 {
 		return false
 	}
 	return true
