@@ -420,13 +420,13 @@ async function handleReset() {
 .qr-tip b { color:#07c160; }
 .sl-tip { font-size:13px; color:var(--text-secondary); margin-bottom:12px; }
 .click-hint { color:var(--accent,#007aff); font-size:15px; letter-spacing:2px; }
-.sl-stage { width:300px; user-select:none; }
-.sl-thumb { display:block; width:150px; height:40px; margin:0 auto 10px; border-radius:6px; border:1px solid var(--border,#e5e5eb); }
+.sl-stage { width:240px; user-select:none; }
+.sl-thumb { display:block; width:120px; height:32px; margin:0 auto 8px; border-radius:6px; border:1px solid var(--border,#e5e5eb); }
 .sl-imgwrap { position:relative; }
-.sl-bg { display:block; width:300px; height:220px; border-radius:8px; cursor:crosshair; }
+.sl-bg { display:block; width:240px; height:176px; border-radius:8px; cursor:crosshair; }
 .click-mark {
-  position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%;
-  background:#ff3b30; color:#fff; font-size:12px; line-height:22px; text-align:center;
+  position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%;
+  background:#ff3b30; color:#fff; font-size:11px; line-height:18px; text-align:center;
   box-shadow:0 0 0 2px #fff; pointer-events:none;
 }
 .sl-fail { color:#ff3b30; font-size:12px; margin-top:10px; }
