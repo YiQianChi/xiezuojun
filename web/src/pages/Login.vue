@@ -6,8 +6,8 @@
         <p class="subtitle">登录账号继续创作</p>
       </div>
 
-      <div v-if="!showReset && isWechat" class="wx-login-block">
-        <button type="button" class="btn wx-btn" @click="handleWxLogin">微信一键登录</button>
+      <div v-if="!showReset" class="wx-login-block">
+        <button type="button" class="btn wx-btn" @click="handleWxLogin">{{ isWechat ? '微信一键登录' : '微信扫码登录' }}</button>
         <div class="wx-divider">或邮箱登录</div>
       </div>
 
@@ -86,7 +86,7 @@ import { userApi } from '../core/api'
 
 type LoginMode = 'password' | 'code'
 const router = useRouter()
-// 微信内置浏览器才显示微信登录（OAuth 网页授权链路，开放平台网站应用审核通过后点亮）
+// 微信扫码登录（开放平台网站应用；微信内置浏览器打开则是一键确认）
 const isWechat = /MicroMessenger/i.test(navigator.userAgent)
 const handleWxLogin = () => {
   window.location.href = '/api/auth/wx-oauth/start?redirect=' + encodeURIComponent(window.location.origin + '/login')

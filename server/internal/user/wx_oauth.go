@@ -15,16 +15,16 @@ import (
 	"xiezuojun-server/internal/model"
 )
 
-// 微信 OAuth 网页授权（微信内置浏览器打开 xiezuojun.com 时的一键登录）。
-// 与小程序 wx.login 是两条链路：这里走开放平台/公众号 OAuth2。
-// 配置：WX_OAUTH_APPID / WX_OAUTH_SECRET（开放平台网站应用或服务号，审核通过后填入 .env 即点亮）。
-// 回调地址：https://xiezuojun.com/api/auth/wx-oauth/callback（要在微信后台登记为授权回调域名）
+// 微信扫码登录（开放平台网站应用，PC 网页弹二维码）。
+// 与小程序 wx.login 是两条链路，但 unionid 相同即同一账号（小程序需绑定到同一开放平台）。
+// 配置：WX_OAUTH_APPID / WX_OAUTH_SECRET（开放平台网站应用，审核通过后填入 .env 即点亮）。
+// 回调地址：https://xiezuojun.com/api/auth/wx-oauth/callback（回调域 xiezuojun.com 要在开放平台登记）
 
 func (h *Handler) oauthConfigured() bool {
 	return h.wxOauthAppID != "" && h.wxOauthSecret != ""
 }
 
-// WxOauthStart 发起微信网页授权：跳微信授权页，用户同意后带 code 回调
+// WxOauthStart 发起微信扫码登录：跳微信官方二维码页，用户扫码确认后带 code 回调
 func (h *Handler) WxOauthStart(c *gin.Context) {
 	if !h.oauthConfigured() {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "wechat oauth not configured"})
@@ -36,7 +36,7 @@ func (h *Handler) WxOauthStart(c *gin.Context) {
 	}
 	cb := "https://xiezuojun.com/api/auth/wx-oauth/callback"
 	u := fmt.Sprintf(
-		"https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_userinfo&state=%s#wechat_redirect",
+		"https://open.weixin.qq.com/connect/qrconnect/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect",
 		h.wxOauthAppID, url.QueryEscape(cb), url.QueryEscape(redirect),
 	)
 	c.Redirect(http.StatusFound, u)
