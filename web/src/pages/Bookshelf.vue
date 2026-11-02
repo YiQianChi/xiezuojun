@@ -38,9 +38,9 @@
           <p class="book-meta">{{ project.description || '暂无简介' }}</p>
         </div>
         <div class="card-actions">
-          <button class="card-btn" @click.stop="startRename(project)" title="重命名">✏️</button>
+          <button class="card-btn" data-label="重命名" @click.stop="startRename(project)" title="重命名">✏️</button>
           <div class="export-dropdown" @click.stop>
-            <button class="card-btn" @click="toggleExportMenu(project.id || project.project_id)" title="导出">📥</button>
+            <button class="card-btn" data-label="导出" @click="toggleExportMenu(project.id || project.project_id)" title="导出">📥</button>
             <div v-if="exportMenuId === (project.id || project.project_id)" class="export-menu">
               <button @click="exportBook(project, 'md')">Markdown</button>
               <button @click="exportBook(project, 'txt')">TXT 纯文本</button>
@@ -48,10 +48,8 @@
               <button @click="exportBook(project, 'docx')">DOCX 文档</button>
             </div>
           </div>
-          <button class="card-btn delete" @click.stop="deleteBook(project)" title="删除">×</button>
+          <button class="card-btn delete" data-label="删除" @click.stop="deleteBook(project)" title="删除">×</button>
         </div>
-        <!-- 手机端：右上角 ⋯ 唤起底部动作面板（桌面 hover 按钮在手机上不可用） -->
-        <button class="card-more" @click.stop="sheetProject = project">⋯</button>
       </div>
 
       <div class="book-card add-card" @click="openCreateModal">
@@ -202,21 +200,7 @@
       </div>
     </div>
 
-    <!-- 手机端底部动作面板：书卡片 ⋯ 唤起 -->
-    <div v-if="sheetProject" class="sheet-mask" @click.self="sheetProject = null">
-      <div class="sheet">
-        <p class="sheet-title">{{ sheetProject.name }}</p>
-        <div class="sheet-group">
-          <button @click="sheetRename()">✏️ 重命名</button>
-          <button @click="sheetExport('md')">📥 导出 Markdown</button>
-          <button @click="sheetExport('txt')">📄 导出 TXT 纯文本</button>
-          <button @click="sheetExport('epub')">📚 导出 EPUB 电子书</button>
-          <button @click="sheetExport('docx')">📃 导出 DOCX 文档</button>
-        </div>
-        <div class="sheet-group"><button class="sheet-danger" @click="sheetDelete()">🗑️ 删除这本书</button></div>
-        <button class="sheet-cancel" @click="sheetProject = null">取消</button>
-      </div>
-    </div>
+    <!-- 手机端：书卡片操作走底部文字链接行（见样式 card-actions 手机规则），导出用原下拉 -->
   </div>
 </template>
 
@@ -359,12 +343,6 @@ async function confirmRename() {
 
 // 导出
 const exportMenuId = ref<number | null>(null)
-
-// ===== 手机端底部动作面板 =====
-const sheetProject = ref<any | null>(null)
-function sheetRename() { const p = sheetProject.value; sheetProject.value = null; startRename(p) }
-function sheetExport(fmt: 'md' | 'txt' | 'epub' | 'docx') { const p = sheetProject.value; sheetProject.value = null; exportBook(p, fmt) }
-function sheetDelete() { const p = sheetProject.value; sheetProject.value = null; deleteBook(p) }
 
 function toggleExportMenu(id: number) {
   exportMenuId.value = exportMenuId.value === id ? null : id
@@ -648,48 +626,6 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 }
 
 .card-btn.delete:hover { background: #ff3b30; }
-
-/* 手机端卡片右上角 ⋯（桌面隐藏，桌面用 hover 按钮） */
-.card-more {
-  display: none;
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  z-index: 10;
-}
-
-/* ===== 手机端底部动作面板 ===== */
-.sheet-mask {
-  position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 300;
-  display: flex; align-items: flex-end;
-}
-.sheet {
-  width: 100%; padding: 0 10px calc(12px + env(safe-area-inset-bottom));
-  animation: sheet-up .18s ease-out;
-}
-@keyframes sheet-up { from { transform: translateY(30px); opacity: .4; } to { transform: none; opacity: 1; } }
-.sheet-title { text-align: center; font-size: 12px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.4); margin-bottom: 8px; }
-.sheet-group { background: var(--bg-secondary, #fff); border-radius: 14px; overflow: hidden; margin-bottom: 8px; }
-.sheet-group button {
-  display: block; width: 100%; border: none; background: none;
-  padding: 14px; font-size: 15px; color: var(--accent, #007aff); cursor: pointer;
-}
-.sheet-group button + button { border-top: 1px solid var(--border, #f0f0f3); }
-.sheet-danger { color: #ff3b30 !important; }
-.sheet-cancel {
-  display: block; width: 100%; border: none; background: var(--bg-secondary, #fff);
-  border-radius: 14px; padding: 14px; font-size: 15px; font-weight: 600;
-  color: var(--accent, #007aff); cursor: pointer;
-}
 
 .export-dropdown { position: relative; display: inline-flex; }
 .export-menu {
@@ -1011,9 +947,24 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   .subtitle { font-size: 12px; }
   /* 触屏：固定两列，禁止横向溢出 */
   .books-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 14px; }
-  /* 触屏：卡片只留右上角 ⋯，操作收进底部面板 */
-  .card-actions { display: none; }
-  .card-more { display: block; }
+  /* 触屏：卡片操作改为底部文字链接行（重命名|导出|删除），导出用原下拉 */
+  .card-actions {
+    position: static; opacity: 1; gap: 0;
+    border-top: 1px solid var(--border, #f0f0f3);
+    margin-top: 2px;
+  }
+  .card-actions .card-btn {
+    flex: 1; width: auto; height: auto; border-radius: 0;
+    background: none; color: var(--accent, #007aff);
+    font-size: 0; padding: 10px 0;
+  }
+  .card-actions .card-btn::after { content: attr(data-label); font-size: 12px; }
+  .card-actions .export-dropdown { flex: 1; display: flex; }
+  .card-actions .export-dropdown .card-btn { flex: 1; }
+  .card-actions .card-btn + .export-dropdown,
+  .card-actions .export-dropdown + .card-btn { border-left: 1px solid var(--border, #f0f0f3); }
+  .card-actions .card-btn.delete { color: #ff3b30; background: none; }
+  .export-menu { top: auto; bottom: 40px; }
   .book-cover { font-size: 40px; }
   .book-info h3 { font-size: 14px; }
   .book-info { padding: 10px 12px 12px; }
