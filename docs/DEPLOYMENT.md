@@ -30,9 +30,11 @@
 **后端：**
 1. 本机改 `server/` 代码 → `go build`（可 md5 对比生产二进制确认基线）
 2. `git diff` 审查 → commit → push GitHub
-3. scp 二进制到 `124:/opt/xiezuojun-server/xiezuojun-server`
+3. scp 二进制到 `124:/opt/xiezuojun-server/xiezuojun-server`（**运行中不能直接 cp 覆盖，报 Text file busy**；要 `cp 到 .new 再 mv -f` 原子替换）
 4. `sudo systemctl restart xiezuojun-server`
 5. 验证：`curl http://127.0.0.1:8081/api/health`（在 124 上）+ 功能实测
+
+**手机号/微信登录**（2026-11 上线）：`/auth/wx-phone-login`（小程序 getPhoneNumber 一键登录+孤儿号合并）、`/auth/sms-code`+`/auth/sms-login`（短信验证码，腾讯云，`TENCENT_SMS_*` 五项未配则 501）。微信侧只需 `WX_MP_APPID/WX_MP_APPSECRET`（已在 .env）。合并规则：手机号命中老账号则微信孤儿号（无其他登录方式）作品随迁+禁用；孤儿号有其他登录方式返回 409。
 
 **前端：**
 1. 本机 `cd web && npm run build`
