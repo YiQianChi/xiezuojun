@@ -1552,7 +1552,13 @@ async function loadProjectName() {
     const res = await projectApi.get(projectId)
     const data = res.data?.data || res.data
     projectName.value = data?.name || ''
-  } catch (e) {
+  } catch (e: any) {
+    // 项目不存在或不属于当前用户：直接弹回书架，别晾一个空编辑器
+    if (e?.response?.status === 403 || e?.response?.status === 404) {
+      toast.error('无权访问该项目')
+      router.push('/bookshelf')
+      return
+    }
     console.warn('加载项目名失败', e)
   }
 }
