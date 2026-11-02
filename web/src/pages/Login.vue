@@ -246,8 +246,9 @@ async function sendCode() {
   try {
     const extra = captcha.value ? { captcha_id: captcha.value.id, captcha_answer: captcha.value.a } : {}
     if (accountType.value === 'phone') {
-      await userApi.sendSmsCode({ phone: account.value.trim(), scene: 'login', ...extra })
-      successMsg.value = '验证码已发送，请查看短信'
+      const res = await userApi.sendSmsCode({ phone: account.value.trim(), scene: 'login', ...extra })
+      const c = res.data?.data?.code
+      successMsg.value = c ? `验证码已发送（测试码：${c}）` : '验证码已发送，请查看短信'
     } else {
       await userApi.sendEmailCode({ email: account.value.trim(), scene: 'login' })
       successMsg.value = '验证码已发送，请查看邮箱'

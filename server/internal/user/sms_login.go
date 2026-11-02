@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -29,7 +30,7 @@ type SendSmsCodeReq struct {
 
 // SendSmsCode 发送短信验证码。scene 目前只支持 login（验证码登录即注册，无需注册场景）
 func (h *Handler) SendSmsCode(c *gin.Context) {
-	if !loadSmsConfig().configured() {
+	if os.Getenv("SMS_DRYRUN") != "1" && !loadSmsConfig().configured() {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "sms not configured"})
 		return
 	}
@@ -95,7 +96,12 @@ func (h *Handler) SendSmsCode(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send sms"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "sent", "data": gin.H{"expires_in": 600}})
+	// dryrun 模式直接把验证码带回，测试环境不用翻日志
+	resp := gin.H{"message": "sent", "data": gin.H{"expires_in": 600}}
+	if os.Getenv("SMS_DRYRUN") == "1" {
+		resp["data"].(gin.H)["code"] = code
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 type SmsLoginReq struct {

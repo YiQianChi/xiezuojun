@@ -13,6 +13,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -79,9 +80,14 @@ func hashSHA256Hex(data []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// sendSmsCode 发短信验证码（scene 决定用哪个模板）；返回 error 时调用方应释放限频名额让用户可重试
+// sendSmsCode 发短信验证码（scene 决定用哪个模板）；返回 error 时调用方应释放限频名额让用户可重试。
+// SMS_DRYRUN=1 时不调火山，仅记日志——测试环境用，全链路（限频/验证码/登录）照常走
 func sendSmsCode(phone, code, scene string) error {
 	cfg := loadSmsConfig()
+	if os.Getenv("SMS_DRYRUN") == "1" {
+		log.Printf("[sms][dryrun] phone=%s scene=%s code=%s", phone, scene, code)
+		return nil
+	}
 	body, _ := json.Marshal(map[string]string{
 		"SmsAccount":    cfg.SmsAccount,
 		"Sign":          cfg.Sign,
