@@ -50,6 +50,10 @@ func getGoCaptcha() goclick.Captcha {
 		b := goclick.NewBuilder(
 			goclick.WithRangeLen(option.RangeVal{Min: 4, Max: 6}),       // 图上散布 4~6 个字
 			goclick.WithRangeVerifyLen(option.RangeVal{Min: 2, Max: 4}), // 需按序点 2~4 个
+			goclick.WithRangeSize(option.RangeVal{Min: 40, Max: 48}),    // 字号加大（默认26~32）
+			goclick.WithImageSize(option.Size{Width: 280, Height: 200}),
+			goclick.WithRangeThumbSize(option.RangeVal{Min: 30, Max: 34}),
+			goclick.WithRangeThumbImageSize(option.Size{Width: 170, Height: 46}),
 		)
 		b.SetResources(
 			goclick.WithChars(chars.GetChineseChars()),
@@ -74,7 +78,7 @@ func newClickCaptcha() clickChallenge {
 	ans, _ := json.Marshal(dots)
 	id := uuid.NewString()
 	vcodeRdb.Set(vcodeCtx, captchaPrefix+id, string(ans), 5*time.Minute)
-	return clickChallenge{ID: id, Img: img, Thumb: thumb, N: len(dots), W: 300, H: 220}
+	return clickChallenge{ID: id, Img: img, Thumb: thumb, N: len(dots), W: 280, H: 200}
 }
 
 // clickAnswer 客户端提交：按提示顺序的点击坐标 + 总耗时 ms

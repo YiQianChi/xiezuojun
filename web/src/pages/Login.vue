@@ -86,20 +86,23 @@
 
       <p v-if="!showReset" class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
 
-      <!-- 防刷点选验证（当日发送超阈值时触发）：按提示条字的顺序点击大图 -->
-      <div v-if="captcha" class="qr-overlay" style="z-index:6">
-        <button class="qr-close" @click="captcha = null">×</button>
-        <h3>安全验证</h3>
-        <p class="sl-tip">按顺序点击大图中与<b>上方小条一致</b>的字</p>
-        <div class="sl-stage">
-          <img class="sl-thumb" :src="captcha.thumb" alt="" draggable="false" />
-          <div class="sl-imgwrap">
-            <img class="sl-bg" :src="captcha.img" alt="" draggable="false" @click="onImgClick" />
-            <span v-for="(p, i) in clicks" :key="i" class="click-mark" :style="{ left: p[0] + 'px', top: p[1] + 'px' }">{{ i + 1 }}</span>
+      <!-- 防刷点选验证（当日发送超阈值时触发）：弹窗，按提示条字的顺序点击大图 -->
+      <div v-if="captcha" class="cap-overlay" @click.self="captcha = null">
+        <div class="cap-dialog">
+          <div class="cap-head"><span>安全验证</span><button class="cap-close" @click="captcha = null">✕</button></div>
+          <div class="cap-body">
+            <p class="sl-tip">按顺序点击大图中与<b>上方小条一致</b>的字</p>
+            <div class="sl-stage">
+              <img class="sl-thumb" :src="captcha.thumb" alt="" draggable="false" />
+              <div class="sl-imgwrap">
+                <img class="sl-bg" :src="captcha.img" alt="" draggable="false" @click="onImgClick" />
+                <span v-for="(p, i) in clicks" :key="i" class="click-mark" :style="{ left: p[0] + 'px', top: p[1] + 'px' }">{{ i + 1 }}</span>
+              </div>
+            </div>
+            <p class="sl-fail" v-if="clFail">点错了，按提示条的顺序再点</p>
+            <a class="click-reset" v-if="clicks.length && clicks.length < captcha.n" @click.prevent="clicks = []">重新点</a>
           </div>
         </div>
-        <p class="sl-fail" v-if="clFail">点错了，按提示条的顺序再点</p>
-        <a class="click-reset" v-if="clicks.length && clicks.length < captcha.n" @click.prevent="clicks = []">重新点</a>
       </div>
 
       <!-- 扫码浮层：iframe 嵌微信官方二维码页，登录成功后回调页 postMessage 回本页 -->
@@ -418,12 +421,27 @@ async function handleReset() {
 .qr-frame { width:300px; height:340px; border:none; }
 .qr-tip { font-size:13px; color:var(--text-secondary); margin-top:14px; text-align:center; line-height:1.8; }
 .qr-tip b { color:#07c160; }
+.cap-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:300;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+}
+.cap-dialog {
+  background:var(--bg-secondary,#fff); border-radius:20px; padding:0 0 18px;
+  box-shadow:0 24px 64px rgba(0,0,0,.2); max-width:92vw;
+}
+.cap-head {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 16px 4px; font-weight:600; font-size:15px; color:var(--text-primary);
+}
+.cap-close { border:none; background:none; cursor:pointer; font-size:14px; color:var(--text-tertiary); width:28px; height:28px; border-radius:50%; }
+.cap-close:hover { background:var(--bg-tertiary,#f5f5f7); }
+.cap-body { padding:8px 20px 0; display:flex; flex-direction:column; align-items:center; }
 .sl-tip { font-size:13px; color:var(--text-secondary); margin-bottom:12px; }
 .click-hint { color:var(--accent,#007aff); font-size:15px; letter-spacing:2px; }
-.sl-stage { width:240px; user-select:none; }
-.sl-thumb { display:block; width:120px; height:32px; margin:0 auto 8px; border-radius:6px; border:1px solid var(--border,#e5e5eb); }
+.sl-stage { width:280px; user-select:none; }
+.sl-thumb { display:block; width:170px; height:46px; margin:0 auto 10px; border-radius:8px; border:1px solid var(--border,#e5e5eb); }
 .sl-imgwrap { position:relative; }
-.sl-bg { display:block; width:240px; height:176px; border-radius:8px; cursor:crosshair; }
+.sl-bg { display:block; width:280px; height:200px; border-radius:10px; cursor:crosshair; }
 .click-mark {
   position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%;
   background:#ff3b30; color:#fff; font-size:11px; line-height:18px; text-align:center;
