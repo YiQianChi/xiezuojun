@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,7 +38,11 @@ func (h *Handler) WxOauthStart(c *gin.Context) {
 	// embed=1：二维码嵌在登录页 iframe 里，回调时 postMessage 回父页面而不是整页跳转
 	state := redirect
 	if c.Query("embed") == "1" {
-		state = redirect + "|e"
+		state += "|e"
+	}
+	// bind_ticket：登录态下扫码绑定微信（个人设置发起），回调走绑定分支
+	if t := c.Query("bind_ticket"); t != "" {
+		state += "|b:" + t
 	}
 	cb := "https://xiezuojun.com/api/auth/wx-oauth/callback"
 	u := fmt.Sprintf(
@@ -58,13 +63,65 @@ type oauthTokenResp struct {
 // WxOauthCallback 微信授权回调：code 换 openid/unionid，建号/登录，token 桥回前端
 func (h *Handler) WxOauthCallback(c *gin.Context) {
 	code := strings.TrimSpace(c.Query("code"))
-	state := c.Query("state")
-	embed := strings.HasSuffix(state, "|e")
-	state = strings.TrimSuffix(state, "|e")
-	front := "https://xiezuojun.com/login"
-	if strings.HasPrefix(state, "http") {
-		front = state
+	rawState := c.Query("state")
+	bindTicket := ""
+	embed := false
+	parts := strings.Split(rawState, "|")
+	front := parts[0]
+	for _, p := range parts[1:] {
+		if p == "e" {
+			embed = true
+		}
+		if strings.HasPrefix(p, "b:") {
+			bindTicket = strings.TrimPrefix(p, "b:")
+		}
 	}
+	if !strings.HasPrefix(front, "http") {
+		front = "https://xiezuojun.com/login"
+	}
+	// ---- 绑定分支：个人设置里扫码绑微信，结果 postMessage 回父页面 ----
+	if bindTicket != "" {
+		bindFail := func(msg string) {
+			c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(fmt.Sprintf(
+				`<!doctype html><meta charset="utf-8"><script>parent.postMessage({type:'xzj-wx-bind',error:%q},location.origin)</script><p style="font:14px sans-serif;text-align:center;margin-top:40px">%s</p>`, msg, msg)))
+		}
+		uid, err := vcodeRdb.Get(vcodeCtx, "xzj:wxbind:"+bindTicket).Result()
+		if err != nil {
+			bindFail("绑定会话已过期，请重新发起绑定")
+			return
+		}
+		vcodeRdb.Del(vcodeCtx, "xzj:wxbind:"+bindTicket)
+		if !h.oauthConfigured() || code == "" {
+			bindFail("微信配置异常")
+			return
+		}
+		tok, err := h.oauthGetToken(code)
+		if err != nil {
+			bindFail("微信授权失败")
+			return
+		}
+		identifier := tok.UnionID
+		if identifier == "" {
+			identifier = tok.OpenID
+		}
+		if identifier == "" {
+			bindFail("微信返回身份为空")
+			return
+		}
+		if err := h.bindWechatToUser(uid, identifier); err != nil {
+			if errors.Is(err, errAccountConflict) {
+				bindFail("该微信已绑定其他账号")
+				return
+			}
+			bindFail("绑定失败：" + err.Error())
+			return
+		}
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(
+			`<!doctype html><meta charset="utf-8"><script>parent.postMessage({type:'xzj-wx-bind',ok:true},location.origin)</script><p style="font:14px sans-serif;text-align:center;margin-top:40px">绑定成功</p>`))
+		return
+	}
+
+	// ---- 登录分支 ----
 	// embed 模式：成功/失败都回传结果。微信扫码页确认后是顶层跳转（frame-busting），
 	// 此时 iframe 已不存在，检测到自己不在 iframe 里就直接存 token 跳前端
 	if embed {

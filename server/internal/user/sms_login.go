@@ -44,7 +44,7 @@ func (h *Handler) SendSmsCode(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid phone"})
 		return
 	}
-	if req.Scene != "login" {
+	if req.Scene != "login" && req.Scene != "bind" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid scene"})
 		return
 	}

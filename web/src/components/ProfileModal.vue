@@ -5,7 +5,8 @@
     <div v-if="menuOpen" class="pmenu" :style="menuPos" @click.stop>
       <button class="pmenu-item" @click="openEdit">修改信息</button>
       <button class="pmenu-item" @click="openPwd">修改密码</button>
-      <button class="pmenu-item" @click="openBind">绑定邮箱账号</button>
+      <button class="pmenu-item" @click="openSecurity">账号与安全</button>
+      <button class="pmenu-item" @click="openBind">绑定已有账号</button>
       <div class="pmenu-sep"></div>
       <button class="pmenu-item danger" @click="doLogout">退出登录</button>
     </div>
@@ -65,11 +66,67 @@
         </div>
       </div>
     </div>
+    <!-- 账号与安全：绑定状态一览 + 补绑 -->
+    <div v-if="secOpen" class="pdlg-overlay" @click.self="secOpen = false">
+      <div class="pdlg">
+        <div class="pdlg-head"><span>账号与安全</span><button @click="secOpen = false">✕</button></div>
+        <div class="pdlg-body">
+          <div class="sec-row">
+            <span class="sec-name">邮箱</span>
+            <span class="sec-val">{{ sec.email_bound ? (me.email || '已绑定') : '未绑定' }}</span>
+            <span v-if="sec.email_bound" class="sec-ok">✓</span>
+            <button v-else class="btn sec-op" @click="emailOpen = !emailOpen">设置</button>
+          </div>
+          <div v-if="!sec.email_bound && emailOpen" class="sec-form">
+            <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱" />
+            <input v-model="secPwd" type="password" class="input" placeholder="设置密码（至少 6 位）" />
+            <input v-model="secPwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
+            <button class="btn primary" @click="doSetEmail" :disabled="secSaving">保存</button>
+          </div>
+
+          <div class="sec-row">
+            <span class="sec-name">手机号</span>
+            <span class="sec-val">{{ sec.phone_bound ? (me.phone || '已绑定') : '未绑定' }}</span>
+            <span v-if="sec.phone_bound" class="sec-ok">✓</span>
+            <button v-else class="btn sec-op" @click="phoneOpen = !phoneOpen">绑定</button>
+          </div>
+          <div v-if="!sec.phone_bound && phoneOpen" class="sec-form">
+            <div class="sec-code">
+              <input v-model.trim="bindPhoneNo" inputmode="numeric" maxlength="11" class="input" placeholder="手机号" />
+              <button class="btn sec-op" :disabled="bindSending || bindCountdown > 0" @click="sendBindCode">
+                {{ bindCountdown > 0 ? bindCountdown + 's' : '获取验证码' }}
+              </button>
+            </div>
+            <input v-model.trim="bindCode" inputmode="numeric" maxlength="6" class="input" placeholder="短信验证码" @keyup.enter="doBindPhone" />
+            <button class="btn primary" @click="doBindPhone" :disabled="secSaving">绑定</button>
+          </div>
+
+          <div class="sec-row">
+            <span class="sec-name">微信</span>
+            <span class="sec-val">{{ sec.wechat_bound ? '已绑定' : '未绑定' }}</span>
+            <span v-if="sec.wechat_bound" class="sec-ok">✓</span>
+            <button v-else class="btn sec-op" @click="doWxBind">扫码绑定</button>
+          </div>
+          <p class="bind-hint" style="margin-top:14px">绑得越多，换设备登录越方便；一个邮箱/手机号/微信只能属于一个账号。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 微信扫码绑定浮层 -->
+    <div v-if="wxBindQr" class="pdlg-overlay">
+      <div class="pdlg" style="text-align:center">
+        <div class="pdlg-head"><span>微信扫码绑定</span><button @click="wxBindQr = false">✕</button></div>
+        <div class="pdlg-body">
+          <iframe class="wxbind-frame" :src="wxBindSrc" frameborder="0" scrolling="no"></iframe>
+          <p class="bind-hint">用微信扫一扫，确认后自动绑定到当前账号</p>
+        </div>
+      </div>
+    </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { userApi } from '../core/api'
 import { toast } from '../composables/useToast'
@@ -193,6 +250,110 @@ async function changePwd() {
     changingPwd.value = false
   }
 }
+
+// ===== 账号与安全 =====
+const secOpen = ref(false)
+const sec = ref<any>({})
+const emailOpen = ref(false)
+const phoneOpen = ref(false)
+const secEmail = ref('')
+const secPwd = ref('')
+const secPwd2 = ref('')
+const bindPhoneNo = ref('')
+const bindCode = ref('')
+const bindSending = ref(false)
+const bindCountdown = ref(0)
+const secSaving = ref(false)
+const wxBindQr = ref(false)
+const wxBindSrc = ref('')
+
+async function openSecurity() {
+  closeMenu()
+  try {
+    const res = await userApi.me()
+    me.value = res.data?.data || {}
+    sec.value = me.value.security || {}
+  } catch {}
+  secOpen.value = true
+}
+
+async function refreshSec() {
+  try {
+    const res = await userApi.me()
+    me.value = res.data?.data || {}
+    sec.value = me.value.security || {}
+  } catch {}
+}
+
+async function doSetEmail() {
+  if (!secEmail.value || secPwd.value.length < 6) { toast.error('请填邮箱和至少 6 位密码'); return }
+  if (secPwd.value !== secPwd2.value) { toast.error('两次密码不一致'); return }
+  secSaving.value = true
+  try {
+    await userApi.setEmail({ email: secEmail.value, password: secPwd.value })
+    toast.success('邮箱已设置')
+    emailOpen.value = false
+    await refreshSec()
+    window.dispatchEvent(new CustomEvent('xzj-profile-updated'))
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '设置失败')
+  } finally { secSaving.value = false }
+}
+
+async function sendBindCode() {
+  if (!/^1[3-9]\d{9}$/.test(bindPhoneNo.value)) { toast.error('请输入正确的手机号'); return }
+  bindSending.value = true
+  try {
+    const res = await userApi.sendSmsCode({ phone: bindPhoneNo.value, scene: 'bind' })
+    const c = res.data?.data?.code
+    if (c) toast.success('测试码：' + c)
+    else toast.success('验证码已发送')
+    bindCountdown.value = 60
+    const t = window.setInterval(() => { bindCountdown.value -= 1; if (bindCountdown.value <= 0) window.clearInterval(t) }, 1000)
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '发送失败')
+  } finally { bindSending.value = false }
+}
+
+async function doBindPhone() {
+  if (!/^\d{6}$/.test(bindCode.value)) { toast.error('请输入 6 位验证码'); return }
+  secSaving.value = true
+  try {
+    await userApi.bindPhone({ phone: bindPhoneNo.value, code: bindCode.value })
+    toast.success('手机号已绑定')
+    phoneOpen.value = false
+    await refreshSec()
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '绑定失败')
+  } finally { secSaving.value = false }
+}
+
+async function doWxBind() {
+  try {
+    const res = await userApi.wxBindTicket()
+    const t = res.data?.data?.ticket
+    if (!t) { toast.error('获取绑定票据失败'); return }
+    wxBindSrc.value = '/api/auth/wx-oauth/start?embed=1&bind_ticket=' + t +
+      '&redirect=' + encodeURIComponent(window.location.origin + window.location.pathname)
+    wxBindQr.value = true
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '发起绑定失败')
+  }
+}
+
+const onWxBindMsg = async (e: MessageEvent) => {
+  if (e.origin !== window.location.origin || !e.data || e.data.type !== 'xzj-wx-bind') return
+  wxBindQr.value = false
+  if (e.data.ok) {
+    toast.success('微信绑定成功')
+    await refreshSec()
+  } else {
+    toast.error(e.data.error || '绑定失败')
+  }
+}
+
+onMounted(() => window.addEventListener('message', onWxBindMsg))
+onUnmounted(() => window.removeEventListener('message', onWxBindMsg))
 
 function doLogout() {
   closeMenu()
@@ -323,4 +484,13 @@ async function doBind() {
 .btn.skip { margin-top: 10px; border: none; color: var(--text-tertiary); font-size: 13px; padding: 7px 0; }
 .btn.skip:hover { color: var(--text-secondary); background: var(--bg-tertiary, #f5f5f7); }
 .bind-hint { font-size: 12px; color: var(--text-tertiary, #999); line-height: 1.6; margin: 0 0 12px; }
+.sec-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border,#f0f0f3); }
+.sec-name { width:48px; font-weight:600; font-size:14px; color:var(--text-primary); }
+.sec-val { flex:1; font-size:13px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; }
+.sec-ok { color:#248a3d; font-weight:700; }
+.sec-op { padding:4px 12px; font-size:12px; white-space:nowrap; }
+.sec-form { display:flex; flex-direction:column; gap:8px; padding:10px 0 14px; border-bottom:1px solid var(--border,#f0f0f3); }
+.sec-code { display:flex; gap:8px; }
+.sec-code .input { flex:1; }
+.wxbind-frame { width:300px; height:340px; border:none; margin:0 auto; }
 </style>

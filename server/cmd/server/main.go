@@ -168,6 +168,9 @@ func main() {
 
 	authd.GET("/user/me", userHandler.Me)
 	authd.POST("/auth/bind-email", userHandler.BindEmail)
+	authd.POST("/user/set-email", userHandler.SetEmail)
+	authd.POST("/user/bind-phone", userHandler.BindPhone)
+	authd.POST("/user/wx-bind-ticket", userHandler.WxBindTicket)
 	authd.PATCH("/user/me", userHandler.UpdateProfile)
 	authd.POST("/user/change-password", userHandler.ChangePassword)
 	authd.GET("/user/usage", userHandler.UsageStats)

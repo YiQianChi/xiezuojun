@@ -390,6 +390,7 @@ func (h *Handler) Me(c *gin.Context) {
 		"status": user.Status, "is_admin": user.IsAdmin,
 		"created_at": user.CreatedAt, "updated_at": user.UpdatedAt,
 		"needs_pen_name": needsPenName,
+		"security":       securityInfo(h.db, &user),
 	}})
 }
 

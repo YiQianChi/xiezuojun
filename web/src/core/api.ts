@@ -127,6 +127,15 @@ export const userApi = {
   bindEmail(data: { email: string; password: string }) {
     return api.post('/auth/bind-email', data)
   },
+  setEmail(data: { email: string; password: string }) {
+    return api.post('/user/set-email', data)
+  },
+  bindPhone(data: { phone: string; code: string }) {
+    return api.post('/user/bind-phone', data)
+  },
+  wxBindTicket() {
+    return api.post('/user/wx-bind-ticket', {})
+  },
   updateProfile(data: { nickname?: string; avatar?: string }) {
     return api.patch('/user/me', data)
   },
@@ -136,7 +145,7 @@ export const userApi = {
   resetPassword(data: { email: string; code: string; password: string }) {
     return api.post('/auth/reset-password', data)
   },
-  sendSmsCode(data: { phone: string; scene: 'login'; captcha_id?: string; captcha_answer?: string }) {
+  sendSmsCode(data: { phone: string; scene: 'login' | 'bind'; captcha_id?: string; captcha_answer?: string }) {
     return api.post('/auth/sms-code', data)
   },
   smsLogin(data: { phone: string; code: string }) {
