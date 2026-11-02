@@ -947,6 +947,9 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   .subtitle { font-size: 12px; }
   /* 触屏：固定两列，禁止横向溢出 */
   .books-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 14px; }
+  /* 触屏：卡片给实体卡底（透明卡片+文字行悬浮很怪） */
+  .book-card { background: var(--bg-secondary, #fff); border: 1px solid var(--border, #ececf1); }
+  .book-card:hover { transform: none; }
   /* 触屏：卡片操作改为底部文字链接行（重命名|导出|删除），导出用原下拉 */
   .card-actions {
     position: static; opacity: 1; gap: 0;
