@@ -25,6 +25,9 @@ Page({
       })
       if (!loginRes.code) throw new Error('no code')
       const phoneCode = e.detail && e.detail.code ? e.detail.code : ''
+      if (!phoneCode && e.detail && e.detail.errMsg && e.detail.errMsg.indexOf('deny') < 0) {
+        wx.showToast({ title: '手机号: ' + e.detail.errMsg, icon: 'none', duration: 3000 })
+      }
       const res = await new Promise((resolve, reject) => {
         wx.request({
           url: phoneCode
