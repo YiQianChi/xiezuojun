@@ -10,6 +10,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/redis/go-redis/v9 v9.5.1
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.172
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.3.172
 	golang.org/x/crypto v0.9.0
 	gorm.io/driver/mysql v1.5.4
 	gorm.io/gorm v1.30.0
