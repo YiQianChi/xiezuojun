@@ -92,7 +92,7 @@
         <h3>安全验证</h3>
         <p class="sl-tip">按住拼图拖到缺口处松手</p>
         <div class="sl-stage">
-          <div class="sl-bg" v-html="captcha.bg"></div>
+          <img class="sl-bg" :src="captcha.bg" alt="" draggable="false" />
           <div class="sl-piece" :style="{ top: captcha.y + 'px', left: dragX + 'px' }" v-html="captcha.piece"
                @pointerdown="onSlDown" @pointermove="onSlMove" @pointerup="onSlUp" @pointercancel="onSlUp"></div>
         </div>
@@ -428,7 +428,7 @@ async function handleReset() {
 .qr-tip b { color:#07c160; }
 .sl-tip { font-size:12px; color:var(--text-secondary); margin-bottom:12px; }
 .sl-stage { position:relative; width:280px; user-select:none; }
-.sl-bg svg { display:block; border-radius:8px; }
+.sl-bg { display:block; width:280px; height:150px; border-radius:8px; }
 .sl-piece { position:absolute; width:48px; height:48px; cursor:grab; touch-action:none; }
 .sl-piece:active { cursor:grabbing; }
 .sl-fail { color:#ff3b30; font-size:12px; margin-top:10px; }
