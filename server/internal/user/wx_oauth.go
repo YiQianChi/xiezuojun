@@ -36,7 +36,7 @@ func (h *Handler) WxOauthStart(c *gin.Context) {
 	}
 	cb := "https://xiezuojun.com/api/auth/wx-oauth/callback"
 	u := fmt.Sprintf(
-		"https://open.weixin.qq.com/connect/qrconnect/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect",
+		"https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect",
 		h.wxOauthAppID, url.QueryEscape(cb), url.QueryEscape(redirect),
 	)
 	c.Redirect(http.StatusFound, u)
