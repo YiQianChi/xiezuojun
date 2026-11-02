@@ -41,7 +41,8 @@ func TestCaptcha(t *testing.T) {
 	// 从 Redis 读答案坐标，按顺序点击 → 过
 	ch := newClickCaptcha()
 	var target [][2]int
-	if err := json.Unmarshal([]byte(mr.Get(captchaPrefix+ch.ID)), &target); err != nil || len(target) != 3 {
+	rawAns, _ := mr.Get(captchaPrefix + ch.ID)
+	if err := json.Unmarshal([]byte(rawAns), &target); err != nil || len(target) != 3 {
 		t.Fatalf("答案应存 3 个坐标: %v", err)
 	}
 	ok, _ := json.Marshal(clickAnswer{Points: target, Dur: 1200})
@@ -55,7 +56,8 @@ func TestCaptcha(t *testing.T) {
 	// 顺序点错（交换前两个目标，目标间距>70px 超容差 24px）→ 拒
 	ch2 := newClickCaptcha()
 	var t2 [][2]int
-	json.Unmarshal([]byte(mr.Get(captchaPrefix+ch2.ID)), &t2)
+	raw2, _ := mr.Get(captchaPrefix + ch2.ID)
+	json.Unmarshal([]byte(raw2), &t2)
 	bad, _ := json.Marshal(clickAnswer{Points: [][2]int{t2[1], t2[0], t2[2]}, Dur: 1200})
 	if verifyCaptcha(ch2.ID, string(bad)) {
 		t.Fatal("顺序点错应拒绝")
@@ -64,7 +66,8 @@ func TestCaptcha(t *testing.T) {
 	// 100ms 瞬时点完（机器）→ 拒
 	ch3 := newClickCaptcha()
 	var t3 [][2]int
-	json.Unmarshal([]byte(mr.Get(captchaPrefix+ch3.ID)), &t3)
+	raw3, _ := mr.Get(captchaPrefix + ch3.ID)
+	json.Unmarshal([]byte(raw3), &t3)
 	fast, _ := json.Marshal(clickAnswer{Points: t3, Dur: 100})
 	if verifyCaptcha(ch3.ID, string(fast)) {
 		t.Fatal("100ms 点完应拒绝")
