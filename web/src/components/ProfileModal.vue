@@ -522,5 +522,12 @@ async function doBind() {
 .sec-code { display:flex; gap:8px; }
 .sec-code .input { flex:1; }
 .sec-save { margin-top:2px; }
+/* 手机：弹窗满宽、按钮加高到手指友好 */
+@media (max-width: 480px) {
+  .sec-dlg { width: 100%; }
+  .sec-op { padding: 8px 16px; }
+  .sec-ico { width: 34px; height: 34px; font-size: 17px; }
+  .sec-card { padding: 10px 12px; }
+}
 .wxbind-frame { width:300px; height:340px; border:none; margin:0 auto; }
 </style>

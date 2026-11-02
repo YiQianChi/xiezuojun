@@ -932,20 +932,25 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 
 /* 手机 */
 @media (max-width: 720px) {
-  .bookshelf { padding: 24px 16px; }
+  .bookshelf { padding: 20px 16px; }
   .bookshelf-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
+    gap: 12px;
   }
-  .header-actions { width: 100%; justify-content: flex-end; }
-  .bookshelf-header h2 { font-size: 24px; }
-  .books-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 180px));
-    gap: 16px;
-  }
+  .header-actions { width: 100%; }
+  .header-actions .btn { padding: 8px 14px; }
+  .header-actions .btn.primary { flex: 1; }
+  .bookshelf-header h2 { font-size: 22px; }
+  .subtitle { font-size: 12px; }
+  /* 触屏：固定两列，禁止横向溢出 */
+  .books-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 14px; }
+  /* 触屏没有 hover：卡片操作按钮常显，并放大到手指可点 */
+  .card-actions { opacity: 1; top: 6px; right: 6px; gap: 6px; }
+  .card-btn { width: 36px; height: 36px; font-size: 15px; background: rgba(0,0,0,.45); }
   .book-cover { font-size: 40px; }
   .book-info h3 { font-size: 14px; }
+  .book-info { padding: 10px 12px 12px; }
   .book-meta { font-size: 11px; }
   .modal { width: 100%; padding: 24px 20px; }
   .trash-modal { width: 100%; }
@@ -955,8 +960,8 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 
 /* 小手机 */
 @media (max-width: 380px) {
-  .books-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .books-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .book-cover { font-size: 32px; }
-  .header-actions .btn { font-size: 12px; padding: 6px 12px; }
+  .header-actions .btn { font-size: 12px; padding: 7px 10px; }
 }
 </style>
