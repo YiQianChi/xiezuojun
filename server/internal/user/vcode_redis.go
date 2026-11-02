@@ -1,7 +1,8 @@
 // 验证码 Redis 存储 — 替代 verification_codes 表
 // 键设计：
-//   xzj:vcode:{scene}:{target}        验证码哈希，TTL 10 分钟（过期自动失效，不再堆垃圾行）
-//   xzj:vcode:limit:{scene}:{target}  发送限频，SET NX EX 60（60 秒内只能发一次）
+//
+//	xzj:vcode:{scene}:{target}        验证码哈希，TTL 10 分钟（过期自动失效，不再堆垃圾行）
+//	xzj:vcode:limit:{scene}:{target}  发送限频，SET NX EX 60（60 秒内只能发一次）
 package user
 
 import (
@@ -55,7 +56,76 @@ func init() {
 	})
 }
 
-func vcodeKey(scene, target string) string  { return vcodeKeyPrefix + scene + ":" + target }
+// ---- 短信防刷配额（防黑产刷量/短信轰炸）：单号、单IP、全局三档，窗口固定时间片 ----
+
+// smsDailyCap 全站每日短信熔断线，超了直接拒绝（保护预算），可用 SMS_DAILY_CAP 覆盖
+var smsDailyCap = func() int64 {
+	if v := os.Getenv("SMS_DAILY_CAP"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 2000
+}()
+
+func smsQuotaKey(dim, id, win string) string {
+	return "xzj:sms:q:" + dim + ":" + id + ":" + win
+}
+
+// acquireSmsQuota 先占后发：占用单号/单IP/全局各窗口配额，返回超限说明（空串=放行）。
+// 超限时回退本次已占的名额，保证各窗口计数一致。
+func acquireSmsQuota(phone, ip string) string {
+	now := time.Now()
+	h, d := now.Format("2006010215"), now.Format("20060102")
+	quotas := []struct {
+		key    string
+		limit  int64
+		hourly bool
+	}{
+		{smsQuotaKey("phone", phone, h), 5, true},
+		{smsQuotaKey("phone", phone, d), 10, false},
+		{smsQuotaKey("ip", ip, h), 10, true},
+		{smsQuotaKey("ip", ip, d), 30, false},
+		{smsQuotaKey("global", "", d), smsDailyCap, false},
+	}
+	var taken []string
+	for _, q := range quotas {
+		n, err := vcodeRdb.Incr(vcodeCtx, q.key).Result()
+		if err != nil {
+			continue // redis 异常不挡正常用户（会丢防线，但可用性优先）
+		}
+		taken = append(taken, q.key)
+		if n == 1 {
+			if q.hourly {
+				vcodeRdb.Expire(vcodeCtx, q.key, 2*time.Hour)
+			} else {
+				vcodeRdb.Expire(vcodeCtx, q.key, 48*time.Hour)
+			}
+		}
+		if n > q.limit {
+			for _, k := range taken {
+				vcodeRdb.Decr(vcodeCtx, k)
+			}
+			return "limit"
+		}
+	}
+	return ""
+}
+
+// releaseSmsQuota 发送失败时回退配额，别让失败的发送烧名额
+func releaseSmsQuota(phone, ip string) {
+	now := time.Now()
+	h, d := now.Format("2006010215"), now.Format("20060102")
+	for _, k := range []string{
+		smsQuotaKey("phone", phone, h), smsQuotaKey("phone", phone, d),
+		smsQuotaKey("ip", ip, h), smsQuotaKey("ip", ip, d),
+		smsQuotaKey("global", "", d),
+	} {
+		vcodeRdb.Decr(vcodeCtx, k)
+	}
+}
+
+func vcodeKey(scene, target string) string     { return vcodeKeyPrefix + scene + ":" + target }
 func vcodeRateKey(scene, target string) string { return vcodeRatePrefix + scene + ":" + target }
 
 // acquireSendSlot 尝试占发送名额：true=允许发送（60s 内首次），false=太频繁

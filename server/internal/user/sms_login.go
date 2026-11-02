@@ -55,20 +55,29 @@ func (h *Handler) SendSmsCode(c *gin.Context) {
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "send too frequently"})
 		return
 	}
+	// 防刷配额：单号 5/时 10/日、单IP 10/时 30/日、全站日熔断（SMS_DAILY_CAP）
+	if acquireSmsQuota(req.Phone, c.ClientIP()) != "" {
+		releaseSendSlot(req.Scene, req.Phone)
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "send limit exceeded"})
+		return
+	}
 	code, err := generateEmailCode() // 名字带 email 而已，就是通用 6 位数字码
 	if err != nil {
 		releaseSendSlot(req.Scene, req.Phone)
+		releaseSmsQuota(req.Phone, c.ClientIP())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate code"})
 		return
 	}
 	if err := storeCode(req.Scene, req.Phone, hashVerificationCode("phone", req.Phone, req.Scene, code)); err != nil {
 		releaseSendSlot(req.Scene, req.Phone)
+		releaseSmsQuota(req.Phone, c.ClientIP())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save code"})
 		return
 	}
 	if err := sendSmsCode(req.Phone, code, req.Scene); err != nil {
 		log.Printf("[sms] send failed phone=%s scene=%s err=%v", req.Phone, req.Scene, err)
 		releaseSendSlot(req.Scene, req.Phone)
+		releaseSmsQuota(req.Phone, c.ClientIP())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send sms"})
 		return
 	}

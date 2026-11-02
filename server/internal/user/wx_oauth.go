@@ -48,11 +48,11 @@ func (h *Handler) WxOauthStart(c *gin.Context) {
 }
 
 type oauthTokenResp struct {
-	AccessToken  string `json:"access_token"`
-	OpenID       string `json:"openid"`
-	UnionID      string `json:"unionid"`
-	ErrCode      int    `json:"errcode"`
-	ErrMsg       string `json:"errmsg"`
+	AccessToken string `json:"access_token"`
+	OpenID      string `json:"openid"`
+	UnionID     string `json:"unionid"`
+	ErrCode     int    `json:"errcode"`
+	ErrMsg      string `json:"errmsg"`
 }
 
 // WxOauthCallback 微信授权回调：code 换 openid/unionid，建号/登录，token 桥回前端

@@ -190,6 +190,7 @@ function normalizeError(err: any) {
   if (raw.includes('email not registered')) return '这个邮箱还没有注册'
   if (raw.includes('invalid or expired code')) return '验证码错误或已过期'
   if (raw.includes('send too frequently')) return '验证码发送太频繁，请稍后再试'
+  if (err.response?.status === 429 || raw.includes('send limit exceeded')) return '发送次数已达上限，请稍后再试'
   if (raw.includes('sms not configured')) return '手机号登录暂未开放，请用邮箱或扫码登录'
   if (raw.includes('invalid phone')) return '请输入正确的手机号'
   if (err.response?.status === 401 || raw.includes('invalid email or password')) return '邮箱或密码不正确'

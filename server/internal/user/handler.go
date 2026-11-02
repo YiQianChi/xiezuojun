@@ -19,12 +19,12 @@ import (
 
 // Handler 用户相关 API
 type Handler struct {
-	db         *gorm.DB
-	jwtManager *auth.JWTManager
+	db          *gorm.DB
+	jwtManager  *auth.JWTManager
 	wxAppID     string
 	wxAppSecret string
 	// 网页版微信 OAuth（开放平台网站应用/服务号），与小程序 wx.login 独立
-	wxOauthAppID string
+	wxOauthAppID  string
 	wxOauthSecret string
 }
 
@@ -113,7 +113,6 @@ type RegisterReq struct {
 	Code     string `json:"code" binding:"required,len=6"`
 }
 
-
 // randomPenName 随机笔名：形容词+名词+数字，注册默认昵称——防邮箱直接当昵称在搭子等场景泄露
 var penAdjs = []string{"墨水", "熬夜", "故事", "灵感", "断更", "催更", "柠檬", "月亮", "布谷", "青苔", "拾光", "听雨", "衔月", "踏雪", "执笔", "小饿", "打盹", "云朵", "萤火", "薄荷"}
 var penNouns = []string{"菌"}
@@ -191,11 +190,11 @@ func (h *Handler) Register(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"user": gin.H{
-				"id":      user.ID,
-				"user_id": user.UserID,
-				"email":   user.Email,
+				"id":       user.ID,
+				"user_id":  user.UserID,
+				"email":    user.Email,
 				"nickname": user.Nickname,
-				"plan":    user.Plan,
+				"plan":     user.Plan,
 			},
 			"access_token":  access,
 			"refresh_token": refresh,
@@ -282,12 +281,12 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"user": gin.H{
-				"id":      user.ID,
-				"user_id": user.UserID,
-				"email":   user.Email,
+				"id":       user.ID,
+				"user_id":  user.UserID,
+				"email":    user.Email,
 				"nickname": user.Nickname,
-				"plan":    user.Plan,
-				"avatar":  user.Avatar,
+				"plan":     user.Plan,
+				"avatar":   user.Avatar,
 			},
 			"access_token":  access,
 			"refresh_token": refresh,

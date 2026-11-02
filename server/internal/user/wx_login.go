@@ -131,11 +131,11 @@ func (h *Handler) WxLogin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"user": gin.H{
-				"id":      user.ID,
-				"user_id": user.UserID,
-				"email":   user.Email,
+				"id":       user.ID,
+				"user_id":  user.UserID,
+				"email":    user.Email,
 				"nickname": user.Nickname,
-				"plan":    user.Plan,
+				"plan":     user.Plan,
 			},
 			"access_token":  access,
 			"refresh_token": refresh,
