@@ -23,6 +23,16 @@ const router = createRouter({
       component: () => import('../pages/Register.vue')
     },
     {
+      path: '/agreement',
+      name: 'Agreement',
+      component: () => import('../pages/Agreement.vue')
+    },
+    {
+      path: '/privacy',
+      name: 'Privacy',
+      component: () => import('../pages/Privacy.vue')
+    },
+    {
       path: '/bookshelf',
       name: 'Bookshelf',
       component: () => import('../pages/Bookshelf.vue'),

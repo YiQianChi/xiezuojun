@@ -54,6 +54,8 @@
   margin: 8rpx 0;
 }
 .btn-loading { opacity: .7; }
+.legal { font-size: 12px; color: #8a8f85; text-align: center; margin-top: 14px; line-height: 1.7; }
+.legal-link { color: #4a7c59; text-decoration: underline; }
 .reg {
   text-align: center;
   font-size: 26rpx;

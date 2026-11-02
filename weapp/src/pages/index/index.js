@@ -13,7 +13,12 @@ Page({
     // 直达书架（Boss：手机版不需要首页中转，登录后就是书架）
     return app.globalData.site + '/bookshelf?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
-  async onLoad() {
+  async onLoad(options) {
+    // 协议/隐私页：公开可看，无需登录（小程序提审需要）
+    if (options && options.web) {
+      this.setData({ url: app.globalData.site + '/#/' + options.web })
+      return
+    }
     const at = wx.getStorageSync('xzj_token')
     const rt = wx.getStorageSync('xzj_rt')
     if (!at && !rt) {

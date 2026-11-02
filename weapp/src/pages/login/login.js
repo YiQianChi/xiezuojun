@@ -83,6 +83,8 @@ Page({
     this.setData({ loading: false })
   },
 
+  openAgreement() { wx.navigateTo({ url: '/pages/index/index?web=agreement' }) },
+  openPrivacy() { wx.navigateTo({ url: '/pages/index/index?web=privacy' }) },
   goRegister() {
     // 注册/找回密码去网页版处理。注：不用剪贴板（隐私接口，需隐私指引+授权弹窗，壳保持零隐私接口）
     wx.showModal({

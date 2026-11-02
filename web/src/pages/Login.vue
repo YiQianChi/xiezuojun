@@ -85,6 +85,7 @@
       </form>
 
       <p v-if="!showReset" class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
+      <p class="legal-note">登录即视为同意 <router-link to="/agreement" target="_blank">《用户服务协议》</router-link>与 <router-link to="/privacy" target="_blank">《隐私政策》</router-link></p>
 
       <!-- 防刷点选验证（当日发送超阈值时触发）：弹窗，按提示条字的顺序点击大图 -->
       <div v-if="captcha" class="cap-overlay" @click.self="captcha = null">
@@ -394,6 +395,8 @@ async function handleReset() {
 .error-msg { color:#ff3b30; background:rgba(255,59,48,.08); border:1px solid rgba(255,59,48,.16); }
 .success-msg { color:#248a3d; background:rgba(52,199,89,.10); border:1px solid rgba(52,199,89,.18); }
 .auth-submit { width:100%; padding:12px; font-size:15px; margin-top:8px; }
+.legal-note { font-size:12px; color:var(--text-secondary); text-align:center; margin-top:14px; }
+.legal-note a { color:var(--text-secondary); text-decoration:underline; }
 .auth-submit:disabled,.code-btn:disabled { opacity:.5; cursor:not-allowed; }
 .wx-btn {
   width:100%; padding:12px; font-size:15px; font-weight:600; margin-bottom:16px;
