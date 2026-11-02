@@ -21,8 +21,10 @@ import (
 var phoneRe = regexp.MustCompile(`^1[3-9]\d{9}$`)
 
 type SendSmsCodeReq struct {
-	Phone string `json:"phone" binding:"required"`
-	Scene string `json:"scene" binding:"required"`
+	Phone         string `json:"phone" binding:"required"`
+	Scene         string `json:"scene" binding:"required"`
+	CaptchaID     string `json:"captcha_id"`
+	CaptchaAnswer string `json:"captcha_answer"`
 }
 
 // SendSmsCode 发送短信验证码。scene 目前只支持 login（验证码登录即注册，无需注册场景）
@@ -44,6 +46,18 @@ func (h *Handler) SendSmsCode(c *gin.Context) {
 	if req.Scene != "login" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid scene"})
 		return
+	}
+
+	// 渐进式验证码：当日该号/IP 已发 >=2 条时，必须先过数学验证码（正常用户无感）
+	if smsNeedsCaptcha(req.Phone, c.ClientIP()) {
+		if !verifyCaptcha(req.CaptchaID, req.CaptchaAnswer) {
+			id, q := newCaptcha()
+			c.JSON(http.StatusPreconditionFailed, gin.H{
+				"error":   "captcha required",
+				"captcha": gin.H{"id": id, "q": q},
+			})
+			return
+		}
 	}
 
 	ok, err := acquireSendSlot(req.Scene, req.Phone)

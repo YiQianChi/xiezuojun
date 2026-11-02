@@ -86,6 +86,17 @@
 
       <p v-if="!showReset" class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
 
+      <!-- 防刷验证码弹层（当日发送超阈值时触发） -->
+      <div v-if="captcha" class="qr-overlay" style="z-index:6">
+        <button class="qr-close" @click="captcha = null">×</button>
+        <h3>安全验证</h3>
+        <p style="font-size:26px;color:var(--text-primary);margin-bottom:16px;font-weight:700">{{ captcha.q }}</p>
+        <div class="code-row" style="width:220px">
+          <input v-model.trim="captcha.a" inputmode="numeric" maxlength="2" class="input" placeholder="答案" @keyup.enter="sendCode" />
+          <button class="btn primary" @click="sendCode">验证</button>
+        </div>
+      </div>
+
       <!-- 扫码浮层：iframe 嵌微信官方二维码页，登录成功后回调页 postMessage 回本页 -->
       <div v-if="showQr" class="qr-overlay">
         <button class="qr-close" @click="showQr = false">×</button>
@@ -139,6 +150,7 @@ onMounted(() => window.addEventListener('message', onWxMsg))
 onUnmounted(() => window.removeEventListener('message', onWxMsg))
 
 const accountType = ref<AccountType>('email')
+const captcha = ref<{ id: string; q: string; a: string } | null>(null)
 const mode = ref<LoginMode>('password')
 const account = ref('')
 const password = ref('')
@@ -232,16 +244,24 @@ async function sendCode() {
   if (fieldErrors.account) return
   sendingCode.value = true
   try {
+    const extra = captcha.value ? { captcha_id: captcha.value.id, captcha_answer: captcha.value.a } : {}
     if (accountType.value === 'phone') {
-      await userApi.sendSmsCode({ phone: account.value.trim(), scene: 'login' })
+      await userApi.sendSmsCode({ phone: account.value.trim(), scene: 'login', ...extra })
       successMsg.value = '验证码已发送，请查看短信'
     } else {
       await userApi.sendEmailCode({ email: account.value.trim(), scene: 'login' })
       successMsg.value = '验证码已发送，请查看邮箱'
     }
+    captcha.value = null
     startCountdown()
   } catch (err: any) {
-    errorMsg.value = normalizeError(err)
+    const r = err.response
+    if (r?.status === 428 && r.data?.captcha) {
+      captcha.value = { id: r.data.captcha.id, q: r.data.captcha.q, a: '' }
+    } else {
+      captcha.value = null
+      errorMsg.value = normalizeError(err)
+    }
   } finally {
     sendingCode.value = false
   }

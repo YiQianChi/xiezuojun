@@ -136,7 +136,7 @@ export const userApi = {
   resetPassword(data: { email: string; code: string; password: string }) {
     return api.post('/auth/reset-password', data)
   },
-  sendSmsCode(data: { phone: string; scene: 'login' }) {
+  sendSmsCode(data: { phone: string; scene: 'login'; captcha_id?: string; captcha_answer?: string }) {
     return api.post('/auth/sms-code', data)
   },
   smsLogin(data: { phone: string; code: string }) {
