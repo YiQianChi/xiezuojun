@@ -133,6 +133,12 @@ export const userApi = {
   resetPassword(data: { email: string; code: string; password: string }) {
     return api.post('/auth/reset-password', data)
   },
+  sendSmsCode(data: { phone: string; scene: 'login' }) {
+    return api.post('/auth/sms-code', data)
+  },
+  smsLogin(data: { phone: string; code: string }) {
+    return api.post('/auth/sms-login', data)
+  },
 }
 
 // 项目相关

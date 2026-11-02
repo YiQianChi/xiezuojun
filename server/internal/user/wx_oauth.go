@@ -34,10 +34,15 @@ func (h *Handler) WxOauthStart(c *gin.Context) {
 	if redirect == "" || !strings.HasPrefix(redirect, "http") {
 		redirect = "https://xiezuojun.com/login"
 	}
+	// embed=1：二维码嵌在登录页 iframe 里，回调时 postMessage 回父页面而不是整页跳转
+	state := redirect
+	if c.Query("embed") == "1" {
+		state = redirect + "|e"
+	}
 	cb := "https://xiezuojun.com/api/auth/wx-oauth/callback"
 	u := fmt.Sprintf(
 		"https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect",
-		h.wxOauthAppID, url.QueryEscape(cb), url.QueryEscape(redirect),
+		h.wxOauthAppID, url.QueryEscape(cb), url.QueryEscape(state),
 	)
 	c.Redirect(http.StatusFound, u)
 }
@@ -54,9 +59,42 @@ type oauthTokenResp struct {
 func (h *Handler) WxOauthCallback(c *gin.Context) {
 	code := strings.TrimSpace(c.Query("code"))
 	state := c.Query("state")
+	embed := strings.HasSuffix(state, "|e")
+	state = strings.TrimSuffix(state, "|e")
 	front := "https://xiezuojun.com/login"
 	if strings.HasPrefix(state, "http") {
 		front = state
+	}
+	// embed 模式：在登录页 iframe 内，成功/失败都 postMessage 给父页面，不再整页跳转
+	if embed {
+		fail := func(msg string) {
+			c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(fmt.Sprintf(
+				`<!doctype html><meta charset="utf-8"><script>parent.postMessage({type:'xzj-wx-login',error:%q},location.origin)</script><p style="font:14px sans-serif;text-align:center;margin-top:40px;color:#c00">%s</p>`,
+				msg, msg)))
+		}
+		if !h.oauthConfigured() || code == "" {
+			fail("微信登录配置异常")
+			return
+		}
+		tok, err := h.oauthGetToken(code)
+		if err != nil {
+			fail("微信授权失败：" + err.Error())
+			return
+		}
+		user, err := h.wechatUserFromOAuthToken(tok)
+		if err != nil {
+			fail(err.Error())
+			return
+		}
+		access, refresh, err := h.issueTokens(c, user)
+		if err != nil {
+			fail("生成登录态失败")
+			return
+		}
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(fmt.Sprintf(
+			`<!doctype html><meta charset="utf-8"><script>parent.postMessage({type:'xzj-wx-login',at:%q,rt:%q},location.origin)</script><p style="font:14px sans-serif;text-align:center;margin-top:40px">登录成功，正在进入…</p>`,
+			access, refresh)))
+		return
 	}
 	if !h.oauthConfigured() || code == "" {
 		c.Redirect(http.StatusFound, front+"?wx_err=config")
@@ -68,16 +106,7 @@ func (h *Handler) WxOauthCallback(c *gin.Context) {
 		c.Redirect(http.StatusFound, front+"?wx_err="+url.QueryEscape(err.Error()))
 		return
 	}
-	identifier := tok.UnionID
-	if identifier == "" {
-		identifier = tok.OpenID
-	}
-	if identifier == "" {
-		c.Redirect(http.StatusFound, front+"?wx_err=empty_openid")
-		return
-	}
-
-	user, err := h.findOrCreateWechatUser(identifier)
+	user, err := h.wechatUserFromOAuthToken(tok)
 	if err != nil {
 		c.Redirect(http.StatusFound, front+"?wx_err="+url.QueryEscape(err.Error()))
 		return
@@ -103,6 +132,18 @@ func (h *Handler) WxOauthCallback(c *gin.Context) {
 		sep = "&"
 	}
 	c.Redirect(http.StatusFound, fmt.Sprintf("%s%sxzj_at=%s&xzj_rt=%s", front, sep, url.QueryEscape(access), url.QueryEscape(refresh)))
+}
+
+// wechatUserFromOAuthToken 用 oauth token 的 unionid/openid 查号/建号（回调两种模式共用）
+func (h *Handler) wechatUserFromOAuthToken(tok *oauthTokenResp) (*model.User, error) {
+	identifier := tok.UnionID
+	if identifier == "" {
+		identifier = tok.OpenID
+	}
+	if identifier == "" {
+		return nil, fmt.Errorf("empty openid")
+	}
+	return h.findOrCreateWechatUser(identifier)
 }
 
 func (h *Handler) oauthGetToken(code string) (*oauthTokenResp, error) {
