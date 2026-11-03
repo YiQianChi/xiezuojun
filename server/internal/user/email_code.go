@@ -132,6 +132,11 @@ func sendEmailCode(to, scene, code string) error {
 	subject := "写作菌" + purpose + "验证码"
 	plainBody := fmt.Sprintf("您的写作菌%s验证码是：%s\n\n验证码 10 分钟内有效。若非本人操作，请忽略这封邮件。", purpose, code)
 	htmlBody := buildCodeEmailHTML(title, desc, code)
+	return sendMailRaw(cfg, to, subject, plainBody, htmlBody)
+}
+
+// sendMailRaw 通用发信（验证码/通知共用）
+func sendMailRaw(cfg mailConfig, to, subject, plainBody, htmlBody string) error {
 	fromHeader := cfg.From
 	if cfg.Name != "" {
 		fromHeader = fmt.Sprintf("%s <%s>", cfg.Name, cfg.From)

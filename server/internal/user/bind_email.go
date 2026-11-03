@@ -2,7 +2,9 @@ package user
 
 import (
 	"errors"
+	"log"
 	"net/http"
+	"time"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -44,11 +46,18 @@ func (h *Handler) BindEmail(c *gin.Context) {
 		hash = target.PasswordHash
 	}
 	if hash == "" || bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)) != nil {
+		incrMergeFail(req.Email)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 		return
 	}
 	if target.UserID == curID {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "这就是当前账号"})
+		return
+	}
+
+	// 防爆破：同一邮箱连续失败 5 次锁 1 小时（Redis 计数）
+	if n, _ := vcodeRdb.Get(vcodeCtx, "mergefail:"+req.Email).Int64(); n >= 5 {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "尝试次数过多，请 1 小时后再试"})
 		return
 	}
 
@@ -97,9 +106,32 @@ func (h *Handler) BindEmail(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成登录态失败"})
 		return
 	}
+	// 合并成功：清失败计数 + 异步通知被并入的账号（密码泄露场景受害者能察觉）
+	vcodeRdb.Del(vcodeCtx, "mergefail:"+req.Email)
+	go func() {
+		cfg := loadMailConfig()
+		if cfg.Host == "" || cfg.Username == "" {
+			return
+		}
+		plain := "你的写作菌账号刚刚与另一个账号合并，另一账号的作品已并入本账号。\n\n若非本人操作，请立即登录写作菌修改密码。\n\n—— 写作菌"
+		html := "<div style=\"max-width:420px;margin:0 auto;font-family:-apple-system,'PingFang SC',sans-serif;padding:24px\">" +
+			"<div style=\"font-size:15px;line-height:1.8\">你的写作菌账号刚刚与另一个账号<b>合并</b>，另一账号的作品已并入本账号。<br><br>若非本人操作，请立即登录写作菌修改密码。</div></div>"
+		if err := sendMailRaw(cfg, req.Email, "写作菌账号合并通知", plain, html); err != nil {
+			log.Printf("[bind-email] merge notify mail fail to=%s err=%v", req.Email, err)
+		}
+	}()
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{
 		"user":          loginUserPayload(&target),
 		"access_token":  access,
 		"refresh_token": refresh,
 	}})
+}
+
+// incrMergeFail 合并试密码失败计数（Redis，5 次锁 1 小时，防爆破）
+func incrMergeFail(email string) {
+	key := "mergefail:" + email
+	n, err := vcodeRdb.Incr(vcodeCtx, key).Result()
+	if err == nil && n == 1 {
+		vcodeRdb.Expire(vcodeCtx, key, time.Hour)
+	}
 }
