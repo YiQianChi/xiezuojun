@@ -1,4 +1,4 @@
-<web-view wx:if="{{url}}" src="{{url}}" binderror="onError"></web-view>
+<web-view wx:if="{{url}}" src="{{url}}" binderror="onError" bindmessage="onWebViewMsg"></web-view>
 
 <view wx:if="{{loadFailed}}" class="fail">
   <view class="fail-icon">📡</view>

@@ -338,6 +338,7 @@
             </div>
           </div>
           <div @click="openFolderProps">属性</div>
+          <div v-if="!isFolderNode(docContextMenu.doc) && docContextMenu.doc.type === 'chapter'" @click="openShareDoc">分享章节</div>
           <div @click="deleteDoc" class="danger">删除</div>
         </template>
         <template v-else>
@@ -619,6 +620,33 @@
           <button class="btn-cancel" @click="confirmModal = null">取消</button>
           <button class="btn-confirm" @click="confirmModal.action()">确认</button>
         </div>
+      </div>
+    </div>
+
+    <!-- 章节公开分享 -->
+    <div v-if="shareDoc" class="confirm-overlay" @click="shareDoc = null">
+      <div class="confirm-modal-box" @click.stop style="max-width:380px">
+        <h3 style="margin-bottom:6px">分享「{{ shareDoc.title }}」</h3>
+        <p class="confirm-desc" style="margin-bottom:14px">
+          开启后任何人可通过链接<b>只读</b>本章（不带编辑器界面）；正文更新后链接内容自动同步。
+        </p>
+        <template v-if="shareCode">
+          <div class="share-link-row" @click="copyShareLink">{{ shareLink }}</div>
+          <p class="confirm-desc" style="font-size:12px">点击复制链接</p>
+          <p v-if="isMiniProgramEnv" class="confirm-desc" style="font-size:12px">
+            小程序里：点右上角「…」→ 转发给好友，卡片直达本章
+          </p>
+          <div class="confirm-buttons">
+            <button class="btn-cancel" @click="stopShare">停止分享</button>
+            <button class="btn-confirm" @click="shareDoc = null">完成</button>
+          </div>
+        </template>
+        <template v-else>
+          <div class="confirm-buttons">
+            <button class="btn-cancel" @click="shareDoc = null">取消</button>
+            <button class="btn-confirm" :disabled="shareLoading" @click="startShare">{{ shareLoading ? '生成中…' : '开启分享' }}</button>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -1053,6 +1081,59 @@ const graphMaximized = ref(false)
 
 // 通用确认弹窗
 const confirmModal = ref<{ title: string; desc: string; action: () => void } | null>(null)
+
+// ===== 章节公开分享 =====
+const shareDoc = ref<any>(null)
+const shareCode = ref('')
+const shareLoading = ref(false)
+const isMiniProgramEnv = /miniProgram/i.test(navigator.userAgent) || (window as any).__wxjs_environment === 'miniProgram'
+const shareLink = computed(() => shareCode.value ? `${location.origin}/read/${shareCode.value}` : '')
+
+function openShareDoc() {
+  const doc = docContextMenu.value.doc
+  closeDocContextMenu()
+  if (!doc) return
+  shareDoc.value = doc
+  shareCode.value = doc.share_code || ''
+}
+
+async function startShare() {
+  if (!shareDoc.value) return
+  shareLoading.value = true
+  try {
+    const res = await documentApi.share(shareDoc.value.id)
+    shareCode.value = res.data?.data?.share_code || ''
+    shareDoc.value.share_code = shareCode.value
+    notifyMpShare()
+    toast.success('分享已开启')
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '开启失败')
+  } finally { shareLoading.value = false }
+}
+
+async function stopShare() {
+  if (!shareDoc.value) return
+  try {
+    await documentApi.unshare(shareDoc.value.id)
+    shareDoc.value.share_code = null
+    shareCode.value = ''
+    toast.success('已停止分享，旧链接即刻失效')
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '操作失败')
+  }
+}
+
+function copyShareLink() {
+  navigator.clipboard?.writeText(shareLink.value).then(() => toast.success('链接已复制')).catch(() => {})
+}
+
+// 通知小程序壳：转发卡片改为本章（web-view postMessage 在「转发/后退」时才送达壳）
+function notifyMpShare() {
+  const w = window as any
+  w.wx?.miniProgram?.postMessage?.({
+    data: { type: 'xzj-share', code: shareCode.value, title: shareDoc.value?.title, book: projectName.value }
+  })
+}
 const renameModal = ref<{ docId: number; title: string } | null>(null)
 const renameInputRef = ref<HTMLInputElement | null>(null)
 

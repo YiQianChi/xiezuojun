@@ -55,6 +55,7 @@ type Document struct {
 	Meta       string    `gorm:"type:text" json:"meta"`          // 角色卡结构化元数据 JSON（doc_type=character 用；其他类型空）
 	Status     int       `gorm:"default:1" json:"status"`
 	DocStatus  string    `gorm:"size:20;default:draft" json:"doc_status"` // 章节写作状态: draft | revising | final
+	ShareCode  *string   `gorm:"size:16;uniqueIndex" json:"share_code"`   // 章节公开只读分享码；NULL=未分享
 	WordGoal   int       `gorm:"default:0" json:"word_goal"`              // 目标字数，0=未设置
 	TrashGroup uint      `gorm:"index;default:0" json:"-"`                // ponytail: 回收组ID，0=正常；>0=同组一起进/出回收站
 	CreatedAt  time.Time `json:"created_at"`

@@ -1559,6 +1559,11 @@
 .confirm-modal-box h3 { font-size: 16px; font-weight: 600; margin: 0 0 8px; }
 .confirm-modal-box .confirm-desc { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
 .confirm-buttons { display: flex; gap: 8px; justify-content: center; }
+.share-link-row {
+  user-select: all; cursor: pointer; text-align: center;
+  background: var(--bg-tertiary, #f0f0f3); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; color: var(--accent); word-break: break-all;
+}
 .confirm-buttons .btn-cancel {
   padding: 8px 20px;
   border: 1px solid var(--border, rgba(0,0,0,0.1));

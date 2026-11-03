@@ -211,6 +211,10 @@ func main() {
 	authd.GET("/documents", projectHandler.ListDocuments)
 	authd.POST("/documents", projectHandler.CreateDocument)
 	authd.GET("/documents/:id", projectHandler.GetDocument)
+	// 章节公开分享
+	authd.POST("/documents/:id/share", projectHandler.EnableDocShare)
+	authd.DELETE("/documents/:id/share", projectHandler.DisableDocShare)
+	api.GET("/public/read/:code", projectHandler.PublicRead) // 免登录只读，无鉴权
 	authd.GET("/documents/:id/versions", projectHandler.ListDocumentVersions)
 	authd.GET("/document-versions/:version_id", projectHandler.GetDocumentVersion)
 	authd.POST("/document-versions/:version_id/restore", projectHandler.RestoreDocumentVersion)

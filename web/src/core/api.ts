@@ -219,6 +219,16 @@ export const searchApi = {
 
 // 文档相关
 export const documentApi = {
+  // 章节公开分享
+  share(id: string | number) {
+    return api.post(`/documents/${id}/share`)
+  },
+  unshare(id: string | number) {
+    return api.delete(`/documents/${id}/share`)
+  },
+  publicRead(code: string) {
+    return api.get(`/public/read/${code}`)
+  },
   list(projectId: string, branchId?: number | string | null) {
     return api.get('/documents', { params: { project_id: projectId, branch_id: branchId || undefined } })
   },

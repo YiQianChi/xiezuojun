@@ -39,6 +39,11 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/read/:code',
+      name: 'Reader',
+      component: () => import('../pages/Reader.vue')
+    },
+    {
       // 小程序首页（工作台）：壳登录后直达这里
       path: '/home',
       name: 'Workbench',

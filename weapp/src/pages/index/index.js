@@ -14,7 +14,7 @@ Page({
     return app.globalData.site + '/home?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad(options) {
-    // 协议/隐私页：公开可看，无需登录（小程序提审需要）。网页是 history 路由，不带 #
+    // 协议/隐私/章节分享页：公开可看，无需登录（小程序提审需要）。网页是 history 路由，不带 #
     if (options && options.web) {
       this.setData({ url: app.globalData.site + '/' + options.web })
       return
@@ -72,8 +72,24 @@ Page({
   },
 
   // ===== 分享 =====
-  // 转发给好友/群：右上角菜单「转发」因此点亮；落地页就是 index（未登录→登录页，已登录→首页）
+  // 网页里的章节分享会 postMessage 过来（web-view 在「转发」时刻送达）；有就转发该章，否则默认卡片
+  onWebViewMsg(e) {
+    const list = (e.detail && e.detail.data) || []
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i] && list[i].type === 'xzj-share') {
+        this.shareMsg = list[i]
+        return
+      }
+    }
+  },
   onShareAppMessage() {
+    const s = this.shareMsg
+    if (s && s.code) {
+      return {
+        title: '《' + (s.book || '作品') + '》' + (s.title || '') + ' | 写作菌',
+        path: '/pages/index/index?web=read/' + s.code
+      }
+    }
     return {
       title: '写作菌 · AI 小说写作，让灵感不被打扰',
       path: '/pages/index/index'
