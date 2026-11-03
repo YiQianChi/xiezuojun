@@ -40,7 +40,6 @@ import (
 	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/project"
 	"xiezuojun-server/internal/store"
-	"xiezuojun-server/internal/tts"
 	"xiezuojun-server/internal/user"
 )
 
@@ -246,9 +245,6 @@ func main() {
 	aiGroup.POST("/ai/generate", gw.HandleGenerate)
 	aiGroup.POST("/ai/chat", gw.HandleChat)
 	aiGroup.GET("/ai/models", gw.HandleGetModels)
-
-	authd.GET("/tts/voices", tts.HandleVoices)
-	authd.POST("/tts", tts.HandleTTS)
 
 	buddy.RegisterRoutes(authd)
 	buddy.SetDB(db) // 桌面版同款注入：writing_sessions 落库

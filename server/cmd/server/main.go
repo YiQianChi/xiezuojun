@@ -30,7 +30,6 @@ import (
 	"xiezuojun-server/internal/sprint"
 	"xiezuojun-server/internal/sticky"
 	"xiezuojun-server/internal/store"
-	"xiezuojun-server/internal/tts"
 	"xiezuojun-server/internal/user"
 )
 
@@ -368,10 +367,6 @@ func main() {
 	aiGroup.POST("/ai/generate", gw.HandleGenerate)
 	aiGroup.POST("/ai/chat", gw.HandleChat)
 	aiGroup.GET("/ai/models", gw.HandleGetModels)
-
-	// TTS 朗读路由
-	authd.GET("/tts/voices", tts.HandleVoices)
-	authd.POST("/tts", tts.HandleTTS)
 
 	// 搭子（结伴写作）路由
 	buddy.RegisterRoutes(authd)
