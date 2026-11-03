@@ -74,7 +74,8 @@ func (h *Handler) ImportBook(c *gin.Context) {
 	uid := userID.(string)
 
 	// ---- 与 CreateProject 同流程建项目 ----
-	proj := model.Project{UserID: uid, Name: req.Name, Status: 1}
+	// PublicID 必填：唯一索引，漏了的话第二次导入就 1062 Duplicate entry ''
+	proj := model.Project{PublicID: newProjectPublicID(), UserID: uid, Name: req.Name, Status: 1}
 	if err := h.db.Create(&proj).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
