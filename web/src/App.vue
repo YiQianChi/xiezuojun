@@ -213,6 +213,9 @@ onMounted(() => {
   /* 衬线字体(Noto Serif SC)部分环境下行高指标巨大，会把 normal 行高撑到 ~2.8em 顶出导航栏 */
   line-height: 1;
   height: 32px;
+  /* 窄屏（小程序 web-view ~375px）下被 nav-right 挤压时，菌字会折到图标下方——禁止折行 */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .logo-icon {
@@ -259,6 +262,7 @@ onMounted(() => {
   .nav-right { gap: 12px; }
   .nav-link { font-size: 13px; white-space: nowrap; padding: 4px 0; }
   .nav-nick { max-width: 4em; }
+  .profile-link { min-width: 0; }
 }
 @media (max-width: 380px) {
   .nav-nick { display: none; } /* 极窄屏只留头像+箭头 */
