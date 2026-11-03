@@ -225,7 +225,12 @@ func (h *Handler) Login(c *gin.Context) {
 
 	var user model.User
 	var identity model.AuthIdentity
-	if err := h.db.Where("provider = ? AND identifier = ?", "email", req.Email).First(&identity).Error; err == nil {
+	// 手机号也是登录标识（手机号用户设了密码后可直接手机号+密码登录）
+	lookupProvider, lookupID := "email", req.Email
+	if phoneRe.MatchString(req.Email) {
+		lookupProvider = "phone"
+	}
+	if err := h.db.Where("provider = ? AND identifier = ?", lookupProvider, lookupID).First(&identity).Error; err == nil {
 		if err := h.db.Where("user_id = ? AND status = 1", identity.UserID).First(&user).Error; err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 			return

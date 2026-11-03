@@ -40,7 +40,8 @@
       <div class="pdlg">
         <div class="pdlg-head"><span>{{ pwdHas ? '修改密码' : '设置密码' }}</span><button @click="pwdOpen = false">✕</button></div>
         <div class="pdlg-body">
-          <p v-if="!pwdHas" class="pwd-hint">你还没有密码（微信登录建的号）。设置后可用邮箱 + 密码登录电脑版。</p>
+          <p v-if="!pwdHas" class="pwd-hint">你还没有密码（微信/手机号登录建的号）。设置后可用邮箱 + 密码登录电脑版。</p>
+          <p v-if="!pwdHas && pwdNoEmail" class="pwd-hint">提示：密码登录还需要邮箱做账号，建议之后在「账号与安全」里绑定邮箱。</p>
           <label v-if="pwdHas" class="field"><span>旧密码</span>
             <input v-model="pwd.old" type="password" class="input" placeholder="当前密码" /></label>
           <label class="field"><span>{{ pwdHas ? '新密码' : '密码' }}</span>
@@ -233,22 +234,16 @@ async function openEdit() {
 async function openPwd() {
   closeMenu()
   pwd.value = { old: '', next: '', confirm: '' }
-  // 没密码且没邮箱的（微信/扫码建号）：光设密码没用——密码登录要有邮箱做账号，直接引导去设置邮箱+密码
+  // 有没有密码决定弹窗形态（修改 vs 首次设置）；没邮箱不拦截——只是提示密码登录需要邮箱
   try {
     const res = await userApi.me()
     me.value = res.data?.data || {}
   } catch {}
-  const s = me.value.security || {}
-  if (!s.has_password && !s.email_bound) {
-    toast.info('先设置邮箱和密码（一并完成），电脑上也能登录')
-    emailOpen.value = true
-    await openSecurity()
-    return
-  }
   pwdOpen.value = true
 }
 
 const pwdHas = computed(() => !!(me.value.security?.has_password))
+const pwdNoEmail = computed(() => !me.value.security?.email_bound)
 
 async function saveProfile() {
   saving.value = true
