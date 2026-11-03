@@ -138,6 +138,16 @@ function copyQQ() {
 function onReplayOnboarding() {
   onboardingRef.value?.forceStart()
 }
+
+// JWT payload 里的 exp（毫秒），解析失败返回 0
+function jwtExp(t?: string | null): number {
+  try {
+    const payload = t!.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return (JSON.parse(atob(payload)).exp || 0) * 1000
+  } catch {
+    return 0
+  }
+}
 onMounted(() => {
   // 小程序 web-view 桥接：壳登录后把 token 拼在 URL（?xzj_at=…&xzj_rt=…），这里收进 localStorage 后清掉参数
   try {
@@ -145,8 +155,13 @@ onMounted(() => {
     const at = q.get('xzj_at')
     const rt = q.get('xzj_rt')
     if (at) {
-      localStorage.setItem('access_token', at)
-      if (rt) localStorage.setItem('refresh_token', rt)
+      // rt 一次性轮换：壳每次启动都拼登录时的老 token，无条件覆盖会把 web-view 里
+      // 已轮换出的新 token 顶掉（旧 rt 已删库）→ 401「登录已过期」。只采用更新的。
+      const stored = localStorage.getItem('access_token')
+      if (!stored || jwtExp(at) > jwtExp(stored)) {
+        localStorage.setItem('access_token', at)
+        if (rt) localStorage.setItem('refresh_token', rt)
+      }
       q.delete('xzj_at'); q.delete('xzj_rt')
       const clean = window.location.pathname + (q.toString() ? '?' + q.toString() : '') + window.location.hash
       window.history.replaceState(null, '', clean)
