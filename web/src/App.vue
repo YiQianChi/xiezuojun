@@ -64,7 +64,7 @@ const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login'
 
 const isLoggedIn = ref(false)
 // 导航栏头像/昵称（登录后拉取；个人设置页改完派发 xzj-profile-updated 事件刷新）
-const profileRef = ref<{ openMenu: (a: HTMLElement) => void; openForPenName: () => void } | null>(null)
+const profileRef = ref<{ openMenu: (a: HTMLElement) => void; openForPenName: () => void; openSecurityEmail: () => void } | null>(null)
 const profileNickname = ref('')
 const profileAvatar = ref('')
 async function refreshProfile() {
@@ -92,6 +92,17 @@ async function refreshProfile() {
       if (u.needs_pen_name && !sessionStorage.getItem('xzj-penname-asked')) {
         try { sessionStorage.setItem('xzj-penname-asked', '1') } catch {}
         profileRef.value?.openForPenName()
+      }
+      // 微信/扫码建号（无密码无邮箱）：提示设置邮箱+密码，每会话只提一次（/home 有自己的弹窗，别双弹）
+      const s = u.security || {}
+      if (!s.has_password && !s.email_bound && !localStorage.getItem('xzj_skip_setpwd')
+        && route.path !== '/home' && !sessionStorage.getItem('xzj-pwd-toast')) {
+        try { sessionStorage.setItem('xzj-pwd-toast', '1') } catch {}
+        const { toast } = await import('./composables/useToast')
+        toast.withAction('还没设置密码——设置邮箱和密码后，电脑也能登录', {
+          label: '去设置',
+          onClick: () => profileRef.value?.openSecurityEmail()
+        }, 8000)
       }
     }
   } catch {}

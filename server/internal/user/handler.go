@@ -430,11 +430,11 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "updated"})
 }
 
-// ChangePassword 已登录用户改密码（旧密码验证，无需验证码）
+// ChangePassword 已登录用户改密码；无密码用户（微信/扫码建号）可免旧密码首次设置
 func (h *Handler) ChangePassword(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	var req struct {
-		OldPassword string `json:"old_password" binding:"required"`
+		OldPassword string `json:"old_password"`
 		NewPassword string `json:"new_password" binding:"required,min=6"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -446,13 +446,13 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
-	// 旧密码校验：identity 优先，回退 users.password_hash
+	// 旧密码校验：identity 优先，回退 users.password_hash；从没设过密码的（微信/扫码建号）免旧密码直接设置
 	var identity model.AuthIdentity
 	storedHash := u.PasswordHash
 	if err := h.db.Where("user_id = ? AND provider = 'email'", u.UserID).First(&identity).Error; err == nil && identity.CredentialHash != "" {
 		storedHash = identity.CredentialHash
 	}
-	if storedHash == "" || bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.OldPassword)) != nil {
+	if storedHash != "" && bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.OldPassword)) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "旧密码不正确"})
 		return
 	}

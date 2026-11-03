@@ -121,7 +121,7 @@ export const userApi = {
   me() {
     return api.get('/user/me')
   },
-  changePassword(data: { old_password: string; new_password: string }) {
+  changePassword(data: { old_password?: string; new_password: string }) {
     return api.post('/user/change-password', data)
   },
   bindEmail(data: { email: string; password: string }) {

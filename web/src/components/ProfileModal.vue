@@ -35,18 +35,19 @@
       </div>
     </div>
 
-    <!-- 修改密码弹窗 -->
+    <!-- 修改密码弹窗（无密码用户=首次设置密码，免旧密码；无邮箱用户引导去设置邮箱——密码登录需要邮箱做账号） -->
     <div v-if="pwdOpen" class="pdlg-overlay" @click.self="pwdOpen = false">
       <div class="pdlg">
-        <div class="pdlg-head"><span>修改密码</span><button @click="pwdOpen = false">✕</button></div>
+        <div class="pdlg-head"><span>{{ pwdHas ? '修改密码' : '设置密码' }}</span><button @click="pwdOpen = false">✕</button></div>
         <div class="pdlg-body">
-          <label class="field"><span>旧密码</span>
+          <p v-if="!pwdHas" class="pwd-hint">你还没有密码（微信登录建的号）。设置后可用邮箱 + 密码登录电脑版。</p>
+          <label v-if="pwdHas" class="field"><span>旧密码</span>
             <input v-model="pwd.old" type="password" class="input" placeholder="当前密码" /></label>
-          <label class="field"><span>新密码</span>
+          <label class="field"><span>{{ pwdHas ? '新密码' : '密码' }}</span>
             <input v-model="pwd.next" type="password" class="input" placeholder="至少 6 位" /></label>
-          <label class="field"><span>确认新密码</span>
+          <label class="field"><span>确认密码</span>
             <input v-model="pwd.confirm" type="password" class="input" placeholder="再输一遍" @keyup.enter="changePwd" /></label>
-          <button class="btn primary" @click="changePwd" :disabled="changingPwd">{{ changingPwd ? '提交中…' : '修改密码' }}</button>
+          <button class="btn primary" @click="changePwd" :disabled="changingPwd">{{ changingPwd ? '提交中…' : (pwdHas ? '修改密码' : '设置密码') }}</button>
         </div>
       </div>
     </div>
@@ -154,7 +155,14 @@ function openMenu(anchor: HTMLElement) {
   menuOpen.value = true
 }
 function closeMenu() { menuOpen.value = false }
-defineExpose({ openMenu, openForPenName })
+defineExpose({ openMenu, openForPenName, openSecurityEmail })
+
+// 外部入口：打开账号与安全并展开设置邮箱表单（App 全局提示「设置密码」用）
+async function openSecurityEmail() {
+  emailOpen.value = true
+  mergeMode.value = false
+  await openSecurity()
+}
 
 const editOpen = ref(false)
 const penNameMode = ref(false)  // 首次起笔名模式（needs_pen_name 触发）
@@ -211,11 +219,26 @@ async function openEdit() {
   } catch {}
 }
 
-function openPwd() {
+async function openPwd() {
   closeMenu()
   pwd.value = { old: '', next: '', confirm: '' }
+  // 没密码且没邮箱的（微信/扫码建号）：光设密码没用——密码登录要有邮箱做账号，直接引导去设置邮箱+密码
+  try {
+    const res = await userApi.me()
+    me.value = res.data?.data || {}
+  } catch {}
+  const s = me.value.security || {}
+  if (!s.has_password && !s.email_bound) {
+    toast.info('先设置邮箱和密码（一并完成），电脑上也能登录')
+    emailOpen.value = true
+    mergeMode.value = false
+    await openSecurity()
+    return
+  }
   pwdOpen.value = true
 }
+
+const pwdHas = computed(() => !!(me.value.security?.has_password))
 
 async function saveProfile() {
   saving.value = true
@@ -244,13 +267,14 @@ async function saveProfile() {
 
 async function changePwd() {
   const { old: o, next: n, confirm: c } = pwd.value
-  if (!o || !n) { toast.error('请填写完整'); return }
+  if (pwdHas.value && !o) { toast.error('请填写完整'); return }
+  if (!n) { toast.error('请填写新密码'); return }
   if (n.length < 6) { toast.error('新密码至少 6 位'); return }
   if (n !== c) { toast.error('两次新密码不一致'); return }
   changingPwd.value = true
   try {
-    await userApi.changePassword({ old_password: o, new_password: n })
-    toast.success('密码已修改')
+    await userApi.changePassword(pwdHas.value ? { old_password: o, new_password: n } : { new_password: n })
+    toast.success(pwdHas.value ? '密码已修改' : '密码已设置')
     pwdOpen.value = false
   } catch (e: any) {
     toast.error(e?.response?.data?.error || '修改失败')
@@ -541,6 +565,7 @@ function doLogout() {
   background:var(--bg-tertiary,#f7f7fa); border-radius:14px;
 }
 .sec-code { display:flex; gap:8px; }
+.pwd-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 12px; }
 .sec-merge-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; }
 .sec-form .sec-op { margin-top: 8px; }
 .sec-code .input { flex:1; }
