@@ -182,6 +182,11 @@ func main() {
 	authd.GET("/user/me", userHandler.Me)
 	authd.POST("/auth/bind-email", userHandler.BindEmail)
 	authd.POST("/user/set-email", userHandler.SetEmail)
+	// 统一身份冲突处理：微信/手机被占 → 验证改绑；孤儿号 → 并入当前账号
+	authd.POST("/user/identity-conflict", userHandler.CreateIdentityConflict)
+	authd.POST("/user/identity-conflict/send-code", userHandler.SendConflictCode)
+	authd.POST("/user/identity-conflict/resolve", userHandler.ResolveIdentityConflict)
+	authd.POST("/user/identity-conflict/merge", userHandler.MergeIdentityConflict)
 	authd.POST("/user/bind-phone", userHandler.BindPhone)
 	authd.POST("/user/wx-bind-ticket", userHandler.WxBindTicket)
 	authd.PATCH("/user/me", userHandler.UpdateProfile)

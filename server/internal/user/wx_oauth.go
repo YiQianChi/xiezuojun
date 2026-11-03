@@ -110,7 +110,15 @@ func (h *Handler) WxOauthCallback(c *gin.Context) {
 		}
 		if err := h.bindWechatToUser(uid, identifier); err != nil {
 			if errors.Is(err, errAccountConflict) {
-				bindFail("该微信已绑定其他账号")
+				// 被占：不再直接报错——发冲突票据，父页面引导「验证改绑 / 孤儿号合并」
+				payload, terr := h.createIdConflictTicket(uid, "wechat", identifier)
+				if terr != nil {
+					bindFail("该微信已绑定其他账号：" + terr.Error())
+					return
+				}
+				b, _ := json.Marshal(payload)
+				c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(fmt.Sprintf(
+					`<!doctype html><meta charset="utf-8"><script>parent.postMessage({type:'xzj-wx-bind',conflict:%s},location.origin)</script><p style="font:14px sans-serif;text-align:center;margin-top:40px">该微信已绑定其他账号，请在页面上完成验证</p>`, string(b))))
 				return
 			}
 			bindFail("绑定失败：" + err.Error())

@@ -82,6 +82,8 @@ func sceneText(scene string) (purpose, title, desc string) {
 		return "重置密码", "重置密码验证码", "你正在重置写作菌账号密码"
 	case "bind":
 		return "绑定邮箱", "绑定邮箱验证码", "你正在为写作菌账号绑定邮箱"
+	case "rebind":
+		return "账号改绑", "改绑验证码", "你正在验证写作菌账号身份以完成改绑"
 	default:
 		return "登录", "登录验证码", "你正在登录写作菌"
 	}

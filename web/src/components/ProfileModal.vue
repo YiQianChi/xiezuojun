@@ -69,25 +69,17 @@
             <button v-else class="btn sec-op" @click="emailOpen = !emailOpen">{{ emailOpen ? '收起' : '设置' }}</button>
           </div>
           <div v-if="!sec.email_bound && emailOpen" class="sec-form">
-            <template v-if="!mergeMode">
-              <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱地址（未注册过的）" />
-              <div class="sec-code">
-                <input v-model.trim="secEmailCode" inputmode="numeric" maxlength="6" class="input" placeholder="邮箱验证码" @keyup.enter="doSetEmail" />
-                <button class="btn sec-op" :disabled="emailSending || emailCountdown > 0" @click="sendEmailBindCode">
-                  {{ emailCountdown > 0 ? emailCountdown + 's' : '获取验证码' }}
-                </button>
-              </div>
-              <input v-model="secPwd" type="password" class="input" placeholder="设置密码（至少 6 位）" />
-              <input v-model="secPwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
-              <button class="btn primary sec-save" @click="doSetEmail" :disabled="secSaving">保存</button>
-            </template>
-            <template v-else>
-              <!-- 该邮箱已注册（别的账号）→ 合并模式：输那个账号的密码，作品随迁，登录态切过去 -->
-              <p class="sec-merge-hint">邮箱 <b>{{ secEmail }}</b> 已有账号。输入它的密码即可把两个账号合并——当前账号的作品会并入邮箱账号，以后微信/小程序/邮箱都是同一个号。</p>
-              <input v-model="mergePwd" type="password" class="input" placeholder="该邮箱账号的密码" @keyup.enter="doMergeEmail" />
-              <button class="btn primary sec-save" @click="doMergeEmail" :disabled="mergeSaving">{{ mergeSaving ? '合并中…' : '合并账号' }}</button>
-              <button class="btn sec-op" @click="mergeMode = false">← 换一个邮箱</button>
-            </template>
+            <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱地址（未注册过的）" />
+            <div class="sec-code">
+              <input v-model.trim="secEmailCode" inputmode="numeric" maxlength="6" class="input" placeholder="邮箱验证码" @keyup.enter="doSetEmail" />
+              <button class="btn sec-op" :disabled="emailSending || emailCountdown > 0" @click="sendEmailBindCode">
+                {{ emailCountdown > 0 ? emailCountdown + 's' : '获取验证码' }}
+              </button>
+            </div>
+            <input v-model="secPwd" type="password" class="input" placeholder="设置密码（至少 6 位）" />
+            <input v-model="secPwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
+            <button class="btn primary sec-save" @click="doSetEmail" :disabled="secSaving">保存</button>
+            <p class="pwd-hint">已被注册的邮箱不能绑定（作品也不合并），请换一个邮箱。</p>
           </div>
 
           <div class="sec-card" :class="{ bound: sec.phone_bound }">
@@ -118,6 +110,26 @@
             </div>
             <span v-if="sec.wechat_bound" class="sec-badge">已绑定</span>
             <button v-else class="btn sec-op" @click="doWxBind">扫码绑定</button>
+          </div>
+
+          <!-- 统一身份冲突处理：微信/手机被占 → 验证改绑；孤儿号 → 并入当前账号 -->
+          <div v-if="conflict" class="sec-form" style="margin-top:10px">
+            <p class="sec-merge-hint">
+              该{{ conflict.provider === 'phone' ? '手机号' : '微信' }}已绑定账号（{{ conflict.other_hint }}）。
+              <template v-if="!conflict.orphan">输入对方账号收到的验证码，即可改绑到当前账号（对方账号保留其他登录方式）。</template>
+              <template v-else>该账号只有这一个登录方式——可把它并入当前账号，作品会随迁。</template>
+            </p>
+            <template v-if="!conflict.orphan">
+              <div class="sec-code">
+                <input v-model.trim="conflictCode" inputmode="numeric" maxlength="6" class="input" placeholder="验证码" @keyup.enter="resolveConflict" />
+                <button class="btn sec-op" :disabled="conflictSending || conflictCountdown > 0" @click="sendConflictCode">
+                  {{ conflictCountdown > 0 ? conflictCountdown + 's' : '获取验证码' }}
+                </button>
+              </div>
+              <button class="btn primary sec-save" @click="resolveConflict" :disabled="conflictSaving">确认改绑</button>
+            </template>
+            <button v-else class="btn primary sec-save" @click="mergeConflict" :disabled="conflictSaving">并入当前账号</button>
+            <button class="btn sec-op" @click="conflict = null">取消</button>
           </div>
         </div>
       </div>
@@ -160,7 +172,6 @@ defineExpose({ openMenu, openForPenName, openSecurityEmail })
 // 外部入口：打开账号与安全并展开设置邮箱表单（App 全局提示「设置密码」用）
 async function openSecurityEmail() {
   emailOpen.value = true
-  mergeMode.value = false
   await openSecurity()
 }
 
@@ -231,7 +242,6 @@ async function openPwd() {
   if (!s.has_password && !s.email_bound) {
     toast.info('先设置邮箱和密码（一并完成），电脑上也能登录')
     emailOpen.value = true
-    mergeMode.value = false
     await openSecurity()
     return
   }
@@ -293,9 +303,13 @@ const secEmail = ref('')
 const secEmailCode = ref('')
 const emailSending = ref(false)
 const emailCountdown = ref(0)
-const mergeMode = ref(false)
-const mergePwd = ref('')
-const mergeSaving = ref(false)
+
+// 统一身份冲突（微信/手机被占）
+const conflict = ref<any>(null)
+const conflictCode = ref('')
+const conflictSending = ref(false)
+const conflictSaving = ref(false)
+const conflictCountdown = ref(0)
 const secPwd = ref('')
 const secPwd2 = ref('')
 const bindPhoneNo = ref('')
@@ -333,31 +347,59 @@ async function sendEmailBindCode() {
     emailCountdown.value = 60
     const t = window.setInterval(() => { emailCountdown.value -= 1; if (emailCountdown.value <= 0) window.clearInterval(t) }, 1000)
   } catch (e: any) {
-    // 已注册的邮箱不能"绑定"，但可以"合并"——转入合并模式输对方密码
-    if (e?.response?.status === 409) {
-      mergeMode.value = true
-      mergePwd.value = ''
-      toast.info('该邮箱已注册——如是你本人的账号，输入密码即可合并')
-    } else {
-      toast.error(e?.response?.data?.error || '发送失败')
-    }
+    // 已注册的邮箱不能绑定（不合并），后端 409 文案直接展示引导换邮箱
+    toast.error(e?.response?.data?.error || '发送失败')
   } finally { emailSending.value = false }
 }
 
-async function doMergeEmail() {
-  if (!mergePwd.value) { toast.error('请输入该邮箱账号的密码'); return }
-  mergeSaving.value = true
+// ===== 统一身份冲突处理 =====
+async function createPhoneConflict(phone: string) {
   try {
-    const res = await userApi.bindEmail({ email: secEmail.value, password: mergePwd.value })
-    const d = res.data?.data || {}
-    if (d.access_token) localStorage.setItem('access_token', d.access_token)
-    if (d.refresh_token) localStorage.setItem('refresh_token', d.refresh_token)
-    toast.success('合并成功，已并入邮箱账号')
-    window.dispatchEvent(new CustomEvent('xzj-profile-updated'))
-    location.reload()
+    const res = await userApi.identityConflict({ provider: 'phone', identifier: phone })
+    conflict.value = res.data?.data || res.data
+    conflictCode.value = ''
+    toast.info('该手机号已绑定其他账号——验证后可改绑到当前账号')
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '无法处理该冲突')
+  }
+}
+
+async function sendConflictCode() {
+  if (!conflict.value?.ticket) return
+  conflictSending.value = true
+  try {
+    const res = await userApi.idConflictSendCode(conflict.value.ticket)
+    toast.success('验证码已发到 ' + ((res.data?.data || {}).sent_to || '对方账号'))
+    conflictCountdown.value = 60
+    const t = window.setInterval(() => { conflictCountdown.value -= 1; if (conflictCountdown.value <= 0) window.clearInterval(t) }, 1000)
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '发送失败')
+  } finally { conflictSending.value = false }
+}
+
+async function resolveConflict() {
+  if (!/^\d{6}$/.test(conflictCode.value)) { toast.error('请输入 6 位验证码'); return }
+  conflictSaving.value = true
+  try {
+    await userApi.idConflictResolve({ ticket: conflict.value.ticket, code: conflictCode.value })
+    toast.success('已改绑到当前账号')
+    conflict.value = null
+    await refreshSec()
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '改绑失败')
+  } finally { conflictSaving.value = false }
+}
+
+async function mergeConflict() {
+  conflictSaving.value = true
+  try {
+    await userApi.idConflictMerge(conflict.value.ticket)
+    toast.success('已并入当前账号，作品随迁完成')
+    conflict.value = null
+    await refreshSec()
   } catch (e: any) {
     toast.error(e?.response?.data?.error || '合并失败')
-  } finally { mergeSaving.value = false }
+  } finally { conflictSaving.value = false }
 }
 
 async function doSetEmail() {
@@ -400,6 +442,11 @@ async function doBindPhone() {
     phoneOpen.value = false
     await refreshSec()
   } catch (e: any) {
+    if (e?.response?.status === 409) {
+      // 被占：转统一冲突处理（验证改绑 / 孤儿号合并）
+      await createPhoneConflict(bindPhoneNo.value)
+      return
+    }
     toast.error(e?.response?.data?.error || '绑定失败')
   } finally { secSaving.value = false }
 }
@@ -423,6 +470,11 @@ const onWxBindMsg = async (e: MessageEvent) => {
   if (e.data.ok) {
     toast.success('微信绑定成功')
     await refreshSec()
+  } else if (e.data.conflict) {
+    // 被占：后端已建冲突票据，转统一冲突处理面板
+    conflict.value = e.data.conflict
+    conflictCode.value = ''
+    toast.info('该微信已绑定其他账号——按提示完成验证或合并')
   } else {
     toast.error(e.data.error || '绑定失败')
   }

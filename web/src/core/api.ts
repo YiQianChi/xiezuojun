@@ -127,6 +127,19 @@ export const userApi = {
   bindEmail(data: { email: string; password: string }) {
     return api.post('/auth/bind-email', data)
   },
+  // 统一身份冲突：微信/手机被占 → 领票据 → 发验证码 → 改绑 / 孤儿号合并
+  identityConflict(data: { provider: 'wechat' | 'phone'; identifier: string }) {
+    return api.post('/user/identity-conflict', data)
+  },
+  idConflictSendCode(ticket: string) {
+    return api.post('/user/identity-conflict/send-code', { ticket })
+  },
+  idConflictResolve(data: { ticket: string; code: string }) {
+    return api.post('/user/identity-conflict/resolve', data)
+  },
+  idConflictMerge(ticket: string) {
+    return api.post('/user/identity-conflict/merge', { ticket })
+  },
   setEmail(data: { email: string; password: string; code: string }) {
     return api.post('/user/set-email', data)
   },
