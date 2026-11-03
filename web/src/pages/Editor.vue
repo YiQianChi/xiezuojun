@@ -339,6 +339,7 @@
           </div>
           <div @click="openFolderProps">属性</div>
           <div v-if="!isFolderNode(docContextMenu.doc) && docContextMenu.doc.type === 'chapter'" @click="openShareDoc">分享章节</div>
+          <div v-if="!isFolderNode(docContextMenu.doc) && docContextMenu.doc.type === 'chapter' && docContextMenu.doc.share_code" @click="stopShareFromMenu" class="danger">停止分享</div>
           <div @click="deleteDoc" class="danger">删除</div>
         </template>
         <template v-else>
@@ -623,35 +624,7 @@
       </div>
     </div>
 
-    <!-- 章节公开分享 -->
-    <div v-if="shareDoc" class="confirm-overlay" @click="shareDoc = null">
-      <div class="confirm-modal-box" @click.stop style="max-width:380px">
-        <h3 style="margin-bottom:6px">分享「{{ shareDoc.title }}」</h3>
-        <p class="confirm-desc" style="margin-bottom:14px">
-          开启后任何人可通过链接<b>只读</b>本章（不带编辑器界面）；正文更新后链接内容自动同步。
-        </p>
-        <template v-if="shareCode">
-          <div class="share-link-row" @click="copyShareLink">{{ shareLink }}</div>
-          <p class="confirm-desc" style="font-size:12px">点击复制链接</p>
-          <div v-if="isMiniProgramEnv" class="confirm-buttons" style="margin-bottom:8px">
-            <button class="btn-confirm" @click="pushMpShare">转发本章 →</button>
-          </div>
-          <p v-if="isMiniProgramEnv" class="confirm-desc" style="font-size:12px">
-            点上面的按钮拉起转发；也可点右上角「…」→ 转发
-          </p>
-          <div class="confirm-buttons">
-            <button class="btn-cancel" @click="stopShare">停止分享</button>
-            <button class="btn-confirm" @click="shareDoc = null">完成</button>
-          </div>
-        </template>
-        <template v-else>
-          <div class="confirm-buttons">
-            <button class="btn-cancel" @click="shareDoc = null">取消</button>
-            <button class="btn-confirm" :disabled="shareLoading" @click="startShare">{{ shareLoading ? '生成中…' : '开启分享' }}</button>
-          </div>
-        </template>
-      </div>
-    </div>
+    <!-- 章节公开分享：一键直达（无弹窗）；管理走右键「停止分享」 -->
 
     <!-- 设定画布：全屏覆盖层（入口=右栏「设定」页签） -->
     <StoryCanvas
@@ -1093,39 +1066,49 @@ const shareLoading = ref(false)
 const isMiniProgramEnv = /miniProgram/i.test(navigator.userAgent) || (window as any).__wxjs_environment === 'miniProgram'
 const shareLink = computed(() => shareCode.value ? `${location.origin}/read/${shareCode.value}` : '')
 
-function openShareDoc() {
+// 一键分享：没开启过就自动开启；小程序直接拉起转发页，浏览器直接复制链接
+async function openShareDoc() {
   const doc = docContextMenu.value.doc
   closeDocContextMenu()
   if (!doc) return
   shareDoc.value = doc
+  if (!doc.share_code) {
+    shareLoading.value = true
+    try {
+      const res = await documentApi.share(doc.id)
+      doc.share_code = res.data?.data?.share_code || ''
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || '开启失败')
+      return
+    } finally { shareLoading.value = false }
+  }
   shareCode.value = doc.share_code || ''
-  // 已分享过的章节：打开弹窗就通知壳（别等点转发才 post，抢在前面）
-  if (shareCode.value) notifyMpShare()
+  notifyMpShare()
+  if (isMiniProgramEnv) {
+    pushMpShare() // 原生分享页一键转发
+    return
+  }
+  copyShareLink()
+  toast.success('分享已开启，链接已复制')
 }
 
-async function startShare() {
-  if (!shareDoc.value) return
-  shareLoading.value = true
-  try {
-    const res = await documentApi.share(shareDoc.value.id)
-    shareCode.value = res.data?.data?.share_code || ''
-    shareDoc.value.share_code = shareCode.value
-    notifyMpShare()
-    toast.success('分享已开启')
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || '开启失败')
-  } finally { shareLoading.value = false }
-}
-
-async function stopShare() {
-  if (!shareDoc.value) return
-  try {
-    await documentApi.unshare(shareDoc.value.id)
-    shareDoc.value.share_code = null
-    shareCode.value = ''
-    toast.success('已停止分享，旧链接即刻失效')
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || '操作失败')
+async function stopShareFromMenu() {
+  const doc = docContextMenu.value.doc
+  closeDocContextMenu()
+  if (!doc) return
+  confirmModal.value = {
+    title: '停止分享',
+    desc: `「${doc.title}」的分享链接将立刻失效，已发出的链接也无法再打开。`,
+    action: async () => {
+      try {
+        await documentApi.unshare(doc.id)
+        doc.share_code = null
+        toast.success('已停止分享')
+        await loadDocs()
+      } catch (e: any) {
+        toast.error(e.response?.data?.error || '操作失败')
+      }
+    }
   }
 }
 
