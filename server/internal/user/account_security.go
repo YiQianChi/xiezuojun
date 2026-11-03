@@ -49,19 +49,15 @@ func (h *Handler) SetEmail(c *gin.Context) {
 	uid := curUserID(c)
 	var req struct {
 		Email    string `json:"email" binding:"required"`
-		Password string `json:"password" binding:"required"`
+		Password string `json:"password" binding:"omitempty,min=6"` // 可选：只绑邮箱不设密码（设密码走 change-password）
 		Code     string `json:"code" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email, password and code required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email and code required（密码如填写至少 6 位）"})
 		return
 	}
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.Code = strings.TrimSpace(req.Code)
-	if len(req.Password) < 6 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "密码至少 6 位"})
-		return
-	}
 	// 邮箱归属查重：已被别的账号占用则拒绝
 	var idn model.AuthIdentity
 	byIdentity := h.db.Where("provider = ? AND identifier = ?", "email", req.Email).First(&idn).Error == nil
@@ -76,21 +72,30 @@ func (h *Handler) SetEmail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "验证码错误或已过期"})
 		return
 	}
-	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	// 密码可选：没传就不动密码（绑邮箱和设密码是两件事）
+	var hashBytes []byte
+	if req.Password != "" {
+		hashBytes, _ = bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	}
 	err := h.db.Transaction(func(tx *gorm.DB) error {
-		if e := tx.Model(&model.User{}).Where("user_id = ?", uid).Updates(map[string]interface{}{
-			"email": req.Email, "password_hash": string(hash),
-		}).Error; e != nil {
+		updates := map[string]interface{}{"email": req.Email}
+		if len(hashBytes) > 0 {
+			updates["password_hash"] = string(hashBytes)
+		}
+		if e := tx.Model(&model.User{}).Where("user_id = ?", uid).Updates(updates).Error; e != nil {
 			return e
 		}
 		if byIdentity && idn.UserID == uid {
+			if len(hashBytes) == 0 {
+				return nil // 不设密码就不动已有凭据
+			}
 			return tx.Model(&model.AuthIdentity{}).Where("id = ?", idn.ID).
-				Update("credential_hash", string(hash)).Error
+				Update("credential_hash", string(hashBytes)).Error
 		}
 		verifiedAt := time.Now()
 		return tx.Create(&model.AuthIdentity{
 			UserID: uid, Provider: "email", Identifier: req.Email,
-			CredentialHash: string(hash), VerifiedAt: &verifiedAt,
+			CredentialHash: string(hashBytes), VerifiedAt: &verifiedAt,
 		}).Error
 	})
 	if err != nil {

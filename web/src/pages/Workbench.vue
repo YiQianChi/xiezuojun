@@ -40,23 +40,16 @@
         </div>
       </div>
     </div>
-    <!-- 首次手机号登录（微信一键登录）：提示设置邮箱+密码，电脑上也能登录；可跳过 -->
+    <!-- 没密码的用户（微信/手机号建号）首进提示设密码，可跳过；邮箱绑定去「账号与安全」单独做 -->
     <div v-if="showSetPwd" class="wb-mask" @click.self="showSetPwd = false">
       <div class="wb-dlg">
-        <h3>设置邮箱和密码</h3>
-        <p class="wb-dlg-hint">你现在用微信手机号登录。设置邮箱和密码后，电脑打开 xiezuojun.com 也能登录写作。</p>
-        <input v-model.trim="pwdEmail" type="email" class="input" placeholder="邮箱地址（未注册过的）" />
-        <div class="wb-code">
-          <input v-model.trim="pwdCode" inputmode="numeric" maxlength="6" class="input" placeholder="邮箱验证码" @keyup.enter="doSetEmail" />
-          <button class="btn" :disabled="pwdSending || pwdCountdown > 0" @click="sendCode">
-            {{ pwdCountdown > 0 ? pwdCountdown + 's' : '获取验证码' }}
-          </button>
-        </div>
-        <input v-model="pwd1" type="password" class="input" placeholder="设置密码（至少 6 位）" />
-        <input v-model="pwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
+        <h3>设置密码</h3>
+        <p class="wb-dlg-hint">你现在用微信/手机号登录。设置密码后，手机号或邮箱 + 密码也能登录。</p>
+        <input v-model="pwd1" type="password" class="input" placeholder="密码（至少 6 位）" />
+        <input v-model="pwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetPwd" />
         <div class="wb-dlg-btns">
           <button class="btn" @click="skipSetPwd">跳过</button>
-          <button class="btn primary" :disabled="pwdSaving" @click="doSetEmail">{{ pwdSaving ? '保存中…' : '保存' }}</button>
+          <button class="btn primary" :disabled="pwdSaving" @click="doSetPwd">{{ pwdSaving ? '保存中…' : '保存' }}</button>
         </div>
       </div>
     </div>
@@ -75,40 +68,22 @@ const showCreate = ref(false)
 const newName = ref('')
 const creating = ref(false)
 const showSetPwd = ref(false)
-const pwdEmail = ref('')
 const pwd1 = ref('')
 const pwd2 = ref('')
 const pwdSaving = ref(false)
-const pwdCode = ref('')
-const pwdSending = ref(false)
-const pwdCountdown = ref(0)
 
 function skipSetPwd() {
   localStorage.setItem('xzj_skip_setpwd', '1')
   showSetPwd.value = false
 }
 
-async function sendCode() {
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(pwdEmail.value)) { toast.error('请输入正确的邮箱'); return }
-  pwdSending.value = true
-  try {
-    await userApi.sendEmailCode({ email: pwdEmail.value, scene: 'bind' })
-    toast.success('验证码已发送')
-    pwdCountdown.value = 60
-    const t = window.setInterval(() => { pwdCountdown.value -= 1; if (pwdCountdown.value <= 0) window.clearInterval(t) }, 1000)
-  } catch (e: any) {
-    toast.error(e?.response?.data?.error || '发送失败')
-  } finally { pwdSending.value = false }
-}
-
-async function doSetEmail() {
-  if (!pwdEmail.value || pwd1.value.length < 6) { toast.error('请填邮箱和至少 6 位密码'); return }
-  if (!/^\d{6}$/.test(pwdCode.value)) { toast.error('请输入 6 位邮箱验证码'); return }
+async function doSetPwd() {
+  if (pwd1.value.length < 6) { toast.error('密码至少 6 位'); return }
   if (pwd1.value !== pwd2.value) { toast.error('两次密码不一致'); return }
   pwdSaving.value = true
   try {
-    await userApi.setEmail({ email: pwdEmail.value, password: pwd1.value, code: pwdCode.value })
-    toast.success('已设置，电脑上用邮箱登录即可')
+    await userApi.changePassword({ new_password: pwd1.value })
+    toast.success('密码已设置')
     showSetPwd.value = false
   } catch (e: any) {
     toast.error(e?.response?.data?.error || '设置失败')
@@ -142,12 +117,12 @@ onMounted(async () => {
     const res = await projectApi.list()
     projects.value = res.data?.data || res.data || []
   } catch { /* 401 由拦截器去登录 */ }
-  // 手机号一键登录的用户没邮箱没密码 → 提示设置（点过跳过就不再弹；账号与安全里随时可设）
+  // 没密码的用户（微信/手机号建号）→ 提示设置密码（点过跳过就不再弹；「修改密码」里随时可设）
   try {
     if (!localStorage.getItem('xzj_skip_setpwd')) {
       const me = await userApi.me()
       const sec = (me.data?.data || me.data)?.security || {}
-      if (!sec.has_password && !sec.email_bound) showSetPwd.value = true
+      if (!sec.has_password) showSetPwd.value = true
     }
   } catch { /* 拿不到就不提示 */ }
 })
@@ -203,8 +178,5 @@ async function createProject() {
 .wb-dlg h3 { font-size: 16px; margin-bottom: 14px; color: var(--text-primary); }
 .wb-dlg .input { width: 100%; margin-bottom: 16px; }
 .wb-dlg-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: -6px 0 14px; text-align: left; }
-.wb-code { display: flex; gap: 8px; margin-bottom: 16px; }
-.wb-code .input { flex: 1; margin-bottom: 0; }
-.wb-code .btn { flex-shrink: 0; font-size: 12px; }
 .wb-dlg-btns { display: flex; gap: 10px; justify-content: flex-end; }
 </style>

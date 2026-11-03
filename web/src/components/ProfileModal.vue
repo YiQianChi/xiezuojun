@@ -77,10 +77,8 @@
                 {{ emailCountdown > 0 ? emailCountdown + 's' : '获取验证码' }}
               </button>
             </div>
-            <input v-model="secPwd" type="password" class="input" placeholder="设置密码（至少 6 位）" />
-            <input v-model="secPwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
-            <button class="btn primary sec-save" @click="doSetEmail" :disabled="secSaving">保存</button>
-            <p class="pwd-hint">已被注册的邮箱不能绑定（作品也不合并），请换一个邮箱。</p>
+            <button class="btn primary sec-save" @click="doSetEmail" :disabled="secSaving">绑定邮箱</button>
+            <p class="pwd-hint">已被注册的邮箱不能绑定，请换一个。密码请在「修改密码」里单独设置。</p>
           </div>
 
           <div class="sec-card" :class="{ bound: sec.phone_bound }">
@@ -168,7 +166,7 @@ function openMenu(anchor: HTMLElement) {
   menuOpen.value = true
 }
 function closeMenu() { menuOpen.value = false }
-defineExpose({ openMenu, openForPenName, openSecurityEmail })
+defineExpose({ openMenu, openForPenName, openSecurityEmail, openPwd })
 
 // 外部入口：打开账号与安全并展开设置邮箱表单（App 全局提示「设置密码」用）
 async function openSecurityEmail() {
@@ -305,8 +303,6 @@ const conflictCode = ref('')
 const conflictSending = ref(false)
 const conflictSaving = ref(false)
 const conflictCountdown = ref(0)
-const secPwd = ref('')
-const secPwd2 = ref('')
 const bindPhoneNo = ref('')
 const bindCode = ref('')
 const bindSending = ref(false)
@@ -398,12 +394,11 @@ async function mergeConflict() {
 }
 
 async function doSetEmail() {
-  if (!secEmail.value || secPwd.value.length < 6) { toast.error('请填邮箱和至少 6 位密码'); return }
+  if (!secEmail.value) { toast.error('请填邮箱'); return }
   if (!/^\d{6}$/.test(secEmailCode.value)) { toast.error('请输入 6 位邮箱验证码'); return }
-  if (secPwd.value !== secPwd2.value) { toast.error('两次密码不一致'); return }
   secSaving.value = true
   try {
-    await userApi.setEmail({ email: secEmail.value, password: secPwd.value, code: secEmailCode.value })
+    await userApi.setEmail({ email: secEmail.value, code: secEmailCode.value })
     toast.success('邮箱已设置')
     emailOpen.value = false
     await refreshSec()

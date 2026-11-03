@@ -140,7 +140,7 @@ export const userApi = {
   idConflictMerge(ticket: string) {
     return api.post('/user/identity-conflict/merge', { ticket })
   },
-  setEmail(data: { email: string; password: string; code: string }) {
+  setEmail(data: { email: string; code: string; password?: string }) {
     return api.post('/user/set-email', data)
   },
   bindPhone(data: { phone: string; code: string }) {
