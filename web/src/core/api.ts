@@ -109,7 +109,7 @@ export default api
 
 // 用户相关
 export const userApi = {
-  sendEmailCode(data: { email: string; scene: 'register' | 'login' | 'reset_password' }) {
+  sendEmailCode(data: { email: string; scene: 'register' | 'login' | 'reset_password' | 'bind' }) {
     return api.post('/auth/email-code', data)
   },
   register(data: { email: string; password: string; code: string }) {
@@ -127,7 +127,7 @@ export const userApi = {
   bindEmail(data: { email: string; password: string }) {
     return api.post('/auth/bind-email', data)
   },
-  setEmail(data: { email: string; password: string }) {
+  setEmail(data: { email: string; password: string; code: string }) {
     return api.post('/user/set-email', data)
   },
   bindPhone(data: { phone: string; code: string }) {

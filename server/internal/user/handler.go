@@ -54,7 +54,7 @@ func (h *Handler) SendEmailCode(c *gin.Context) {
 		return
 	}
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
-	if req.Scene != "register" && req.Scene != "login" && req.Scene != "reset_password" {
+	if req.Scene != "register" && req.Scene != "login" && req.Scene != "reset_password" && req.Scene != "bind" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid scene"})
 		return
 	}
@@ -74,6 +74,11 @@ func (h *Handler) SendEmailCode(c *gin.Context) {
 	}
 	if req.Scene == "reset_password" && err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "email not registered"})
+		return
+	}
+	// 绑定邮箱只能用未注册的邮箱：已注册的直接拒绝（对方账号的邮箱不可能通过验证码证明归属）
+	if req.Scene == "bind" && err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "该邮箱已被注册，请换一个邮箱"})
 		return
 	}
 

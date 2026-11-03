@@ -68,7 +68,13 @@
             <button v-else class="btn sec-op" @click="emailOpen = !emailOpen">{{ emailOpen ? '收起' : '设置' }}</button>
           </div>
           <div v-if="!sec.email_bound && emailOpen" class="sec-form">
-            <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱地址" />
+            <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱地址（未注册过的）" />
+            <div class="sec-code">
+              <input v-model.trim="secEmailCode" inputmode="numeric" maxlength="6" class="input" placeholder="邮箱验证码" @keyup.enter="doSetEmail" />
+              <button class="btn sec-op" :disabled="emailSending || emailCountdown > 0" @click="sendEmailBindCode">
+                {{ emailCountdown > 0 ? emailCountdown + 's' : '获取验证码' }}
+              </button>
+            </div>
             <input v-model="secPwd" type="password" class="input" placeholder="设置密码（至少 6 位）" />
             <input v-model="secPwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
             <button class="btn primary sec-save" @click="doSetEmail" :disabled="secSaving">保存</button>
@@ -250,6 +256,9 @@ const sec = ref<any>({})
 const emailOpen = ref(false)
 const phoneOpen = ref(false)
 const secEmail = ref('')
+const secEmailCode = ref('')
+const emailSending = ref(false)
+const emailCountdown = ref(0)
 const secPwd = ref('')
 const secPwd2 = ref('')
 const bindPhoneNo = ref('')
@@ -278,12 +287,26 @@ async function refreshSec() {
   } catch {}
 }
 
+async function sendEmailBindCode() {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(secEmail.value)) { toast.error('请输入正确的邮箱'); return }
+  emailSending.value = true
+  try {
+    await userApi.sendEmailCode({ email: secEmail.value, scene: 'bind' })
+    toast.success('验证码已发送')
+    emailCountdown.value = 60
+    const t = window.setInterval(() => { emailCountdown.value -= 1; if (emailCountdown.value <= 0) window.clearInterval(t) }, 1000)
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '发送失败')
+  } finally { emailSending.value = false }
+}
+
 async function doSetEmail() {
   if (!secEmail.value || secPwd.value.length < 6) { toast.error('请填邮箱和至少 6 位密码'); return }
+  if (!/^\d{6}$/.test(secEmailCode.value)) { toast.error('请输入 6 位邮箱验证码'); return }
   if (secPwd.value !== secPwd2.value) { toast.error('两次密码不一致'); return }
   secSaving.value = true
   try {
-    await userApi.setEmail({ email: secEmail.value, password: secPwd.value })
+    await userApi.setEmail({ email: secEmail.value, password: secPwd.value, code: secEmailCode.value })
     toast.success('邮箱已设置')
     emailOpen.value = false
     await refreshSec()

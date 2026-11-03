@@ -50,12 +50,14 @@ func (h *Handler) SetEmail(c *gin.Context) {
 	var req struct {
 		Email    string `json:"email" binding:"required"`
 		Password string `json:"password" binding:"required"`
+		Code     string `json:"code" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email and password required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email, password and code required"})
 		return
 	}
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.Code = strings.TrimSpace(req.Code)
 	if len(req.Password) < 6 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "密码至少 6 位"})
 		return
@@ -67,6 +69,11 @@ func (h *Handler) SetEmail(c *gin.Context) {
 	byUser := h.db.Where("email = ?", req.Email).First(&other).Error == nil
 	if (byIdentity && idn.UserID != uid) || (byUser && other.UserID != uid) {
 		c.JSON(http.StatusConflict, gin.H{"error": "该邮箱已被其他账号使用"})
+		return
+	}
+	// 验证码核销：绑定前必须证明邮箱是本人的（scene=bind，发送时已确保邮箱未注册）
+	if !h.consumeVerificationCode("email", req.Email, "bind", req.Code) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "验证码错误或已过期"})
 		return
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
