@@ -1,5 +1,12 @@
 // 壳登录页：微信一键登录 + 邮箱登录；登录成功 token 落 storage 后跳 index（web-view）
 Page({
+  onLoad() {
+    // 进登录页=旧登录态作废：清壳侧 token（网页里退出后会 redirectTo 到这里；不清的话
+    // 点左上角主页 index 又拿旧 token 自动登回来）
+    wx.removeStorageSync('xzj_token')
+    wx.removeStorageSync('xzj_rt')
+  },
+
   data: {
     email: '',
     password: '',

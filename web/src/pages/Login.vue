@@ -121,6 +121,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { userApi } from '../core/api'
+import { mpNavigate } from '../core/mp'
 
 type LoginMode = 'password' | 'code'
 type AccountType = 'email' | 'phone'
@@ -130,13 +131,7 @@ const isMiniProgram = /miniProgram/i.test(navigator.userAgent) || (window as any
 // 微信内置浏览器（非小程序）：整页授权一键登录
 const isWechat = /MicroMessenger/i.test(navigator.userAgent) && !isMiniProgram
 function backToMpLogin() {
-  const w = window as any
-  const go = () => w.wx?.miniProgram?.redirectTo?.({ url: '/pages/login/login' })
-  if (w.wx?.miniProgram) { go(); return }
-  const s = document.createElement('script')
-  s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js'
-  s.onload = go
-  document.body.appendChild(s)
+  mpNavigate('/pages/login/login')
 }
 const handleWxLogin = () => {
   window.location.href = '/api/auth/wx-oauth/start?redirect=' + encodeURIComponent(window.location.origin + '/login')

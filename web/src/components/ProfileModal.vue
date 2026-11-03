@@ -140,6 +140,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { userApi } from '../core/api'
 import { toast } from '../composables/useToast'
+import { mpNavigate, isMiniProgramEnv } from '../core/mp'
 
 const router = useRouter()
 const EMOJIS = ['✍️', '📖', '🐉', '🗡️', '🌸', '🌙', '⭐', '🔥', '🦊', '🐱', '🐼', '🧙']
@@ -370,6 +371,11 @@ function doLogout() {
   localStorage.removeItem('access_token')
   localStorage.removeItem('refresh_token')
   try { localStorage.removeItem('xzj-nickname'); localStorage.removeItem('xzj-avatar') } catch {}
+  // 小程序：回壳的原生登录页（壳会在该页清掉 storage，否则点左上角主页又会拿旧 token 自动登回来）
+  if (isMiniProgramEnv) {
+    mpNavigate('/pages/login/login')
+    return
+  }
   router.push('/login')
 }
 
