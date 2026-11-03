@@ -10,8 +10,8 @@ Page({
     loadFailed: false
   },
   buildUrl(at, rt) {
-    // 直达书架（Boss：手机版不需要首页中转，登录后就是书架）
-    return app.globalData.site + '/bookshelf?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
+    // 首页工作台（Boss 拍板方案C：数据条+快捷宫格+最近打开）；登录后进这里，不再是直接弹书架
+    return app.globalData.site + '/home?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad(options) {
     // 协议/隐私页：公开可看，无需登录（小程序提审需要）。网页是 history 路由，不带 #

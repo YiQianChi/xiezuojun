@@ -249,6 +249,11 @@ const renameTarget = ref<any>(null)
 
 onMounted(() => {
   loadProjects()
+  // 首页工作台「导入书稿」深链：直接弹导入 tab
+  if (router.currentRoute.value.query.import) {
+    showCreateModal.value = true
+    createMode.value = 'import'
+  }
   document.addEventListener('click', closeExportMenu)
 })
 

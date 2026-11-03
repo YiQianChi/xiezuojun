@@ -39,6 +39,13 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      // 小程序首页（工作台）：壳登录后直达这里
+      path: '/home',
+      name: 'Workbench',
+      component: () => import('../pages/Workbench.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/editor/:projectId/:docId?',
       name: 'Editor',
       component: () => import('../pages/Editor.vue'),
@@ -61,9 +68,9 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  // 小程序 web-view：营销首页没有存在意义（获客靠小程序商店页），直接去书架
+  // 小程序 web-view：营销首页没有存在意义（获客靠小程序商店页），直接进工作台首页
   if (to.path === '/' && /miniProgram/i.test(navigator.userAgent)) {
-    next('/bookshelf')
+    next('/home')
     return
   }
   if (to.meta.requiresAuth && !localStorage.getItem('access_token')) {

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小程序首页方案对比</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif; background:#e8e8ed; padding:20px 14px 60px; color:#1d1d1f; }
+  h1 { font-size:18px; text-align:center; margin-bottom:6px; }
+  .tip { text-align:center; font-size:12px; color:#86868b; margin-bottom:24px; }
+  .scheme { margin-bottom:36px; }
+  .scheme h2 { font-size:14px; margin-bottom:4px; }
+  .scheme .desc { font-size:11px; color:#86868b; margin-bottom:12px; }
+  .phone { width:330px; margin:0 auto; background:#f5f5f7; border-radius:28px; overflow:hidden; box-shadow:0 2px 16px rgba(0,0,0,.12); position:relative; }
+  .statusbar { height:36px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; font-size:11px; font-weight:600; background:inherit; }
+  .navbar { height:40px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; background:inherit; }
+  .content { padding:4px 16px 20px; min-height:480px; }
+
+  /* ========= 方案A：继续写作（效率型） ========= */
+  .a-greet { padding:10px 4px 14px; }
+  .a-greet .hi { font-size:22px; font-weight:700; }
+  .a-greet .sub { font-size:12px; color:#86868b; margin-top:3px; }
+  .a-continue { background:linear-gradient(135deg,#0a84ff,#007aff); border-radius:16px; padding:18px; color:#fff; }
+  .a-continue .lab { font-size:11px; opacity:.8; }
+  .a-continue .title { font-size:19px; font-weight:700; margin:5px 0 3px; }
+  .a-continue .meta { font-size:11px; opacity:.85; }
+  .a-continue .go { display:inline-block; margin-top:12px; background:#fff; color:#007aff; font-size:13px; font-weight:600; padding:8px 18px; border-radius:999px; border:none; }
+  .a-quote { background:#fff; border-radius:14px; padding:14px 16px; margin-top:12px; }
+  .a-quote .q { font-size:13px; line-height:1.6; }
+  .a-quote .src { font-size:10px; color:#86868b; margin-top:6px; }
+  .a-sec { font-size:13px; font-weight:700; margin:18px 4px 10px; display:flex; justify-content:space-between; align-items:center; }
+  .a-sec span { font-size:11px; color:#007aff; font-weight:400; }
+  .a-row { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
+  .a-book { flex:0 0 84px; }
+  .a-book .cv { height:112px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:34px; color:#fff; }
+  .a-book b { display:block; font-size:11px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .a-book i { font-style:normal; font-size:10px; color:#86868b; }
+  .a-new { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-top:16px; padding:12px 0; border:1.5px dashed #aeaeb2; border-radius:14px; background:none; color:#1d1d1f; font-size:14px; }
+
+  /* ========= 方案B：品牌 + 行动（仪式感型） ========= */
+  .b-wrap { text-align:center; padding:26px 0 0; }
+  .b-logo { width:76px; height:76px; border-radius:22px; margin:0 auto; background:linear-gradient(135deg,#34c759,#007aff); display:flex; align-items:center; justify-content:center; font-size:38px; color:#fff; box-shadow:0 8px 24px rgba(0,122,255,.25); }
+  .b-name { font-size:24px; font-weight:800; margin-top:14px; letter-spacing:1px; }
+  .b-slogan { font-size:12px; color:#86868b; margin-top:4px; }
+  .b-quote { margin:22px auto 0; max-width:250px; font-size:14px; line-height:1.7; min-height:48px; color:#1d1d1f; }
+  .b-quote .caret { display:inline-block; width:2px; height:15px; background:#007aff; vertical-align:-2px; animation:blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+  .b-start { display:block; width:220px; margin:20px auto 0; padding:14px 0; border:none; border-radius:999px; background:#007aff; color:#fff; font-size:16px; font-weight:700; box-shadow:0 6px 18px rgba(0,122,255,.3); }
+  .b-sub { font-size:11px; color:#86868b; margin-top:8px; }
+  .b-tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:26px; }
+  .b-tile { background:#fff; border-radius:14px; padding:14px 6px; text-align:center; }
+  .b-tile .ic { font-size:26px; }
+  .b-tile b { display:block; font-size:12px; margin-top:6px; }
+
+  /* ========= 方案C：工作台（数据型） ========= */
+  .c-head { padding:10px 4px 12px; display:flex; justify-content:space-between; align-items:center; }
+  .c-head .hi { font-size:20px; font-weight:700; }
+  .c-head .date { font-size:11px; color:#86868b; }
+  .c-stats { display:flex; gap:10px; }
+  .c-stat { flex:1; background:#fff; border-radius:14px; padding:12px; text-align:center; }
+  .c-stat b { font-size:20px; color:#007aff; }
+  .c-stat i { display:block; font-style:normal; font-size:10px; color:#86868b; margin-top:2px; }
+  .c-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
+  .c-cell { background:#fff; border-radius:14px; padding:12px 4px; text-align:center; }
+  .c-cell .ic { font-size:22px; }
+  .c-cell i { display:block; font-style:normal; font-size:10px; margin-top:5px; color:#1d1d1f; }
+  .c-sec { font-size:13px; font-weight:700; margin:18px 4px 10px; }
+  .c-item { display:flex; align-items:center; gap:12px; background:#fff; border-radius:14px; padding:12px 14px; margin-bottom:8px; }
+  .c-item .cv { width:38px; height:50px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:17px; color:#fff; flex:none; }
+  .c-item .info { flex:1; min-width:0; }
+  .c-item b { display:block; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .c-item .m { font-size:11px; color:#86868b; margin-top:2px; }
+  .c-item .arr { color:#aeaeb2; font-size:18px; }
+</style>
+</head>
+<body>
+<h1>小程序首页 · 三方案</h1>
+<p class="tip">登录后进这里，不再是直接弹书架。点卡片可看交互效果。</p>
+
+<!-- ================= 方案A ================= -->
+<section class="scheme">
+  <h2>方案 A · 继续写作（效率型）</h2>
+  <p class="desc">打开即「接着写上次那本」，一键回编辑器；灵感金句垫场，下方横滑其他书。核心动作 ≤1 次点击。</p>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●● 📶 🔋</span></div>
+    <div class="navbar">首页</div>
+    <div class="content">
+      <div class="a-greet">
+        <div class="hi">晚上好，墨白 ✍️</div>
+        <div class="sub">已连续写作 6 天，别断更呀</div>
+      </div>
+      <div class="a-continue">
+        <div class="lab">继续写作</div>
+        <div class="title">《长夜灯影》</div>
+        <div class="meta">第 24 章 · 昨晚写到 2.1 万字</div>
+        <button class="go">接着写 →</button>
+      </div>
+      <div class="a-quote">
+        <div class="q">「写不出来的时候，先把上一段再读一遍。」</div>
+        <div class="src">— 今日写作灵感</div>
+      </div>
+      <div class="a-sec">我的作品 <span>全部 ›</span></div>
+      <div class="a-row" id="aRow">
+        <div class="a-book"><div class="cv" style="background:linear-gradient(135deg,#6a8caf,#3d5a80)">🕯️</div><b>长夜灯影</b><i>2.1 万字</i></div>
+        <div class="a-book"><div class="cv" style="background:linear-gradient(135deg,#c9a66b,#8f6b3a)">🏯</div><b>江城旧事</b><i>8 千字</i></div>
+        <div class="a-book"><div class="cv" style="background:linear-gradient(135deg,#8f9aa8,#5c6672)">🚀</div><b>星轨拾遗</b><i>构思中</i></div>
+        <div class="a-book"><div class="cv" style="background:#e8e8ed;color:#86868b">＋</div><b>新建</b></div>
+      </div>
+      <button class="a-new">＋ 新建作品</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 方案B ================= -->
+<section class="scheme">
+  <h2>方案 B · 品牌 + 行动（仪式感型）</h2>
+  <p class="desc">品牌露脸，打字机金句每天换一句营造「进书房」的仪式感；中间一颗大按钮开始写，下面三个功能口。</p>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●● 📶 🔋</span></div>
+    <div class="navbar">写作菌</div>
+    <div class="content">
+      <div class="b-wrap">
+        <div class="b-logo">✍️</div>
+        <div class="b-name">写作菌</div>
+        <div class="b-slogan">让灵感不被打扰</div>
+        <div class="b-quote"><span id="bType"></span><span class="caret"></span></div>
+        <button class="b-start">开始写作</button>
+        <div class="b-sub">接着上次的章节继续</div>
+        <div class="b-tiles">
+          <div class="b-tile"><div class="ic">📚</div><b>我的书架</b></div>
+          <div class="b-tile"><div class="ic">💡</div><b>AI 灵感</b></div>
+          <div class="b-tile"><div class="ic">🤝</div><b>写作搭子</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 方案C ================= -->
+<section class="scheme">
+  <h2>方案 C · 工作台（数据型）</h2>
+  <p class="desc">问候 + 写作数据条（连续天数/本周字数）养成打卡感；快捷宫格 + 最近作品列表，信息最全但也最「工具」。</p>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●● 📶 🔋</span></div>
+    <div class="navbar">首页</div>
+    <div class="content">
+      <div class="c-head">
+        <div class="hi">晚上好，墨白</div>
+        <div class="date">11月3日 周二</div>
+      </div>
+      <div class="c-stats">
+        <div class="c-stat"><b>6 天</b><i>连续写作</i></div>
+        <div class="c-stat"><b>4,820</b><i>本周字数</i></div>
+        <div class="c-stat"><b>12.9 万</b><i>累计字数</i></div>
+      </div>
+      <div class="c-grid">
+        <div class="c-cell"><div class="ic">✏️</div><i>新建</i></div>
+        <div class="c-cell"><div class="ic">📚</div><i>书架</i></div>
+        <div class="c-cell"><div class="ic">💡</div><i>灵感</i></div>
+        <div class="c-cell"><div class="ic">🤝</div><i>搭子</i></div>
+      </div>
+      <div class="c-sec">最近打开</div>
+      <div class="c-item">
+        <div class="cv" style="background:linear-gradient(135deg,#6a8caf,#3d5a80)">🕯️</div>
+        <div class="info"><b>长夜灯影 · 第 24 章</b><div class="m">昨晚 23:47 · 2.1 万字</div></div>
+        <div class="arr">›</div>
+      </div>
+      <div class="c-item">
+        <div class="cv" style="background:linear-gradient(135deg,#c9a66b,#8f6b3a)">🏯</div>
+        <div class="info"><b>江城旧事 · 大纲</b><div class="m">10月30日 · 8 千字</div></div>
+        <div class="arr">›</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // 方案B 打字机金句（真动效）
+  const quote = '「夜还长，茶还热，故事才写到一半。」'
+  const el = document.getElementById('bType')
+  let i = 0
+  ;(function tick() {
+    if (i <= quote.length) { el.textContent = quote.slice(0, i++); setTimeout(tick, 120) }
+    else setTimeout(() => { i = 0; tick() }, 4000)
+  })()
+  // 方案A 横滑可滑（原生 overflow，验证一下宽度生效）
+  console.assert(document.getElementById('aRow').scrollWidth >= document.getElementById('aRow').clientWidth, 'a-row scrollable')
+</script>
+</body>
+</html>
