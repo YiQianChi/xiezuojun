@@ -21,7 +21,7 @@
 - **前端**：rsync `web/dist/` → `/opt/xiezuojun-web/dist/`
 - **SEO 静态页**：`/opt/xzj-seo`，爬虫 UA 分流，独立于 dist（防 rsync 覆盖）；nginx 备份 `~/nginx-bak-xiezuojun.com.*.conf`
 - **DB**（生产本地）：`127.0.0.1:3306`，`xiezuojun:Xzj2026Test@tcp(127.0.0.1:3306)/xiezuojun`
-- **测试账号**：test0728@xiezuojun.com / Test123456，项目 id=37
+- **测试账号**：test@oneon.com.cn（昵称「审核体验」，小程序提审用；密码在 mp 后台测试账号设置，183 不留明文）。旧 test0728 账号已删
 - **短信**：火山引擎 SmsAccount=8bb50d20；注册模板 S1T_1y2pbauk98v0i，改密模板 S1T_1y2pbauk98vlu；测试手机 17749538040
 - **ICP**：苏ICP备2026036211号-4
 
