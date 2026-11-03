@@ -633,8 +633,11 @@
         <template v-if="shareCode">
           <div class="share-link-row" @click="copyShareLink">{{ shareLink }}</div>
           <p class="confirm-desc" style="font-size:12px">点击复制链接</p>
+          <div v-if="isMiniProgramEnv" class="confirm-buttons" style="margin-bottom:8px">
+            <button class="btn-confirm" @click="pushMpShare">转发本章 →</button>
+          </div>
           <p v-if="isMiniProgramEnv" class="confirm-desc" style="font-size:12px">
-            小程序里：点右上角「…」→ 转发给好友，卡片直达本章
+            点上面的按钮拉起转发；也可点右上角「…」→ 转发
           </p>
           <div class="confirm-buttons">
             <button class="btn-cancel" @click="stopShare">停止分享</button>
@@ -678,6 +681,7 @@ import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
 import { documentApi, projectApi, threadApi, buddyApi } from '../core/api'
+import { mpPush } from '../core/mp'
 import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import { editorContentFromText, stripContentChapterHeading } from '../core/editorContent'
@@ -1135,6 +1139,12 @@ function notifyMpShare() {
   w.wx?.miniProgram?.postMessage?.({
     data: { type: 'xzj-share', code: shareCode.value, title: shareDoc.value?.title, book: projectName.value, ts: Date.now() }
   })
+}
+
+// 拉起壳的原生分享页（参数带在页面路径里，卡片零竞态——比 postMessage 可靠）
+function pushMpShare() {
+  const q = `code=${shareCode.value}&title=${encodeURIComponent(shareDoc.value?.title || '')}&book=${encodeURIComponent(projectName.value || '')}`
+  mpPush('/pages/share/share?' + q)
 }
 const renameModal = ref<{ docId: number; title: string } | null>(null)
 const renameInputRef = ref<HTMLInputElement | null>(null)

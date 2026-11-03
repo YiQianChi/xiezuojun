@@ -1,0 +1,10 @@
+<view class="share-page">
+  <view class="sp-card">
+    <view class="sp-book">《{{book || '作品'}}》</view>
+    <view class="sp-title">{{title}}</view>
+    <view class="sp-tip">点下面按钮，把本章发给好友 / 群</view>
+    <button class="sp-btn" open-type="share">转发本章</button>
+    <view class="sp-hint">好友点开即读，无需登录注册</view>
+  </view>
+  <view class="sp-back" bindtap="goBack">← 返回编辑器</view>
+</view>
