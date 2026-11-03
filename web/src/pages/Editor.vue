@@ -1095,6 +1095,8 @@ function openShareDoc() {
   if (!doc) return
   shareDoc.value = doc
   shareCode.value = doc.share_code || ''
+  // 已分享过的章节：打开弹窗就通知壳（别等点转发才 post，抢在前面）
+  if (shareCode.value) notifyMpShare()
 }
 
 async function startShare() {
@@ -1131,7 +1133,7 @@ function copyShareLink() {
 function notifyMpShare() {
   const w = window as any
   w.wx?.miniProgram?.postMessage?.({
-    data: { type: 'xzj-share', code: shareCode.value, title: shareDoc.value?.title, book: projectName.value }
+    data: { type: 'xzj-share', code: shareCode.value, title: shareDoc.value?.title, book: projectName.value, ts: Date.now() }
   })
 }
 const renameModal = ref<{ docId: number; title: string } | null>(null)

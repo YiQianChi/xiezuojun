@@ -72,18 +72,22 @@ Page({
   },
 
   // ===== 分享 =====
-  // 网页里的章节分享会 postMessage 过来（web-view 在「转发」时刻送达）；有就转发该章，否则默认卡片
+  // 网页里的章节分享会 postMessage 过来。web-view 的消息只在特定时机（转发/后退/销毁）送达，
+  // 有竞态——所以收到就写进 storage，转发时读内存+storage 双保险，没拿到才落默认卡片
   onWebViewMsg(e) {
     const list = (e.detail && e.detail.data) || []
     for (let i = list.length - 1; i >= 0; i--) {
       if (list[i] && list[i].type === 'xzj-share') {
         this.shareMsg = list[i]
+        try { wx.setStorageSync('xzj_share', list[i]) } catch (err) {}
         return
       }
     }
   },
   onShareAppMessage() {
-    const s = this.shareMsg
+    let s = this.shareMsg || wx.getStorageSync('xzj_share')
+    // storage 里的旧分享 10 分钟后失效，避免用户想默认转发时还带着老章节
+    if (s && s.ts && Date.now() - s.ts > 10 * 60 * 1000) s = null
     if (s && s.code) {
       return {
         title: '《' + (s.book || '作品') + '》' + (s.title || '') + ' | 写作菌',
