@@ -69,5 +69,21 @@ Page({
   onRetry() {
     this.setData({ loadFailed: false, url: '' })
     setTimeout(() => this.setData({ url: app.globalData.site }), 200)
+  },
+
+  // ===== 分享 =====
+  // 转发给好友/群：右上角菜单「转发」因此点亮；落地页就是 index（未登录→登录页，已登录→首页）
+  onShareAppMessage() {
+    return {
+      title: '写作菌 · AI 小说写作，让灵感不被打扰',
+      path: '/pages/index/index'
+    }
+  },
+  // 分享到朋友圈（仅 Android 微信支持，单页模式打开）
+  onShareTimeline() {
+    return {
+      title: '写作菌 · AI 小说写作',
+      query: ''
+    }
   }
 })
