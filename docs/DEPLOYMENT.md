@@ -39,6 +39,7 @@
 **前端：**
 1. 本机 `cd web && npm run build`
 2. rsync `dist/` → 测试服 180 验证 → 再 rsync 到 124 `/opt/xiezuojun-web/dist/`
+   - **不要 `--delete`**：文件名带 hash，新版本只增不改；--delete 会删掉旧 chunk，而小程序 webview/PWA 缓存的旧 index.html 还引用旧 chunk → 404 白屏（2026-11-03 实际踩坑）。旧文件留盘无害，隔几周手动清一次最老的即可
 3. 注意：SEO 静态页在 `/opt/xzj-seo`，别覆盖
 
 ## AI 供应商（换 key/换模型看这里）
