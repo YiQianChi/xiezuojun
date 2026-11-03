@@ -68,16 +68,25 @@
             <button v-else class="btn sec-op" @click="emailOpen = !emailOpen">{{ emailOpen ? '收起' : '设置' }}</button>
           </div>
           <div v-if="!sec.email_bound && emailOpen" class="sec-form">
-            <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱地址（未注册过的）" />
-            <div class="sec-code">
-              <input v-model.trim="secEmailCode" inputmode="numeric" maxlength="6" class="input" placeholder="邮箱验证码" @keyup.enter="doSetEmail" />
-              <button class="btn sec-op" :disabled="emailSending || emailCountdown > 0" @click="sendEmailBindCode">
-                {{ emailCountdown > 0 ? emailCountdown + 's' : '获取验证码' }}
-              </button>
-            </div>
-            <input v-model="secPwd" type="password" class="input" placeholder="设置密码（至少 6 位）" />
-            <input v-model="secPwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
-            <button class="btn primary sec-save" @click="doSetEmail" :disabled="secSaving">保存</button>
+            <template v-if="!mergeMode">
+              <input v-model.trim="secEmail" type="email" class="input" placeholder="邮箱地址（未注册过的）" />
+              <div class="sec-code">
+                <input v-model.trim="secEmailCode" inputmode="numeric" maxlength="6" class="input" placeholder="邮箱验证码" @keyup.enter="doSetEmail" />
+                <button class="btn sec-op" :disabled="emailSending || emailCountdown > 0" @click="sendEmailBindCode">
+                  {{ emailCountdown > 0 ? emailCountdown + 's' : '获取验证码' }}
+                </button>
+              </div>
+              <input v-model="secPwd" type="password" class="input" placeholder="设置密码（至少 6 位）" />
+              <input v-model="secPwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
+              <button class="btn primary sec-save" @click="doSetEmail" :disabled="secSaving">保存</button>
+            </template>
+            <template v-else>
+              <!-- 该邮箱已注册（别的账号）→ 合并模式：输那个账号的密码，作品随迁，登录态切过去 -->
+              <p class="sec-merge-hint">邮箱 <b>{{ secEmail }}</b> 已有账号。输入它的密码即可把两个账号合并——当前账号的作品会并入邮箱账号，以后微信/小程序/邮箱都是同一个号。</p>
+              <input v-model="mergePwd" type="password" class="input" placeholder="该邮箱账号的密码" @keyup.enter="doMergeEmail" />
+              <button class="btn primary sec-save" @click="doMergeEmail" :disabled="mergeSaving">{{ mergeSaving ? '合并中…' : '合并账号' }}</button>
+              <button class="btn sec-op" @click="mergeMode = false">← 换一个邮箱</button>
+            </template>
           </div>
 
           <div class="sec-card" :class="{ bound: sec.phone_bound }">
@@ -255,10 +264,14 @@ const secOpen = ref(false)
 const sec = ref<any>({})
 const emailOpen = ref(false)
 const phoneOpen = ref(false)
+// 展开/收起时重置合并模式（换邮箱后旧状态不留）
 const secEmail = ref('')
 const secEmailCode = ref('')
 const emailSending = ref(false)
 const emailCountdown = ref(0)
+const mergeMode = ref(false)
+const mergePwd = ref('')
+const mergeSaving = ref(false)
 const secPwd = ref('')
 const secPwd2 = ref('')
 const bindPhoneNo = ref('')
@@ -296,8 +309,31 @@ async function sendEmailBindCode() {
     emailCountdown.value = 60
     const t = window.setInterval(() => { emailCountdown.value -= 1; if (emailCountdown.value <= 0) window.clearInterval(t) }, 1000)
   } catch (e: any) {
-    toast.error(e?.response?.data?.error || '发送失败')
+    // 已注册的邮箱不能"绑定"，但可以"合并"——转入合并模式输对方密码
+    if (e?.response?.status === 409) {
+      mergeMode.value = true
+      mergePwd.value = ''
+      toast.info('该邮箱已注册——如是你本人的账号，输入密码即可合并')
+    } else {
+      toast.error(e?.response?.data?.error || '发送失败')
+    }
   } finally { emailSending.value = false }
+}
+
+async function doMergeEmail() {
+  if (!mergePwd.value) { toast.error('请输入该邮箱账号的密码'); return }
+  mergeSaving.value = true
+  try {
+    const res = await userApi.bindEmail({ email: secEmail.value, password: mergePwd.value })
+    const d = res.data?.data || {}
+    if (d.access_token) localStorage.setItem('access_token', d.access_token)
+    if (d.refresh_token) localStorage.setItem('refresh_token', d.refresh_token)
+    toast.success('合并成功，已并入邮箱账号')
+    window.dispatchEvent(new CustomEvent('xzj-profile-updated'))
+    location.reload()
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '合并失败')
+  } finally { mergeSaving.value = false }
 }
 
 async function doSetEmail() {
@@ -505,6 +541,8 @@ function doLogout() {
   background:var(--bg-tertiary,#f7f7fa); border-radius:14px;
 }
 .sec-code { display:flex; gap:8px; }
+.sec-merge-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.7; margin: 0 0 12px; }
+.sec-form .sec-op { margin-top: 8px; }
 .sec-code .input { flex:1; }
 .sec-save { margin-top:2px; }
 /* 手机：弹窗满宽、按钮加高到手指友好 */
