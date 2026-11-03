@@ -249,16 +249,6 @@ export const aiApi = {
   },
 }
 
-// TTS 朗读
-export const ttsApi = {
-  voices() {
-    return api.get('/tts/voices')
-  },
-  synthesize(text: string, voice: string) {
-    return api.post('/tts', { text, voice }, { responseType: 'blob', timeout: 30000 })
-  },
-}
-
 // 便签/灵感随手记（右栏工作台 C 方案：note=稿纸贴纸 insp=灵感库）
 export const stickyApi = {
   list(projectId: number) {

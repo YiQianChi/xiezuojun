@@ -354,23 +354,6 @@
       <span class="status-item">{{ wordCount }} 字</span>
       <span v-if="isOffline" class="status-item offline-indicator" title="当前离线，内容已自动存在本机，恢复网络后会自动上传">📡 离线</span>
       <span class="status-item">{{ saveStatus }}</span>
-      <!-- 朗读：🔊=播放/停止，▾=音色选择（方案一·瘦身：下拉不再常驻状态栏） -->
-      <div class="toolbox-trigger" :class="{ open: voiceMenuOpen }">
-        <div class="tts-group">
-          <button class="status-item speech-btn tts-play" :class="{ speaking: isSpeaking }" @click="toggleSpeech" :disabled="ttsLoading" :title="isSpeaking ? '停止朗读' : '朗读（选区优先）'">
-            {{ ttsLoading ? '⏳' : isSpeaking ? '⏹' : '🔊' }}
-          </button>
-          <button class="voice-caret" @click.stop="voiceMenuOpen = !voiceMenuOpen" title="朗读音色">▾</button>
-        </div>
-        <div class="toolbox-popup voice-popup" v-show="voiceMenuOpen" @click.stop>
-          <div class="sens-head">朗读音色</div>
-          <select v-model="selectedVoice" class="voice-select" title="朗读音色">
-            <option value="zh-CN">默认女声</option>
-            <option v-for="v in voiceList" :key="v.voice" :value="v.voice">{{ v.name }}</option>
-          </select>
-        </div>
-      </div>
-
       <!-- 敏感词检测：实时扫描，点开看命中清单，点词定位 -->
       <div class="toolbox-trigger" :class="{ open: sensitiveOpen }">
         <button class="status-item speech-btn sens-btn" :class="{ hit: sensitiveTotal > 0 }" @click.stop="sensitiveOpen = !sensitiveOpen" title="敏感词检测（发布前自查）">
@@ -666,7 +649,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
-import { documentApi, projectApi, ttsApi, threadApi, buddyApi } from '../core/api'
+import { documentApi, projectApi, threadApi, buddyApi } from '../core/api'
 import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import { editorContentFromText, stripContentChapterHeading } from '../core/editorContent'
@@ -806,54 +789,6 @@ watch(() => sprint.running, (on) => {
 })
 const saveStatus = ref('')
 const draftBanner = ref<{ docId: number; text: string } | null>(null)
-const isSpeaking = ref(false)
-const ttsLoading = ref(false)
-let currentAudio: HTMLAudioElement | null = null
-
-async function toggleSpeech() {
-  if (isSpeaking.value) {
-    currentAudio?.pause()
-    currentAudio = null
-    isSpeaking.value = false
-    return
-  }
-  let text = ''
-  if (editor.value) {
-    const { from, to } = editor.value.state.selection
-    text = from < to ? editor.value.state.doc.textBetween(from, to, '\n') : getEditorText()
-  }
-  if (!text.trim()) { toast.info('没有可朗读的内容'); return }
-  // ponytail: Edge TTS 限 5000 字，超出截断
-  if (text.length > 5000) {
-    text = text.slice(0, 5000)
-    toast.info('内容超过5000字，已截断朗读')
-  }
-  ttsLoading.value = true
-  try {
-    const res = await ttsApi.synthesize(text, selectedVoice.value)
-    const blob = new Blob([res.data], { type: 'audio/mpeg' })
-    const url = URL.createObjectURL(blob)
-    currentAudio = new Audio(url)
-    currentAudio.onended = () => { isSpeaking.value = false; URL.revokeObjectURL(url) }
-    currentAudio.onerror = () => { isSpeaking.value = false; URL.revokeObjectURL(url) }
-    await currentAudio.play()
-    isSpeaking.value = true
-  } catch (e) {
-    toast.error('朗读失败，请重试')
-    console.error('TTS error', e)
-  } finally {
-    ttsLoading.value = false
-  }
-}
-
-// E2: 加载 TTS 音色列表
-const voiceList = ref<any[]>([])
-async function loadVoices() {
-  try {
-    const res = await ttsApi.voices()
-    voiceList.value = res.data?.data || []
-  } catch { /* ponytail: 语音列表加载失败不影响朗读 */ }
-}
 
 // E1: 场景导航已下线（Boss 2026-10-23：没啥用，按钮+快捷键+功能全清）
 
@@ -997,7 +932,6 @@ async function saveThreadFromSelection() {
 
 /* ═══ B1. 敏感词检测：编辑防抖扫描，点词走全文搜索定位 ═══ */
 const sensitiveOpen = ref(false)
-const voiceMenuOpen = ref(false) // 音色选择弹层（方案一·瘦身：收进 🔊▾）
 const sensitiveHits = ref<{ word: string; count: number }[]>([])
 const sensitiveTotal = computed(() => sensitiveHits.value.reduce((s, h) => s + h.count, 0))
 let sensitiveTimer: ReturnType<typeof setTimeout> | null = null
@@ -1414,7 +1348,6 @@ function onDisplaySetting(key: string, value: number | undefined) {
 }
 
 watch(eyeLineRatio, () => { updateTypewriterPad() })
-const selectedVoice = ref('zh-CN') // E2: TTS 音色选择
 
 function replayOnboarding() {
   toolboxOpen.value = false
@@ -1519,7 +1452,6 @@ async function handleReviewAiFix(issue: any) {
 // ponytail: click outside toolbox closes it; popup @click.stop prevents inner clicks from reaching here
 function closeToolboxOnClickOutside() {
   if (toolboxOpen.value) toolboxOpen.value = false
-  if (voiceMenuOpen.value) voiceMenuOpen.value = false
 }
 
 function switchMode(next: EditorMode) {
@@ -1550,7 +1482,6 @@ onMounted(async () => {
   window.addEventListener('online', onOnlineStatusChange)
   window.addEventListener('offline', onOnlineStatusChange)
   loadProjectName()
-  loadVoices() // E2: 非关键，不 await
   await loadDocs()
   maybeAskSettingsInit()
   // 打字机视线：底距 + 容器尺寸变化（改窗口/手机键盘弹起）时重算
@@ -1599,8 +1530,6 @@ onBeforeUnmount(() => {
   if (typingHudTimer) clearTimeout(typingHudTimer)
   if (editor.value) editor.value.destroy()
   if (saveTimer) clearTimeout(saveTimer)
-  currentAudio?.pause()
-  currentAudio = null
   if (selectionHandler) {
     document.removeEventListener('selectionchange', selectionHandler)
     selectionHandler = null
@@ -1948,12 +1877,6 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
   compareActive.value = false
   // ponytail-mobile: 移动端选中章节后收起抽屉
   mobileSidebarOpen.value = false
-  // 切换文档时停止朗读
-  if (currentAudio) {
-    currentAudio.pause()
-    currentAudio = null
-    isSpeaking.value = false
-  }
   // ponytail: flush pending auto-save BEFORE switching activeDocId.
   // Without this, a pending saveTimer fires after activeDocId changes but before
   // the new doc's content loads — saving the old doc's content over the new doc.

@@ -234,7 +234,6 @@
      这里补定义让收起面板的 bottom:calc(var(--status-bar-height,32px)+safe-area) 对齐新栏高） */
   .editor-page { --status-bar-height: 44px; }
   .editor-page .status-bar { height: 44px; gap: 2px; padding: 0 10px; padding-bottom: env(safe-area-inset-bottom); overflow: hidden; }
-  .status-bar .voice-select, .status-bar .voice-caret, .status-bar .voice-popup { display: none; }
   .editor-page .status-bar .speech-btn,
   .editor-page .status-bar .memory-btn,
   .editor-page .status-bar :deep(.memory-btn) {
@@ -1092,32 +1091,8 @@
 }
 .speech-btn:hover { color: var(--accent, #007aff); }
 .speech-btn.speaking { color: var(--accent, #007aff); }
-.voice-select {
-  border: 1px solid var(--border, #e5e5ea);
-  border-radius: 4px;
-  background: var(--bg-secondary, #fff);
-  font-size: 11px;
-  color: var(--text-secondary);
-  padding: 1px 4px;
-  max-width: 160px;
-  cursor: pointer;
-}
-.voice-select:disabled { opacity: 0.5; }
 /* 方案一·瘦身：状态栏左信息右工具 */
 .status-spacer { flex: 1 1 auto; }
-.tts-group { display: inline-flex; align-items: center; }
-.voice-caret {
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 10px;
-  padding: 2px 3px 2px 1px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.voice-caret:hover { color: var(--accent, #007aff); }
-.voice-popup { min-width: 130px; }
-.voice-popup .voice-select { width: 100%; max-width: none; margin: 4px 2px 2px; }
 .offline-indicator {
   color: #e6a23c;
   font-weight: 500;
@@ -1622,18 +1597,6 @@
 }
 
 /* E1: 场景导航按钮已下线（2026-10-23） */
-
-/* E2: 音色选择 */
-.voice-select {
-  font-size: 11px;
-  padding: 2px 4px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary, #86868b);
-  cursor: pointer;
-  outline: none;
-}
-.voice-select:hover { color: var(--text-primary, #1d1d1f); }
 
 /* E5: 快捷键帮助弹窗 */
 .help-overlay {
