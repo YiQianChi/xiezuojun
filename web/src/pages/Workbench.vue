@@ -40,13 +40,27 @@
         </div>
       </div>
     </div>
+    <!-- 首次手机号登录（微信一键登录）：提示设置邮箱+密码，电脑上也能登录；可跳过 -->
+    <div v-if="showSetPwd" class="wb-mask" @click.self="showSetPwd = false">
+      <div class="wb-dlg">
+        <h3>设置邮箱和密码</h3>
+        <p class="wb-dlg-hint">你现在用微信手机号登录。设置邮箱和密码后，电脑打开 xiezuojun.com 也能登录写作。</p>
+        <input v-model.trim="pwdEmail" type="email" class="input" placeholder="邮箱地址" />
+        <input v-model="pwd1" type="password" class="input" placeholder="设置密码（至少 6 位）" />
+        <input v-model="pwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
+        <div class="wb-dlg-btns">
+          <button class="btn" @click="showSetPwd = false">跳过</button>
+          <button class="btn primary" :disabled="pwdSaving" @click="doSetEmail">{{ pwdSaving ? '保存中…' : '保存' }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { projectApi } from '../core/api'
+import { projectApi, userApi } from '../core/api'
 import { toast } from '../composables/useToast'
 
 const router = useRouter()
@@ -54,6 +68,24 @@ const projects = ref<any[]>([])
 const showCreate = ref(false)
 const newName = ref('')
 const creating = ref(false)
+const showSetPwd = ref(false)
+const pwdEmail = ref('')
+const pwd1 = ref('')
+const pwd2 = ref('')
+const pwdSaving = ref(false)
+
+async function doSetEmail() {
+  if (!pwdEmail.value || pwd1.value.length < 6) { toast.error('请填邮箱和至少 6 位密码'); return }
+  if (pwd1.value !== pwd2.value) { toast.error('两次密码不一致'); return }
+  pwdSaving.value = true
+  try {
+    await userApi.setEmail({ email: pwdEmail.value, password: pwd1.value })
+    toast.success('已设置，电脑上用邮箱登录即可')
+    showSetPwd.value = false
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '设置失败')
+  } finally { pwdSaving.value = false }
+}
 
 const recent = computed(() =>
   [...projects.value].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at)).slice(0, 1)
@@ -82,6 +114,12 @@ onMounted(async () => {
     const res = await projectApi.list()
     projects.value = res.data?.data || res.data || []
   } catch { /* 401 由拦截器去登录 */ }
+  // 手机号一键登录的用户没邮箱没密码 → 提示设置（跳过的话以后在 账号与安全 里也能设）
+  try {
+    const me = await userApi.me()
+    const sec = (me.data?.data || me.data)?.security || {}
+    if (!sec.has_password && !sec.email_bound) showSetPwd.value = true
+  } catch { /* 拿不到就不提示 */ }
 })
 onUnmounted(() => window.clearInterval(timer))
 
@@ -134,5 +172,6 @@ async function createProject() {
 .wb-dlg { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 20px; width: 100%; max-width: 340px; }
 .wb-dlg h3 { font-size: 16px; margin-bottom: 14px; color: var(--text-primary); }
 .wb-dlg .input { width: 100%; margin-bottom: 16px; }
+.wb-dlg-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: -6px 0 14px; text-align: left; }
 .wb-dlg-btns { display: flex; gap: 10px; justify-content: flex-end; }
 </style>
