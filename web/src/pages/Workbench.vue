@@ -49,7 +49,7 @@
         <input v-model="pwd1" type="password" class="input" placeholder="设置密码（至少 6 位）" />
         <input v-model="pwd2" type="password" class="input" placeholder="确认密码" @keyup.enter="doSetEmail" />
         <div class="wb-dlg-btns">
-          <button class="btn" @click="showSetPwd = false">跳过</button>
+          <button class="btn" @click="skipSetPwd">跳过</button>
           <button class="btn primary" :disabled="pwdSaving" @click="doSetEmail">{{ pwdSaving ? '保存中…' : '保存' }}</button>
         </div>
       </div>
@@ -73,6 +73,11 @@ const pwdEmail = ref('')
 const pwd1 = ref('')
 const pwd2 = ref('')
 const pwdSaving = ref(false)
+
+function skipSetPwd() {
+  localStorage.setItem('xzj_skip_setpwd', '1')
+  showSetPwd.value = false
+}
 
 async function doSetEmail() {
   if (!pwdEmail.value || pwd1.value.length < 6) { toast.error('请填邮箱和至少 6 位密码'); return }
@@ -114,11 +119,13 @@ onMounted(async () => {
     const res = await projectApi.list()
     projects.value = res.data?.data || res.data || []
   } catch { /* 401 由拦截器去登录 */ }
-  // 手机号一键登录的用户没邮箱没密码 → 提示设置（跳过的话以后在 账号与安全 里也能设）
+  // 手机号一键登录的用户没邮箱没密码 → 提示设置（点过跳过就不再弹；账号与安全里随时可设）
   try {
-    const me = await userApi.me()
-    const sec = (me.data?.data || me.data)?.security || {}
-    if (!sec.has_password && !sec.email_bound) showSetPwd.value = true
+    if (!localStorage.getItem('xzj_skip_setpwd')) {
+      const me = await userApi.me()
+      const sec = (me.data?.data || me.data)?.security || {}
+      if (!sec.has_password && !sec.email_bound) showSetPwd.value = true
+    }
   } catch { /* 拿不到就不提示 */ }
 })
 onUnmounted(() => window.clearInterval(timer))
