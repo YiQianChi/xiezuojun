@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>编辑器底栏 · 三方案</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif; background:#e8e8ed; padding:20px 14px 60px; color:#1d1d1f; }
+  h1 { font-size:18px; text-align:center; margin-bottom:6px; }
+  .tip { text-align:center; font-size:12px; color:#86868b; margin-bottom:24px; }
+  .scheme { margin-bottom:36px; }
+  .scheme h2 { font-size:14px; margin-bottom:4px; }
+  .scheme .desc { font-size:11px; color:#86868b; margin-bottom:12px; }
+
+  .phone { width:330px; margin:0 auto; background:#faf8f2; border-radius:24px; overflow:hidden; box-shadow:0 2px 16px rgba(0,0,0,.12); position:relative; }
+  .doc { padding:18px 18px 8px; min-height:400px; font-size:16px; line-height:2; color:#4a4438; }
+  .doc p { margin-bottom:1em; }
+  .vh { text-align:center; font-size:15px; letter-spacing:2px; color:#9a8f74; margin-bottom:18px; }
+  .vh::before, .vh::after { content:"—"; margin:0 10px; color:#d5cbb0; }
+
+  /* 现状 */
+  .bar-now { display:flex; align-items:center; gap:2px; height:44px; padding:0 8px; background:#f1ede2; border-top:1px solid #e3dcc9; font-size:12px; }
+  .bar-now span, .bar-now button { white-space:nowrap; flex-shrink:0; font-size:11px; }
+  .bar-now .sp { flex:1; }
+  .now-tag { display:inline-block; background:#ff3b30; color:#fff; font-size:10px; border-radius:8px; padding:2px 8px; margin:6px auto 0; }
+
+  /* 通用底栏元素 */
+  .bar { display:flex; align-items:center; height:52px; padding:0 12px; background:rgba(250,248,242,.96); backdrop-filter:blur(10px); border-top:1px solid #e3dcc9; }
+  .binfo { font-size:12px; color:#8a8270; }
+  .binfo b { color:#4a4438; font-weight:600; }
+  .bsp { flex:1; }
+  .bbtn { width:40px; height:40px; border:none; background:none; border-radius:10px; font-size:18px; color:#6b6353; display:flex; align-items:center; justify-content:center; }
+  .bbtn:active { background:#eae4d3; }
+  .bbtn .sub { font-size:9px; color:#b0a78f; position:absolute; transform:translateY(13px); }
+
+  /* 方案A：字数胶囊浮在正文右上 */
+  .wc-chip { position:absolute; top:10px; right:14px; font-size:11px; color:#b0a78f; background:rgba(250,248,242,.9); padding:3px 10px; border-radius:99px; border:1px solid #e8e1cd; }
+
+  /* 方案B：展开态工具面板 */
+  .panel { background:#fff; border-radius:16px 16px 0 0; padding:14px 16px 20px; box-shadow:0 -6px 24px rgba(0,0,0,.08); }
+  .panel-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .pitem { background:#f7f4ea; border:none; border-radius:12px; padding:12px 4px 10px; text-align:center; }
+  .pitem .ic { font-size:20px; display:block; }
+  .pitem .lb { font-size:11px; color:#6b6353; display:block; margin-top:4px; }
+  .pinfo { font-size:11px; color:#8a8270; text-align:center; margin-top:12px; }
+
+  /* 方案C：双键 */
+  .bar-c { justify-content:space-between; }
+  .dock2 { display:flex; gap:10px; }
+</style>
+</head>
+<body>
+<h1>编辑器手机底栏 · 三方案（现状 vs 收纳）</h1>
+<p class="tip">现状 9 项挤一根 44px 栏；三个方案都把「字数/保存」这类信息挪出底栏，底栏只留手指要按的。</p>
+
+<!-- 现状 -->
+<section class="scheme">
+  <h2>现状 · 9 项挤一栏</h2>
+  <p class="desc">字数 · 离线 · 保存 · 敏感词 · 码字锁 · 听写 · 预览 · Aa · ⋯ —— 触控目标最小只有 ~30px，容易误触</p>
+  <div class="phone">
+    <div class="doc">
+      <div class="vh">第 24 章</div>
+      <p>夜雨敲窗，灯影在墙上晃了一下。林昭搁下笔，听见巷口传来更夫的梆子声——三更了。</p>
+      <p>她把写了一半的信纸折起，压进枕下。</p>
+    </div>
+    <div class="bar-now">
+      <span>2,136 字</span><span>已保存</span><span>◉ 敏感词 3</span>
+      <span class="sp"></span>
+      <span>🔒 码字锁</span><span>🎙</span><span>📱</span><span>Aa</span><span>⋯</span>
+    </div>
+    <div style="text-align:center"><span class="now-tag">↑ 密集区</span></div>
+  </div>
+</section>
+
+<!-- 方案A -->
+<section class="scheme">
+  <h2>方案 A · 信息上浮（推荐）</h2>
+  <p class="desc">字数/保存状态变成正文右上角小胶囊（不占手指区）；底栏 4 键：码字锁、听写、显示设置、工具箱（敏感词/预览/记忆/统计都在里面）。触控目标 40px。</p>
+  <div class="phone">
+    <div class="wc-chip">2,136 字 · 已存</div>
+    <div class="doc">
+      <div class="vh">第 24 章</div>
+      <p>夜雨敲窗，灯影在墙上晃了一下。林昭搁下笔，听见巷口传来更夫的梆子声——三更了。</p>
+      <p>她把写了一半的信纸折起，压进枕下。</p>
+    </div>
+    <div class="bar">
+      <button class="bbtn">🔒</button>
+      <button class="bbtn">🎙</button>
+      <span class="bsp"></span>
+      <button class="bbtn">Aa</button>
+      <button class="bbtn">⋯</button>
+    </div>
+  </div>
+</section>
+
+<!-- 方案B -->
+<section class="scheme">
+  <h2>方案 B · 底栏单键 + 全量面板</h2>
+  <p class="desc">底栏只留一个「⋯」（外加码字锁进行时才出现的胶囊）；点开是底部大面板，信息+全部工具一览。最清爽，但听写等多一步。</p>
+  <div class="phone">
+    <div class="wc-chip">2,136 字</div>
+    <div class="doc">
+      <div class="vh">第 24 章</div>
+      <p>夜雨敲窗，灯影在墙上晃了一下。</p>
+    </div>
+    <div class="panel">
+      <div class="panel-grid">
+        <div class="pitem"><span class="ic">🎙</span><span class="lb">听写</span></div>
+        <div class="pitem"><span class="ic">📱</span><span class="lb">预览</span></div>
+        <div class="pitem"><span class="ic">◉</span><span class="lb">敏感词 3</span></div>
+        <div class="pitem"><span class="ic">Aa</span><span class="lb">显示</span></div>
+        <div class="pitem"><span class="ic">🧠</span><span class="lb">记忆</span></div>
+        <div class="pitem"><span class="ic">📊</span><span class="lb">统计</span></div>
+        <div class="pitem"><span class="ic">🔒</span><span class="lb">码字锁</span></div>
+        <div class="pitem"><span class="ic">✕</span><span class="lb">收起</span></div>
+      </div>
+      <div class="pinfo">已保存 · 离线缓存开启</div>
+    </div>
+  </div>
+</section>
+
+<!-- 方案C -->
+<section class="scheme">
+  <h2>方案 C · 双键极简</h2>
+  <p class="desc">只留「🔒」和「⋯」两个键，间距拉满；其余全进面板。最透气，但听写/显示设置也要进面板。</p>
+  <div class="phone">
+    <div class="wc-chip">2,136 字 · 已存</div>
+    <div class="doc">
+      <div class="vh">第 24 章</div>
+      <p>夜雨敲窗，灯影在墙上晃了一下。</p>
+    </div>
+    <div class="bar bar-c">
+      <div class="dock2">
+        <button class="bbtn">🔒</button>
+        <button class="bbtn">⋯</button>
+      </div>
+      <span class="binfo">Aa</span>
+    </div>
+  </div>
+</section>
+
+<script>console.assert(document.querySelectorAll('.scheme').length === 4, 'schemes render ok')</script>
+</body>
+</html>

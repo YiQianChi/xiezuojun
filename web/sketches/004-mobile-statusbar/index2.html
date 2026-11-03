@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>编辑器底栏 · 补充方案 D/E/F</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif; background:#e8e8ed; padding:20px 14px 60px; color:#1d1d1f; }
+  h1 { font-size:18px; text-align:center; margin-bottom:6px; }
+  .tip { text-align:center; font-size:12px; color:#86868b; margin-bottom:24px; }
+  .scheme { margin-bottom:36px; }
+  .scheme h2 { font-size:14px; margin-bottom:4px; }
+  .scheme .desc { font-size:11px; color:#86868b; margin-bottom:12px; }
+  .phone { width:330px; margin:0 auto; background:#faf8f2; border-radius:24px; overflow:hidden; box-shadow:0 2px 16px rgba(0,0,0,.12); position:relative; }
+  .doc { padding:18px 18px 20px; min-height:400px; font-size:16px; line-height:2; color:#4a4438; }
+  .doc p { margin-bottom:1em; }
+  .vh { text-align:center; font-size:15px; letter-spacing:2px; color:#9a8f74; margin-bottom:18px; }
+  .vh::before, .vh::after { content:"—"; margin:0 10px; color:#d5cbb0; }
+  .wc-chip { position:absolute; top:10px; right:14px; font-size:11px; color:#b0a78f; background:rgba(250,248,242,.9); padding:3px 10px; border-radius:99px; border:1px solid #e8e1cd; }
+
+  /* D：右侧竖 dock */
+  .vdock { position:absolute; right:8px; top:38%; display:flex; flex-direction:column; gap:8px; background:rgba(255,255,255,.85); backdrop-filter:blur(8px); border:1px solid #e8e1cd; border-radius:16px; padding:8px 5px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+  .vdock button { width:38px; height:38px; border:none; background:none; border-radius:10px; font-size:17px; color:#6b6353; }
+  .vdock button:active { background:#eae4d3; }
+
+  /* E：键盘 accessory */
+  .acc { background:#f1ede2; border-top:1px solid #e3dcc9; display:flex; align-items:center; gap:6px; height:44px; padding:0 10px; }
+  .acc .k { width:38px; height:34px; border:none; background:none; border-radius:8px; font-size:16px; color:#6b6353; }
+  .acc .k:active { background:#e3dcc9; }
+  .acc .sp { flex:1; }
+  .acc .kb-hint { font-size:10px; color:#b0a78f; }
+  .kbd { background:#d1d3d9; padding:8px 6px 14px; }
+  .kbd .row { display:flex; gap:5px; margin-bottom:7px; justify-content:center; }
+  .kbd .key { flex:1; max-width:32px; height:36px; background:#fff; border-radius:5px; box-shadow:0 1px 0 #b8bac0; }
+  .kbd .key.sp2 { flex:4; max-width:none; }
+
+  /* F：悬浮球 */
+  .fab { position:absolute; right:16px; bottom:88px; width:48px; height:48px; border-radius:50%; background:rgba(74,68,56,.88); color:#f5f0e4; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 14px rgba(0,0,0,.25); }
+  .fab-ring { position:absolute; right:8px; bottom:80px; }
+  .fab-ring button { position:absolute; width:42px; height:42px; border-radius:50%; border:1px solid #e3dcc9; background:rgba(255,255,255,.95); font-size:17px; color:#6b6353; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+  .f1 { right:64px; bottom:96px; } .f2 { right:56px; bottom:148px; } .f3 { right:8px; bottom:160px; }
+</style>
+</head>
+<body>
+<h1>编辑器底栏 · 补充三方案</h1>
+<p class="tip">上一版是"底栏怎么排"；这一版是"不放底栏"的思路。</p>
+
+<section class="scheme">
+  <h2>方案 D · 右缘竖排工具 dock</h2>
+  <p class="desc">工具竖着挂在右缘中间（像阅读 app 的侧边工具列），拇指够得着、不占底部；底栏整个消失，正文一直铺到屏幕底。</p>
+  <div class="phone">
+    <div class="wc-chip">2,136 字 · 已存</div>
+    <div class="doc">
+      <div class="vh">第 24 章</div>
+      <p>夜雨敲窗，灯影在墙上晃了一下。林昭搁下笔，听见巷口传来更夫的梆子声——三更了。</p>
+      <p>她把写了一半的信纸折起，压进枕下。</p>
+    </div>
+    <div class="vdock">
+      <button>🔒</button><button>🎙</button><button>Aa</button><button>⋯</button>
+    </div>
+  </div>
+</section>
+
+<section class="scheme">
+  <h2>方案 E · 键盘联动工具条</h2>
+  <p class="desc">平时没有底栏；弹键盘时在键盘上方挂一条工具条（iOS 输入法上方那栏的模式）。写作场景里键盘常驻=工具常驻，收起键盘=全屏阅读。</p>
+  <div class="phone">
+    <div class="wc-chip">2,136 字</div>
+    <div class="doc" style="min-height:200px">
+      <div class="vh">第 24 章</div>
+      <p>夜雨敲窗，灯影在墙上晃了一下。<span style="background:#fff3bf">|</span></p>
+    </div>
+    <div class="acc">
+      <button class="k">🔒</button><button class="k">🎙</button><span class="sp"></span>
+      <span class="kb-hint">已存</span>
+      <button class="k">Aa</button><button class="k">⋯</button>
+    </div>
+    <div class="kbd">
+      <div class="row"><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div></div>
+      <div class="row"><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div></div>
+      <div class="row"><div class="key sp2"></div><div class="key"></div><div class="key"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="scheme">
+  <h2>方案 F · 可拖悬浮球</h2>
+  <p class="desc">一个半透明悬浮球，按住可拖到顺手的位置；点开弹出环形/扇形工具。正文全屏、工具随身，是最"游戏化"的做法（截图=展开态）。</p>
+  <div class="phone">
+    <div class="wc-chip">2,136 字 · 已存</div>
+    <div class="doc">
+      <div class="vh">第 24 章</div>
+      <p>夜雨敲窗，灯影在墙上晃了一下。林昭搁下笔，听见巷口传来更夫的梆子声。</p>
+    </div>
+    <div class="fab-ring">
+      <button class="f1">🎙</button><button class="f2">🔒</button><button class="f3">Aa</button>
+    </div>
+    <div class="fab">✍</div>
+  </div>
+</section>
+
+<script>console.assert(document.querySelectorAll('.scheme').length === 3)</script>
+</body>
+</html>
