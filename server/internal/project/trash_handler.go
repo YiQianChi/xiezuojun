@@ -128,8 +128,12 @@ func (h *Handler) EmptyTrash(c *gin.Context) {
 		return
 	}
 	// ponytail: 软删 project 的磁盘文件挪到回收目录，不真删
+	// ponytail: 硬删的软删 project 其文档 status 仍是 1，按 user 查会留孤儿——直接按 project_id 清
 	var deadProjects []model.Project
 	h.db.Where("user_id = ? AND status = 0", userID).Find(&deadProjects)
+	for _, p := range deadProjects {
+		h.db.Where("project_id = ?", p.ID).Delete(&model.Document{})
+	}
 	dateStr := time.Now().Format("20060102")
 	for _, p := range deadProjects {
 		// 封面文件随书硬删，不留孤儿
@@ -234,7 +238,8 @@ func (h *Handler) DestroyDocument(c *gin.Context) {
 		projName := h.getProjectName(req.ProjectID)
 		trashDir := h.paths.TrashDir(userID, req.ProjectID, projName)
 		_ = os.RemoveAll(trashDir)
-		h.db.Where("project_id = ? AND status = 0", req.ProjectID).Delete(&model.Document{})
+		// ponytail: 整书硬删时其文档全是死数据，不能只删 status=0（软删书不动文档 status，会留孤儿记录）
+		h.db.Where("project_id = ?", req.ProjectID).Delete(&model.Document{})
 		h.db.Where("id = ? AND status = 0", req.ProjectID).Delete(&model.Project{})
 		c.JSON(http.StatusOK, gin.H{"message": "destroyed"})
 		return
