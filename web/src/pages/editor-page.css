@@ -700,7 +700,7 @@
 }
 
 /* 行号只在开启开关时显示（Boss 2026-10-23：收进显示设置，默认不显示）
-   定位用固定 px（不用 em）：行号盒子恒定居中于 76px 宽的左侧 gutter，不随字号漂移 */
+   v2（2026-11-03）：行号与段落首行文字垂直居中对齐（原来贴段顶 12px 显得飘）；沟槽 76→52px 更紧凑 */
 .editor-wrapper.show-line-numbers :deep(.ProseMirror) > p::before,
 .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h1::before,
 .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h2::before,
@@ -711,13 +711,16 @@
 .editor-wrapper.show-line-numbers :deep(.ProseMirror) > pre::before {
   content: counter(para);
   position: absolute;
-  left: -76px;
-  width: 64px;
-  text-align: center;
+  left: -52px;
+  width: 42px;
+  text-align: right;
+  padding-right: 10px;
+  box-sizing: border-box;
+  top: calc((var(--ds-line-height, 1.9) * var(--ds-font-size, 17px) - 12px) / 2);
   font-family: var(--font-sans, -apple-system, 'SF Pro', sans-serif);
   font-size: 12px;
   line-height: 1;
-  color: var(--text-tertiary, #c7c7cc);
+  color: var(--ed-ink-soft, #b8ad97);
   font-variant-numeric: tabular-nums;
   user-select: none;
   pointer-events: none;
@@ -2312,5 +2315,19 @@
     width: auto !important; max-height: 74vh;
     border-radius: 16px 16px 0 0 !important;
     box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  /* 段落行号手机档：原来 -76px 沟槽画到屏外被裁（开关"无效"实为看不见）——收窄沟槽并给正文让出左边距 */
+  .editor-wrapper.show-line-numbers .tiptap-container { padding-left: 46px; }
+  .editor-wrapper.show-line-numbers :deep(.ProseMirror) > p::before,
+  .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h1::before,
+  .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h2::before,
+  .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h3::before,
+  .editor-wrapper.show-line-numbers :deep(.ProseMirror) > blockquote::before,
+  .editor-wrapper.show-line-numbers :deep(.ProseMirror) > ul::before,
+  .editor-wrapper.show-line-numbers :deep(.ProseMirror) > ol::before,
+  .editor-wrapper.show-line-numbers :deep(.ProseMirror) > pre::before {
+    left: -40px; width: 32px; padding-right: 6px; font-size: 10px;
+    top: calc((var(--ds-line-height, 1.95) * var(--ds-font-size, 16px) - 10px) / 2);
   }
 }
