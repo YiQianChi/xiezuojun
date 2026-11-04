@@ -22,6 +22,7 @@
 - **SEO 静态页**：`/opt/xzj-seo`，爬虫 UA 分流，独立于 dist（防 rsync 覆盖）；nginx 备份 `~/nginx-bak-xiezuojun.com.*.conf`
 - **DB**（生产本地）：`127.0.0.1:3306`，`xiezuojun:Xzj2026Test@tcp(127.0.0.1:3306)/xiezuojun`
 - **测试账号**：test@oneon.com.cn（昵称「审核体验」，小程序提审用；密码在 mp 后台测试账号设置，183 不留明文）。旧 test0728 账号已删
+- **Samba 共享（Z 盘）**：`\\10.10.30.183\xzj`，账号 **`xzjshare`**（一个 z！）/ `Xzj2026Share`。2026-11-04 踩坑：Boss 敲成 xzzjshare 被映射 guest 报"拒绝访问"，排查靠把 smb.conf log level 调 3 看 `log.<机器名>`。Z 盘只当传送带，DevTools/构建用 D:\xiezuojun（git pull 到最新）
 - **短信**：火山引擎 SmsAccount=8bb50d20；注册模板 S1T_1y2pbauk98v0i，改密模板 S1T_1y2pbauk98vlu；测试手机 17749538040
 - **ICP**：苏ICP备2026036211号-4
 
