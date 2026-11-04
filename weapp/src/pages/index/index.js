@@ -106,7 +106,8 @@ Page({
   onShareTimeline() {
     return {
       title: '写作菌 · AI 小说写作',
-      query: ''
+      query: '',
+      imageUrl: 'https://xiezuojun.com/share-card.jpg' // 朋友圈卡片只认网络图
     }
   }
 })
