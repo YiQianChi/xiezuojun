@@ -1554,6 +1554,7 @@ function closeToolboxOnClickOutside() {
   // 手机档这些弹窗没有常驻触发钮可再点关闭，点空白处统一收
   if (sensitiveOpen.value) sensitiveOpen.value = false
   if (wordLockOpen.value) wordLockOpen.value = false
+  dsRef.value?.close()
 }
 
 function switchMode(next: EditorMode) {
@@ -1583,6 +1584,20 @@ onMounted(async () => {
   document.addEventListener('click', closeToolboxOnClickOutside)
   window.addEventListener('online', onOnlineStatusChange)
   window.addEventListener('offline', onOnlineStatusChange)
+  // 手机：键盘弹起时收起底部弹层（fixed bottom 元素会被键盘顶起挡住视线）
+  if (window.visualViewport) {
+    let lastVh = window.visualViewport.height
+    window.visualViewport.addEventListener('resize', () => {
+      const vh = window.visualViewport!.height
+      if (lastVh - vh > 150) {
+        dsRef.value?.close()
+        sensitiveOpen.value = false
+        wordLockOpen.value = false
+        toolboxOpen.value = false
+      }
+      lastVh = vh
+    })
+  }
   loadProjectName()
   await loadDocs()
   maybeAskSettingsInit()
