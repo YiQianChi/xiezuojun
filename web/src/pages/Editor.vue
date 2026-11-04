@@ -25,7 +25,7 @@
     <div class="mp-handle" @click.stop="mpRailOpen = !mpRailOpen"></div>
     <div class="mp-rail" :class="{ open: mpRailOpen }" @click.stop>
       <button :class="{ on: !!wordLock }" @click="mpRailOpen = false; wordLockOpen = !wordLockOpen" title="码字锁">🔒</button>
-      <button :class="{ on: dictating }" @click="toggleDictation" title="听写">{{ dictating ? '⏹' : '🎙' }}</button>
+      <button v-if="enableDictation" :class="{ on: dictating }" @click="toggleDictation" title="听写">{{ dictating ? '⏹' : '🎙' }}</button>
       <button @click="mpRailOpen = false; dsRef?.toggle()" title="显示设置">Aa</button>
       <button :class="{ on: sensitiveOpen }" @click="mpRailOpen = false; sensitiveOpen = !sensitiveOpen" title="敏感词">◉<span v-if="sensitiveTotal > 0" class="mp-dot">{{ sensitiveTotal > 99 ? '99+' : sensitiveTotal }}</span></button>
       <button @click="mpRailOpen = false; toolboxOpen = !toolboxOpen" title="工具箱">⋯</button>
@@ -402,7 +402,8 @@
       </div>
 
       <!-- 听写：语音转文字（Chrome） -->
-      <button class="status-item speech-btn" :class="{ speaking: dictating }" @click="toggleDictation" :title="dictating ? '停止听写' : '🎙 听写（语音转文字）'">
+      <!-- 听写：2026-11-03 Boss 暂时下线（小程序 webview 不支持 Web Speech API，等火山 ASR 版再上） -->
+      <button v-if="enableDictation" class="status-item speech-btn" :class="{ speaking: dictating }" @click="toggleDictation" :title="dictating ? '停止听写' : '🎙 听写（语音转文字）'">
         {{ dictating ? '⏹' : '🎙' }}
       </button>
 
@@ -1026,6 +1027,8 @@ function syncPhonePreview() {
 }
 
 /* ═══ B3. 听写：Web Speech API（Chrome） ═══ */
+// 听写：暂时下线（微信 webview 无 Web Speech API，点了只报"不支持"误导用户；等火山 ASR 按住说话版）
+const enableDictation = false
 const dictating = ref(false)
 let recog: any = null
 
