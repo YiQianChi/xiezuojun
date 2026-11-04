@@ -32,10 +32,12 @@ if (-not $ok) { pause; exit 1 }
 
 # 模块自检
 $idx = Get-Content "D:\xiezuojun\weapp\src\pages\index\index.js" -Raw -ErrorAction SilentlyContinue
-if ($idx -match '/bookshelf\?xzj_at=') {
-    Write-Host "✓ weapp 登录后直达书架（新版）" -ForegroundColor Green
+if ($idx -match '/home\?xzj_at=') {
+    Write-Host "✓ weapp 登录后直达首页工作台（新版）" -ForegroundColor Green
+} elseif ($idx -match '/bookshelf\?xzj_at=') {
+    Write-Host "⚠ weapp 是旧版（直达书架），建议 git pull" -ForegroundColor Yellow
 } elseif (Test-Path "D:\xiezuojun\weapp") {
-    Write-Host "⚠ weapp 还是旧版（没有直达书架），告诉 Hermes" -ForegroundColor Yellow
+    Write-Host "⚠ weapp 版本不明，告诉 Hermes" -ForegroundColor Yellow
 }
 $bp = Get-Content "D:\xiezuojun\harmony\entry\build-profile.json5" -TotalCount 2 -ErrorAction SilentlyContinue
 if ($bp -match '"apiType"') {
