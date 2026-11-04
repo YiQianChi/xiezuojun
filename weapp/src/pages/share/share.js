@@ -12,6 +12,7 @@ Page({
     })
   },
   onShareAppMessage() {
+    wx.request({ url: app.globalData.site + '/api/share-log?from=share&t=' + Date.now(), method: 'GET', fail: () => {} })
     return {
       title: '《' + (this.data.book || '作品') + '》' + this.data.title + ' | 写作菌',
       path: '/pages/index/index?web=read/' + this.data.code,

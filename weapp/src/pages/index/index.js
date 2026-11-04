@@ -86,6 +86,8 @@ Page({
     }
   },
   onShareAppMessage() {
+    // 临时诊断：确认分享处理函数执行 + 微信是否拉取卡片图（查 124 nginx access log /api/share-log）
+    wx.request({ url: app.globalData.site + '/api/share-log?from=index&t=' + Date.now(), method: 'GET', fail: () => {} })
     let s = this.shareMsg || wx.getStorageSync('xzj_share')
     // storage 里的旧分享 10 分钟后失效，避免用户想默认转发时还带着老章节
     if (s && s.ts && Date.now() - s.ts > 10 * 60 * 1000) s = null
