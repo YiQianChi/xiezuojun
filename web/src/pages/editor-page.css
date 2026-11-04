@@ -2304,4 +2304,13 @@
   .app-main.editor-mode, .app-main.editor-mode *, .editor-page, .editor-page * { scrollbar-width: none; }
   .app-main.editor-mode ::-webkit-scrollbar,
   .editor-page ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+  /* 右栏设定/AI 面板：手机档改全宽底部抽屉（自带抓手关闭），收起竖条隐藏（右缘让给把手，入口=工具轨 📖） */
+  .editor-page .context-panel.collapsed { display: none !important; }
+  .editor-page .context-panel:not(.collapsed) {
+    left: 10px !important; right: 10px !important; top: auto !important; bottom: 0 !important;
+    width: auto !important; max-height: 74vh;
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.12) !important;
+  }
 }

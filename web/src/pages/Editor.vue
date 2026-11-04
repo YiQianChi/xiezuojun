@@ -27,6 +27,7 @@
       <button :class="{ on: !!wordLock }" @click="mpRailOpen = false; wordLockOpen = !wordLockOpen" title="码字锁">🔒</button>
       <button v-if="enableDictation" :class="{ on: dictating }" @click="toggleDictation" title="听写">{{ dictating ? '⏹' : '🎙' }}</button>
       <button @click="mpRailOpen = false; dsRef?.toggle()" title="显示设置">Aa</button>
+      <button :class="{ on: contextPanelOpen }" @click="mpRailOpen = false; contextPanelOpen = true" title="设定 / 灵感 / 自检">📖</button>
       <button :class="{ on: sensitiveOpen }" @click="mpRailOpen = false; sensitiveOpen = !sensitiveOpen" title="敏感词">◉<span v-if="sensitiveTotal > 0" class="mp-dot">{{ sensitiveTotal > 99 ? '99+' : sensitiveTotal }}</span></button>
       <button @click="mpRailOpen = false; toolboxOpen = !toolboxOpen" title="工具箱">⋯</button>
       <button class="mp-close" @click="mpRailOpen = false">✕</button>
