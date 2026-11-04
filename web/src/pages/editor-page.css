@@ -2300,7 +2300,8 @@
   }
   /* 正文底部留白收窄（原 96px 是给底栏让位） */
   .editor-page .tiptap-container { padding-bottom: calc(28px + env(safe-area-inset-bottom)) !important; }
-  /* 手机滚动条隐藏（右缘只留把手） */
-  .editor-page ::-webkit-scrollbar { width: 0; height: 0; }
-  .editor-page { scrollbar-width: none; }
+  /* 手机滚动条隐藏（右缘只留把手）——覆盖整条滚动链：app-main 及编辑器内所有滚动容器 */
+  .app-main.editor-mode, .app-main.editor-mode *, .editor-page, .editor-page * { scrollbar-width: none; }
+  .app-main.editor-mode ::-webkit-scrollbar,
+  .editor-page ::-webkit-scrollbar { width: 0; height: 0; display: none; }
 }
