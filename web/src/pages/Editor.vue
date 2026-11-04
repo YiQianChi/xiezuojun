@@ -26,7 +26,6 @@
     <div class="mp-rail" :class="{ open: mpRailOpen }" @click.stop>
       <button :class="{ on: !!wordLock }" @click="mpRailOpen = false; wordLockOpen = !wordLockOpen" title="码字锁">🔒</button>
       <button v-if="enableDictation" :class="{ on: dictating }" @click="toggleDictation" title="听写">{{ dictating ? '⏹' : '🎙' }}</button>
-      <button @click="mpRailOpen = false; dsRef?.toggle()" title="显示设置">Aa</button>
       <button :class="{ on: contextPanelOpen }" @click="mpRailOpen = false; contextPanelOpen = true" title="设定 / 灵感 / 自检">📖</button>
       <button :class="{ on: sensitiveOpen }" @click="mpRailOpen = false; sensitiveOpen = !sensitiveOpen" title="敏感词">◉<span v-if="sensitiveTotal > 0" class="mp-dot">{{ sensitiveTotal > 99 ? '99+' : sensitiveTotal }}</span></button>
       <button @click="mpRailOpen = false; toolboxOpen = !toolboxOpen" title="工具箱">⋯</button>
@@ -431,6 +430,11 @@
             <button class="tool-btn" :class="{ active: statsOpen }" @click="statsOpen = !statsOpen; toolboxOpen = false">
               <span class="tool-icon">📊</span>
               <span class="tool-label">统计</span>
+            </button>
+            <!-- 显示设置挪进工具箱（2026-11-03 Boss：侧边轨不单列 Aa） -->
+            <button class="tool-btn" @click="toolboxOpen = false; dsRef?.toggle()">
+              <span class="tool-icon">Aa</span>
+              <span class="tool-label">显示</span>
             </button>
             <button class="tool-btn" :class="{ active: chatOpen }" @click="chatOpen = !chatOpen; toolboxOpen = false">
               <span class="tool-icon">💬</span>
