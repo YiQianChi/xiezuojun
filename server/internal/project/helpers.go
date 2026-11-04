@@ -37,6 +37,22 @@ func (h *Handler) requireProjectOwner(c *gin.Context, projectID uint) bool {
 	return true
 }
 
+// requireProjectOwnerAnyStatus 同 requireProjectOwner 但不限 status——回收站里的项目是软删 status=0，也要能校验所有权
+func (h *Handler) requireProjectOwnerAnyStatus(c *gin.Context, projectID uint) bool {
+	userID := getUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return false
+	}
+	var count int64
+	h.db.Model(&model.Project{}).Where("id = ? AND user_id = ?", projectID, userID).Count(&count)
+	if count == 0 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not found"})
+		return false
+	}
+	return true
+}
+
 // requireDocOwner 校验文档所属项目属于当前用户，否则返回403。
 func (h *Handler) requireDocOwner(c *gin.Context, docID uint) bool {
 	doc, err := h.findDoc(c.Param("id"))

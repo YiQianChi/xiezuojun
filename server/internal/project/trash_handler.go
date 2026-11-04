@@ -27,9 +27,9 @@ func (h *Handler) RestoreDocument(c *gin.Context) {
 		return
 	}
 
-	// ponytail: project_id 有值但 doc_id=0 → 恢复整个 project（软删恢复）
+	// ponytail: project_id 有值但 doc_id=0 → 恢复整个 project（软删恢复，status=0 也要过所有权校验）
 	if req.ProjectID > 0 && req.DocID == 0 {
-		if !h.requireProjectOwner(c, req.ProjectID) {
+		if !h.requireProjectOwnerAnyStatus(c, req.ProjectID) {
 			return
 		}
 		if err := h.db.Model(&model.Project{}).Where("id = ?", req.ProjectID).Update("status", 1).Error; err != nil {
@@ -227,8 +227,8 @@ func (h *Handler) DestroyDocument(c *gin.Context) {
 		return
 	}
 	if req.DocID == 0 && req.ProjectID > 0 {
-		// ponytail: 彻底删除整个软删 project（书架全局回收站用）
-		if !h.requireProjectOwner(c, req.ProjectID) {
+		// ponytail: 彻底删除整个软删 project（书架全局回收站用，status=0 也要过所有权校验）
+		if !h.requireProjectOwnerAnyStatus(c, req.ProjectID) {
 			return
 		}
 		projName := h.getProjectName(req.ProjectID)
