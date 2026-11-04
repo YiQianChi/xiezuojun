@@ -2241,10 +2241,13 @@
 }
 @keyframes th-fade-in { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
-/* ===== 手机档 H 方案（2026-11-03 Boss 定稿）：底栏退役，字数胶囊 + 贴边把手 + 玻璃工具轨 =====
+/* ═══ 手机档 H 方案（2026-11-03 Boss 定稿）：底栏退役，字数胶囊 + 贴边把手 + 玻璃工具轨 ═══
    桌面（>768px）三者全隐藏，底栏原样；弹层（敏感词/码字锁/工具箱/显示设置）留在 status-bar 里，
    手机档只隐底栏可见 chrome（fixed 定位的弹层照常渲染，锚点改贴底） */
 .mp-chip, .mp-handle, .mp-rail { display: none; }
+/* 工具箱里的「显示」入口：仅手机档出现（桌面用底栏 ⚙️） */
+.tool-btn.mp-only { display: none; }
+@media (max-width: 768px) { .tool-btn.mp-only { display: flex; } }
 
 @media (max-width: 768px) {
   /* 字数/保存胶囊：浮在编辑区右上，不占手指区 */

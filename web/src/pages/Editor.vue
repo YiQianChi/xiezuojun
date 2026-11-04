@@ -431,8 +431,8 @@
               <span class="tool-icon">📊</span>
               <span class="tool-label">统计</span>
             </button>
-            <!-- 显示设置挪进工具箱（2026-11-03 Boss：侧边轨不单列 Aa） -->
-            <button class="tool-btn" @click="toolboxOpen = false; dsRef?.toggle()">
+            <!-- 显示设置：仅手机档入口（桌面用底栏 ⚙️，勿重复） -->
+            <button class="tool-btn mp-only" @click="toolboxOpen = false; dsRef?.toggle()">
               <span class="tool-icon">Aa</span>
               <span class="tool-label">显示</span>
             </button>
