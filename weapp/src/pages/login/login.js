@@ -11,10 +11,13 @@ Page({
     email: '',
     password: '',
     loading: false,
-    wxLoading: false
+    wxLoading: false,
+    agreed: false // 微信审核：默认不勾选协议，用户自主勾选后才可登录
   },
   onEmail(e) { this.setData({ email: e.detail.value }) },
   onPwd(e) { this.setData({ password: e.detail.value }) },
+  toggleAgree() { this.setData({ agreed: !this.data.agreed }) },
+  needAgree() { wx.showToast({ title: '请先阅读并同意协议', icon: 'none' }) },
 
   saveTokens(d) {
     if (d.access_token) wx.setStorageSync('xzj_token', d.access_token)
@@ -25,6 +28,7 @@ Page({
   // 微信一键登录：getPhoneNumber 授权 + wx.login 一次完成；用户拒绝手机号授权则降级纯微信登录
   async onWxLogin(e) {
     if (this.data.wxLoading) return
+    if (!this.data.agreed) { this.needAgree(); return } // 双保险：按钮已条件渲染，此处防直接调用
     this.setData({ wxLoading: true })
     try {
       const loginRes = await new Promise((resolve, reject) => {
@@ -62,6 +66,7 @@ Page({
 
   async onLogin() {
     const { email, password } = this.data
+    if (!this.data.agreed) { this.needAgree(); return }
     if (!email || !password) {
       wx.showToast({ title: '请填写邮箱和密码', icon: 'none' })
       return

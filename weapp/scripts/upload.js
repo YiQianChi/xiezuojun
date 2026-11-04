@@ -12,8 +12,8 @@ const path = require('path')
   })
   const result = await ci.upload({
     project,
-    version: '0.2.0',
-    desc: '新增首页（品牌+开始写作+三入口）；修复退出登录后点主页又自动登回；token 轮换导致的「登录已过期」',
+    version: '0.3.1',
+    desc: '审核整改：协议改为用户主动勾选同意；未登录先进首页游客浏览',
     setting: { es6: true, minify: true },
     onProgressUpdate: () => {}
   })

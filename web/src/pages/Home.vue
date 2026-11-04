@@ -5,8 +5,9 @@
       <p class="hero-tagline">专注小说创作的写作工具</p>
       <p class="hero-desc">让灵感不被打扰，让创作更加纯粹</p>
       <div class="home-actions">
-        <router-link to="/bookshelf" class="btn primary big">进入书架</router-link>
-        <router-link v-if="!isLoggedIn" to="/register" class="btn big">注册</router-link>
+        <button v-if="!isLoggedIn" class="btn primary big" @click="goLogin">登录开始创作</button>
+        <router-link v-else to="/bookshelf" class="btn primary big">进入书架</router-link>
+        <router-link v-if="!isLoggedIn && !inMiniProgram" to="/register" class="btn big">注册</router-link>
       </div>
     </div>
 
@@ -63,7 +64,16 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { isMiniProgramEnv, mpNavigate } from '../core/mp'
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
+const inMiniProgram = isMiniProgramEnv
+const router = useRouter()
+// 小程序里登录走壳原生页（微信一键登录），浏览器里走网页登录
+function goLogin() {
+  if (inMiniProgram) mpNavigate('/pages/login/login')
+  else router.push('/login')
+}
 </script>
 
 <style scoped>

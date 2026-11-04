@@ -73,8 +73,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  // 小程序 web-view：营销首页没有存在意义（获客靠小程序商店页），直接进工作台首页
-  if (to.path === '/' && /miniProgram/i.test(navigator.userAgent)) {
+  // 小程序 web-view：已登录直达工作台；未登录留营销首页游客浏览（微信审核要求：先浏览后自主授权登录）
+  if (to.path === '/' && /miniProgram/i.test(navigator.userAgent) && localStorage.getItem('access_token')) {
     next('/home')
     return
   }

@@ -56,6 +56,30 @@
 .btn-loading { opacity: .7; }
 .legal { font-size: 12px; color: #8a8f85; text-align: center; margin-top: 14px; line-height: 1.7; }
 .legal-link { color: #4a7c59; text-decoration: underline; }
+.agree-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  font-size: 12px;
+  color: #8a8f85;
+  line-height: 1.7;
+}
+.agree-box {
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid #b8c2ba;
+  border-radius: 5px;
+  margin-right: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.agree-box.on { background: #6aa877; border-color: #6aa877; }
+.agree-text { color: #8a8f85; }
 .reg {
   text-align: center;
   font-size: 26rpx;

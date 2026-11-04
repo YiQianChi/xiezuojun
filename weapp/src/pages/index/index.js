@@ -22,7 +22,8 @@ Page({
     const at = wx.getStorageSync('xzj_token')
     const rt = wx.getStorageSync('xzj_rt')
     if (!at && !rt) {
-      wx.redirectTo({ url: '/pages/login/login' })
+      // 微信审核要求：先浏览后自主授权登录——无登录态进营销首页游客浏览，登录入口在网页里跳回壳登录页
+      this.setData({ url: app.globalData.site + '/' })
       return
     }
     if (at) {

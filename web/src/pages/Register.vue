@@ -43,6 +43,12 @@
         </button>
       </form>
 
+      <p class="legal-note agree-row" @click="toggleAgree">
+        <span class="agree-box" :class="{ on: agreed }">{{ agreed ? '✓' : '' }}</span>
+        <span class="agree-text">我已阅读并同意</span>
+        <router-link to="/agreement" target="_blank" @click.stop>《用户服务协议》</router-link>与
+        <router-link to="/privacy" target="_blank" @click.stop>《隐私政策》</router-link>
+      </p>
       <p class="switch-text">已有账号？ <router-link to="/login">立即登录</router-link></p>
     </div>
   </div>
@@ -54,6 +60,16 @@ import { useRouter } from 'vue-router'
 import { userApi } from '../core/api'
 
 const router = useRouter()
+// 微信审核：协议默认不同意，用户自主勾选后才能注册/发码
+const agreed = ref(false)
+function toggleAgree() { agreed.value = !agreed.value }
+function requireAgree(): boolean {
+  if (!agreed.value) {
+    errorMsg.value = '请先阅读并同意《用户服务协议》与《隐私政策》'
+    return false
+  }
+  return true
+}
 const email = ref('')
 const code = ref('')
 const password = ref('')
@@ -116,6 +132,7 @@ function startCountdown() {
 async function sendCode() {
   errorMsg.value = ''
   successMsg.value = ''
+  if (!requireAgree()) return
   touched.email = true
   validateRegister(false)
   if (fieldErrors.email) return
@@ -134,6 +151,7 @@ async function sendCode() {
 async function handleRegister() {
   errorMsg.value = ''
   successMsg.value = ''
+  if (!requireAgree()) return
   if (!validateRegister(true)) return
   loading.value = true
   try {
@@ -171,4 +189,10 @@ async function handleRegister() {
 .auth-submit { width:100%; padding:12px; font-size:15px; margin-top:8px; }
 .auth-submit:disabled,.code-btn:disabled { opacity:.5; cursor:not-allowed; }
 .switch-text { text-align:center; margin-top:24px; color:var(--text-secondary); font-size:14px; }
+.legal-note { font-size:12px; color:var(--text-secondary); margin-top:14px; }
+.legal-note a { color:var(--text-secondary); text-decoration:underline; }
+.agree-row { display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap; cursor:pointer; }
+.agree-box { width:16px; height:16px; border:1.5px solid #b8c2ba; border-radius:4px; font-size:11px; line-height:14px; text-align:center; color:#fff; flex-shrink:0; }
+.agree-box.on { background:#6aa877; border-color:#6aa877; }
+.agree-text { color:var(--text-secondary); }
 </style>

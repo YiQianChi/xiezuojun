@@ -85,7 +85,12 @@
       </form>
 
       <p v-if="!showReset" class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
-      <p class="legal-note">登录即视为同意 <router-link to="/agreement" target="_blank">《用户服务协议》</router-link>与 <router-link to="/privacy" target="_blank">《隐私政策》</router-link></p>
+      <p class="legal-note agree-row" @click="toggleAgree">
+        <span class="agree-box" :class="{ on: agreed }">{{ agreed ? '✓' : '' }}</span>
+        <span class="agree-text">我已阅读并同意</span>
+        <router-link to="/agreement" target="_blank" @click.stop>《用户服务协议》</router-link>与
+        <router-link to="/privacy" target="_blank" @click.stop>《隐私政策》</router-link>
+      </p>
 
       <!-- 防刷点选验证（当日发送超阈值时触发）：弹窗，按提示条字的顺序点击大图 -->
       <div v-if="captcha" class="cap-overlay" @click.self="captcha = null">
@@ -126,6 +131,16 @@ import { mpNavigate } from '../core/mp'
 type LoginMode = 'password' | 'code'
 type AccountType = 'email' | 'phone'
 const router = useRouter()
+// 微信审核：协议默认不同意，用户自主勾选后才能登录/发码
+const agreed = ref(false)
+function toggleAgree() { agreed.value = !agreed.value }
+function requireAgree(): boolean {
+  if (!agreed.value) {
+    errorMsg.value = '请先阅读并同意《用户服务协议》与《隐私政策》'
+    return false
+  }
+  return true
+}
 // 小程序 web-view：登录态过期时回壳登录
 const isMiniProgram = /miniProgram/i.test(navigator.userAgent) || (window as any).__wxjs_environment === 'miniProgram'
 // 微信内置浏览器（非小程序）：整页授权一键登录
@@ -260,6 +275,7 @@ function startCountdown() {
 async function sendCode() {
   errorMsg.value = ''
   successMsg.value = ''
+  if (!requireAgree()) return
   touched.account = true
   validateLogin(false)
   if (fieldErrors.account) return
@@ -298,6 +314,7 @@ async function sendCode() {
 async function handleLogin() {
   errorMsg.value = ''
   successMsg.value = ''
+  if (!requireAgree()) return
   if (!validateLogin(true)) return
   loading.value = true
   try {
@@ -392,6 +409,10 @@ async function handleReset() {
 .auth-submit { width:100%; padding:12px; font-size:15px; margin-top:8px; }
 .legal-note { font-size:12px; color:var(--text-secondary); text-align:center; margin-top:14px; }
 .legal-note a { color:var(--text-secondary); text-decoration:underline; }
+.agree-row { display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap; cursor:pointer; }
+.agree-box { width:16px; height:16px; border:1.5px solid #b8c2ba; border-radius:4px; font-size:11px; line-height:14px; text-align:center; color:#fff; flex-shrink:0; }
+.agree-box.on { background:#6aa877; border-color:#6aa877; }
+.agree-text { color:var(--text-secondary); }
 .auth-submit:disabled,.code-btn:disabled { opacity:.5; cursor:not-allowed; }
 .wx-btn {
   width:100%; padding:12px; font-size:15px; font-weight:600; margin-bottom:16px;

@@ -3,10 +3,12 @@
   <view class="slogan">一个写故事的地方</view>
 
   <view class="form">
-    <button class="btn-wx {{wxLoading ? 'btn-loading' : ''}}" open-type="getPhoneNumber"
+    <!-- 微信审核要求：未勾选协议不得拉起任何授权，勾选后才挂 open-type=getPhoneNumber -->
+    <button wx:if="{{agreed}}" class="btn-wx {{wxLoading ? 'btn-loading' : ''}}" open-type="getPhoneNumber"
             bindgetphonenumber="onWxLogin" disabled="{{wxLoading}}">
       {{wxLoading ? '登录中…' : '微信一键登录'}}
     </button>
+    <button wx:else class="btn-wx" bindtap="needAgree">微信一键登录</button>
     <view class="divider"><text>或邮箱登录</text></view>
     <input class="input" type="text" value="{{email}}" bindinput="onEmail"
            placeholder="邮箱" placeholder-class="ph" />
@@ -16,8 +18,11 @@
       {{loading ? '登录中…' : '登录'}}
     </button>
     <view class="reg" bindtap="goRegister">没有账号？去注册 →</view>
-    <view class="legal">登录即视为同意
-      <text class="legal-link" catchtap="openAgreement">《用户服务协议》</text>与
+    <view class="agree-row">
+      <view class="agree-box {{agreed ? 'on' : ''}}" catchtap="toggleAgree">{{agreed ? '✓' : ''}}</view>
+      <text class="agree-text">我已阅读并同意</text>
+      <text class="legal-link" catchtap="openAgreement">《用户服务协议》</text>
+      <text class="agree-text">与</text>
       <text class="legal-link" catchtap="openPrivacy">《隐私政策》</text>
     </view>
   </view>
