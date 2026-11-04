@@ -5,6 +5,7 @@
   max-height: 100vh;
   background: var(--bg-primary);
   overflow: hidden;
+  position: relative; /* 手机档字数胶囊/贴边把手/工具轨的定位基准 */
 }
 
 .editor-header {
@@ -2236,3 +2237,70 @@
   .typing-hud .th-save { font-size: 11px; }
 }
 @keyframes th-fade-in { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ===== 手机档 H 方案（2026-11-03 Boss 定稿）：底栏退役，字数胶囊 + 贴边把手 + 玻璃工具轨 =====
+   桌面（>768px）三者全隐藏，底栏原样；弹层（敏感词/码字锁/工具箱/显示设置）留在 status-bar 里，
+   手机档只隐底栏可见 chrome（fixed 定位的弹层照常渲染，锚点改贴底） */
+.mp-chip, .mp-handle, .mp-rail { display: none; }
+
+@media (max-width: 768px) {
+  /* 字数/保存胶囊：浮在编辑区右上，不占手指区 */
+  .editor-page .mp-chip {
+    display: block; position: absolute; top: 6px; right: 12px; z-index: 60;
+    font-size: 11px; color: #b0a78f; background: rgba(250,248,242,.92);
+    border: 1px solid #e8e1cd; padding: 3px 10px; border-radius: 99px;
+    pointer-events: none; white-space: nowrap;
+  }
+  /* 贴边把手：屏幕内侧 6px，与系统返回手势零冲突 */
+  .editor-page .mp-handle {
+    display: flex; position: absolute; right: 0; top: 14%; width: 6px; height: 76px;
+    border-radius: 8px 0 0 8px; background: rgba(74,68,56,.22); z-index: 70;
+    align-items: center; cursor: pointer;
+  }
+  .editor-page .mp-handle::after {
+    content: ''; width: 3px; height: 30px; border-radius: 2px;
+    background: rgba(255,255,255,.7); margin: 0 auto;
+  }
+  .editor-page .mp-handle:active { background: rgba(74,68,56,.45); }
+  /* 玻璃工具轨：右上、悬浮覆盖、iOS 控制中心质感 */
+  .editor-page .mp-rail {
+    display: flex; flex-direction: column; gap: 2px; position: absolute; right: 8px; top: 9%;
+    background: rgba(255,255,255,.52);
+    backdrop-filter: blur(22px) saturate(1.7); -webkit-backdrop-filter: blur(22px) saturate(1.7);
+    border: 1px solid rgba(255,255,255,.65); border-radius: 18px; padding: 5px 4px;
+    box-shadow: 0 4px 18px rgba(74,68,56,.12); z-index: 71;
+    transform: translateX(130%); transition: transform .22s cubic-bezier(.3,1.2,.4,1);
+  }
+  .editor-page .mp-rail.open { transform: translateX(0); }
+  .editor-page .mp-rail button {
+    width: 42px; height: 40px; border: none; background: none; border-radius: 11px;
+    font-size: 18px; color: #5c5546; position: relative; display: flex; align-items: center; justify-content: center;
+  }
+  .editor-page .mp-rail button.on { background: rgba(106,168,119,.18); color: #3f7a4f; }
+  .editor-page .mp-rail button:active { background: rgba(74,68,56,.1); }
+  .editor-page .mp-rail .mp-dot {
+    position: absolute; top: 4px; right: 5px; min-width: 14px; height: 14px; border-radius: 7px;
+    background: #e05252; color: #fff; font-size: 9px; line-height: 14px; padding: 0 3px;
+  }
+  .editor-page .mp-rail .mp-close { font-size: 13px; color: #a89e88; height: 32px; }
+
+  /* 底栏退役：高度归零只隐 chrome；弹层（fixed）保留可从工具轨打开 */
+  .editor-page .status-bar {
+    height: 0 !important; min-height: 0; padding: 0 !important; margin: 0;
+    background: none !important; border-top: none !important; overflow: visible;
+  }
+  .editor-page .status-bar .status-item,
+  .editor-page .status-bar .speech-btn,
+  .editor-page .status-bar .memory-btn,
+  .editor-page .status-bar .status-spacer { display: none !important; }
+  /* 弹层贴底（原来锚在 44px 状态栏上方） */
+  .editor-page .status-bar .toolbox-popup,
+  .editor-page .status-bar :deep(.ds-popup) {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  /* 正文底部留白收窄（原 96px 是给底栏让位） */
+  .editor-page .tiptap-container { padding-bottom: calc(28px + env(safe-area-inset-bottom)) !important; }
+  /* 手机滚动条隐藏（右缘只留把手） */
+  .editor-page ::-webkit-scrollbar { width: 0; height: 0; }
+  .editor-page { scrollbar-width: none; }
+}

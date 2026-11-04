@@ -20,6 +20,18 @@
       @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen"
     />
 
+    <!-- 手机档 H 方案（Boss 定稿）：字数/保存胶囊 + 贴边把手 + 玻璃工具轨；底栏退役（CSS 控制仅 ≤768px 显示） -->
+    <div class="mp-chip">{{ wordCount }} 字 · {{ saveStatus || '就绪' }}<template v-if="isOffline"> · 离线</template></div>
+    <div class="mp-handle" @click.stop="mpRailOpen = !mpRailOpen"></div>
+    <div class="mp-rail" :class="{ open: mpRailOpen }" @click.stop>
+      <button :class="{ on: !!wordLock }" @click="mpRailOpen = false; wordLockOpen = !wordLockOpen" title="码字锁">🔒</button>
+      <button :class="{ on: dictating }" @click="toggleDictation" title="听写">{{ dictating ? '⏹' : '🎙' }}</button>
+      <button @click="mpRailOpen = false; dsRef?.toggle()" title="显示设置">Aa</button>
+      <button :class="{ on: sensitiveOpen }" @click="mpRailOpen = false; sensitiveOpen = !sensitiveOpen" title="敏感词">◉<span v-if="sensitiveTotal > 0" class="mp-dot">{{ sensitiveTotal > 99 ? '99+' : sensitiveTotal }}</span></button>
+      <button @click="mpRailOpen = false; toolboxOpen = !toolboxOpen" title="工具箱">⋯</button>
+      <button class="mp-close" @click="mpRailOpen = false">✕</button>
+    </div>
+
     <div class="editor-body">
       <!-- 移动端抽屉遮罩 -->
       <div v-if="mobileSidebarOpen" class="sidebar-scrim" @click="mobileSidebarOpen = false"></div>
@@ -400,7 +412,7 @@
       <!-- 拼字房入口已深度融合进搭子悬浮窗「拼字」页签（状态栏不再单列） -->
 
       <!-- 显示设置：字号/行距/字距/底部留白 -->
-      <DisplaySettings :overrides="displayOverrides" :line-numbers="lineNumbers" @update="onDisplaySetting" @toggle-line-numbers="onToggleLineNumbers" />
+      <DisplaySettings ref="dsRef" :overrides="displayOverrides" :line-numbers="lineNumbers" @update="onDisplaySetting" @toggle-line-numbers="onToggleLineNumbers" />
 
       <!-- 工具箱：低频功能收起来 -->
       <div class="toolbox-trigger" :class="{ open: toolboxOpen }">
@@ -793,6 +805,9 @@ watch(() => sprint.running, (on) => {
   }
 })
 const saveStatus = ref('')
+// 手机档 H 方案：贴边把手 + 玻璃工具轨 + 显示设置远程开关
+const mpRailOpen = ref(false)
+const dsRef = ref<any>(null)
 const draftBanner = ref<{ docId: number; text: string } | null>(null)
 
 // E1: 场景导航已下线（Boss 2026-10-23：没啥用，按钮+快捷键+功能全清）

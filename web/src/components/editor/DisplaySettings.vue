@@ -60,6 +60,9 @@ const emit = defineEmits<{ update: [key: string, value: number | undefined], 'to
 
 const open = ref(false)
 
+// 手机档侧栏轨 Aa 按钮远程开关（Editor 里 dsRef?.toggle()）
+defineExpose({ toggle: () => { open.value = !open.value } })
+
 // 段落行号开关（独立于 overrides，布尔型；默认关）
 const lineNumbers = computed(() => props.lineNumbers === true)
 function toggleLineNumbers(e: Event) {
