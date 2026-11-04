@@ -8,7 +8,7 @@
     </div>
     <div class="nav-right">
       <button v-if="canInstall && !isMiniProgram" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
-      <button v-if="!isMiniProgram" class="nav-link" @click="showQQModal = true">QQ问题反馈群</button>
+      <button v-if="!isMiniProgram" class="nav-link qq-link" data-label="反馈" @click="showQQModal = true">QQ问题反馈群</button>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
       <button v-if="isLoggedIn" ref="profileBtnRef" class="nav-link profile-link" title="账号菜单" @click="profileRef?.openMenu($event.currentTarget as HTMLElement)">
         <span class="nav-avatar">{{ profileAvatar || (profileNickname || '我').slice(0, 1) }}</span>
@@ -274,6 +274,9 @@ onMounted(() => {
   .nav-link { font-size: 13px; white-space: nowrap; padding: 4px 0; }
   .nav-nick { max-width: 4em; }
   .profile-link { min-width: 0; }
+  /* 手机端放不下整排链接，QQ 按钮缩成「反馈」二字，否则右缘头像按钮被裁掉（同书架卡片 data-label 方案） */
+  .qq-link { font-size: 0; }
+  .qq-link::after { content: attr(data-label); font-size: 13px; }
 }
 @media (max-width: 380px) {
   .nav-nick { display: none; } /* 极窄屏只留头像+箭头 */
