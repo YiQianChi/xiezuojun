@@ -5,7 +5,10 @@
       <span v-else>✕</span>
     </button>
     <div class="ds-popup" v-show="open" @click.stop>
-      <div class="ds-title">显示设置</div>
+      <div class="ds-title-row">
+        <div class="ds-title">显示设置</div>
+        <button class="ds-close" @click="open = false" title="关闭">✕</button>
+      </div>
 
       <div class="ds-row">
         <span class="ds-label">字号</span>
@@ -112,12 +115,17 @@ function reset() {
   padding: 14px 16px;
   z-index: 150;
 }
+.ds-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .ds-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 10px;
 }
+.ds-close {
+  border: none; background: none; color: var(--text-tertiary, #aeaeb2);
+  font-size: 14px; padding: 4px 6px; cursor: pointer; border-radius: 6px;
+}
+.ds-close:hover { background: rgba(0,0,0,.06); color: var(--text-primary); }
 .ds-row {
   display: flex;
   align-items: center;

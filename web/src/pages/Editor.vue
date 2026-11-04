@@ -1547,6 +1547,9 @@ async function handleReviewAiFix(issue: any) {
 // ponytail: click outside toolbox closes it; popup @click.stop prevents inner clicks from reaching here
 function closeToolboxOnClickOutside() {
   if (toolboxOpen.value) toolboxOpen.value = false
+  // 手机档这些弹窗没有常驻触发钮可再点关闭，点空白处统一收
+  if (sensitiveOpen.value) sensitiveOpen.value = false
+  if (wordLockOpen.value) wordLockOpen.value = false
 }
 
 function switchMode(next: EditorMode) {
