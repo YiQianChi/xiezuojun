@@ -86,8 +86,6 @@ Page({
     }
   },
   onShareAppMessage() {
-    // 临时诊断：确认分享处理函数执行 + 微信是否拉取卡片图（查 124 nginx access log /api/share-log）
-    wx.request({ url: app.globalData.site + '/api/share-log?from=index&t=' + Date.now(), method: 'GET', fail: () => {} })
     let s = this.shareMsg || wx.getStorageSync('xzj_share')
     // storage 里的旧分享 10 分钟后失效，避免用户想默认转发时还带着老章节
     if (s && s.ts && Date.now() - s.ts > 10 * 60 * 1000) s = null
@@ -99,7 +97,7 @@ Page({
       }
     }
     return {
-      title: '写作菌 · AI 小说写作，让灵感不被打扰',
+      title: '写作菌 · 让灵感不被打扰',
       path: '/pages/index/index',
       imageUrl: 'https://xiezuojun.com/share-card.jpg'
     }
@@ -107,7 +105,7 @@ Page({
   // 分享到朋友圈（仅 Android 微信支持，单页模式打开）
   onShareTimeline() {
     return {
-      title: '写作菌 · AI 小说写作',
+      title: '写作菌 · 让灵感不被打扰',
       query: '',
       imageUrl: 'https://xiezuojun.com/share-card.jpg' // 朋友圈卡片只认网络图
     }
