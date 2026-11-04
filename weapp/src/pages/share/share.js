@@ -15,7 +15,7 @@ Page({
     return {
       title: '《' + (this.data.book || '作品') + '》' + this.data.title + ' | 写作菌',
       path: '/pages/index/index?web=read/' + this.data.code,
-      imageUrl: '/images/share-cover.jpg' // 转发卡片缩略图（微信按 5:4 裁切）
+      imageUrl: '/images/share-card-54.jpg' // 转发卡片图：已预裁 5:4（方图上下各裁10%居中），微信不再二次裁切
     }
   },
   goBack() {
