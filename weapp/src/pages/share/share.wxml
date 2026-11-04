@@ -1,6 +1,6 @@
 <view class="share-page">
   <view class="sp-card">
-    <image class="sp-cover" src="/images/share-cover.jpg" mode="aspectFill" />
+    <image class="sp-cover" src="/images/share-cover.jpg" mode="widthFix" />
     <view class="sp-book">《{{book || '作品'}}》</view>
     <view class="sp-title">{{title}}</view>
     <view class="sp-tip">点下面按钮，把本章发给好友 / 群</view>
