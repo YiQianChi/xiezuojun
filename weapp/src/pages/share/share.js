@@ -14,7 +14,8 @@ Page({
   onShareAppMessage() {
     return {
       title: '《' + (this.data.book || '作品') + '》' + this.data.title + ' | 写作菌',
-      path: '/pages/index/index?web=read/' + this.data.code
+      path: '/pages/index/index?web=read/' + this.data.code,
+      imageUrl: '/images/share-cover.jpg' // 转发卡片缩略图（微信按 5:4 裁切）
     }
   },
   goBack() {

@@ -12,8 +12,8 @@ const path = require('path')
   })
   const result = await ci.upload({
     project,
-    version: '0.3.2',
-    desc: '审核整改：协议改为用户主动勾选同意；未登录先进首页游客浏览',
+    version: '0.3.3',
+    desc: '分享页配图+转发卡片缩略图；小程序内直接注册',
     setting: { es6: true, minify: true },
     onProgressUpdate: () => {}
   })
