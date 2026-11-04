@@ -93,13 +93,13 @@ Page({
       return {
         title: '《' + (s.book || '作品') + '》' + (s.title || '') + ' | 写作菌',
         path: '/pages/index/index?web=read/' + s.code,
-        imageUrl: '/images/share-card-54.jpg' // 统一卡片图，不配则微信截当前页
+        imageUrl: 'https://xiezuojun.com/share-card.jpg' // 包内路径不生效，用网络图
       }
     }
     return {
       title: '写作菌 · AI 小说写作，让灵感不被打扰',
       path: '/pages/index/index',
-      imageUrl: '/images/share-card-54.jpg'
+      imageUrl: 'https://xiezuojun.com/share-card.jpg'
     }
   },
   // 分享到朋友圈（仅 Android 微信支持，单页模式打开）
