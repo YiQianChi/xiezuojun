@@ -98,11 +98,7 @@ Page({
   openAgreement() { wx.navigateTo({ url: '/pages/index/index?web=agreement' }) },
   openPrivacy() { wx.navigateTo({ url: '/pages/index/index?web=privacy' }) },
   goRegister() {
-    // 注册/找回密码去网页版处理。注：不用剪贴板（隐私接口，需隐私指引+授权弹窗，壳保持零隐私接口）
-    wx.showModal({
-      title: '注册账号',
-      content: '请在电脑或手机浏览器访问 xiezuojun.com 注册，注册后回来登录。',
-      showCancel: false
-    })
+    // 注册页在 web-view 里跑（邮箱+验证码+密码），注册成功自动发登录态进书架
+    wx.navigateTo({ url: '/pages/index/index?web=register' })
   }
 })
