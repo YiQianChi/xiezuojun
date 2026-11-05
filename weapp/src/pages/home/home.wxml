@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page" style="{{fontScale ? 'transform: scale(' + 1/fontScale + '); transform-origin: 50% 0; width: ' + fontScale*100 + '%; position: relative; left: ' + (1-fontScale)/2*100 + '%;' : ''}}">
   <!-- 微信原生导航栏：标题「写作菌」由平台渲染 -->
   <view class="body">
     <view class="topbar">

@@ -30,6 +30,13 @@ Page({
       wx.navigateTo({ url: '/pages/index/index?' + fwd, fail: () => wx.reLaunch({ url: '/pages/index/index' }) })
       return
     }
+    // 微信字体缩放（适老化倍率）反向抵消：页面按 1/factor 缩回，视觉不随系统字体变
+    let factor = 1
+    try {
+      const a = wx.getAppBaseInfo ? wx.getAppBaseInfo() : wx.getSystemInfoSync()
+      factor = a.fontSizeScaleFactor || 1
+    } catch (e) {}
+    if (factor > 1.01) this.setData({ fontScale: factor })
     this.setData({ quote: QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length] })
   },
 
