@@ -66,7 +66,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { isMiniProgramEnv, mpNavigate, mpPush } from '../core/mp'
+import { isMiniProgramEnv, mpNavigate } from '../core/mp'
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
 const inMiniProgram = isMiniProgramEnv
 const router = useRouter()
@@ -74,11 +74,6 @@ const router = useRouter()
 function goLogin() {
   if (inMiniProgram) mpNavigate('/pages/login/login')
   else router.push('/login')
-}
-// 小程序里注册开 web-view 注册页（壳 index ?web= 桥接），注册成功自动登录
-function goRegister() {
-  if (inMiniProgram) mpPush('/pages/index/index?web=register')
-  else router.push('/register')
 }
 </script>
 
