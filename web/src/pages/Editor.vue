@@ -783,10 +783,12 @@ const chapterHeadingParts = computed(() => {
 const projectName = ref('')
 
 // 小程序全屏（mp-full）：编辑器顶栏隐藏，书名·章名走 document.title → web-view 原生栏自动同步显示
+// 原生栏标题居中且超长截尾（平台行为改不了）：书名超 6 字截短，把显示预算让给章名
 watch([projectName, currentDocDisplayName], () => {
   const p = projectName.value
   const d = currentDocDisplayName.value
-  document.title = p ? (d ? `${p} · ${d}` : p) : '写作菌'
+  const shortP = p.length > 6 ? p.slice(0, 6) + '…' : p
+  document.title = p ? (d ? `${shortP} · ${d}` : p) : '写作菌'
 }, { immediate: true })
 const loadingDocs = ref(false)
 const wordCount = ref(0)
