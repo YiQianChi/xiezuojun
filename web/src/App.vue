@@ -66,7 +66,7 @@ import { toasts, toast, dismissToast } from './composables/useToast'
 import { usePwaInstall } from './composables/usePwaInstall'
 import OnboardingTour from './components/OnboardingTour.vue'
 import ProfileModal from './components/ProfileModal.vue'
-import { isMiniProgramEnv, mpNavigate, mpBack, mpRelaunch } from './core/mp'
+import { isMiniProgramEnv, mpBack, mpRelaunch } from './core/mp'
 
 const route = useRoute()
 
