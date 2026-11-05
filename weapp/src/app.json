@@ -6,7 +6,8 @@
     "pages/shelf/shelf",
     "pages/write/write",
     "pages/settings/settings",
-    "pages/share/share"
+    "pages/share/share",
+    "pages/read/read"
   ],
   "window": {
     "navigationBarBackgroundColor": "#f7f9f4",

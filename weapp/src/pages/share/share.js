@@ -14,7 +14,7 @@ Page({
   onShareAppMessage() {
     return {
       title: '《' + (this.data.book || '作品') + '》' + this.data.title + ' | 写作菌',
-      path: '/pages/index/index?web=read/' + this.data.code,
+      path: '/pages/read/read?code=' + this.data.code,
       imageUrl: 'https://xiezuojun.com/share-card.jpg' // 网络图（包内路径不生效），已预裁 5:4
     }
   },

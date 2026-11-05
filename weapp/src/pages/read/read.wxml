@@ -1,0 +1,22 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="state">加载中…</view>
+  <view wx:elif="{{none}}" class="state">
+    <text>分享不存在或已被作者关闭</text>
+    <button class="btn ghost" bindtap="goCreate">去看看写作菌</button>
+  </view>
+
+  <scroll-view wx:else scroll-y class="reader">
+    <view class="meta">
+      <text class="book">{{book}}</text>
+      <text class="title">{{title}}</text>
+      <text class="sub">{{wc}} 字</text>
+    </view>
+    <view class="para" wx:for="{{paras}}" wx:key="index">{{item}}</view>
+    <view class="end">— 完 —</view>
+
+    <view class="cta">
+      <text class="cta-t">也想安安静静写小说？</text>
+      <button class="btn primary" bindtap="goCreate">免费使用写作菌</button>
+    </view>
+  </scroll-view>
+</view>
