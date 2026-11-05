@@ -30,11 +30,19 @@ Page({
       wx.navigateTo({ url: '/pages/index/index?' + fwd, fail: () => wx.reLaunch({ url: '/pages/index/index' }) })
       return
     }
-    // 微信字体缩放（适老化倍率）：文字跟随（金句/标题/正文），只有宫格按钮反向抵消保持固定尺寸
-    let factor = 1
+    // 微信字体缩放倍率：优先 fontSizeScaleFactor；老版本/鸿蒙拿不到时用 fontSizeSetting 换算
+    // （Android 标准 16px、iOS 17px），同时上报诊断数据定位实际缩放机制
+    let factor = 1, fs = 0, fssf = 0
     try {
       const a = wx.getAppBaseInfo ? wx.getAppBaseInfo() : wx.getSystemInfoSync()
-      factor = a.fontSizeScaleFactor || 1
+      const si = wx.getSystemInfoSync()
+      fs = si.fontSizeSetting || 0
+      fssf = a.fontSizeScaleFactor || 0
+      factor = fssf || (fs ? fs / (si.platform === 'ios' ? 17 : 16) : 1)
+    } catch (e) {}
+    try {
+      const si = wx.getSystemInfoSync()
+      wx.request({ url: 'https://xiezuojun.com/api/diag-font?f=' + factor + '&fs=' + fs + '&fssf=' + fssf + '&ww=' + si.windowWidth + '&sw=' + si.screenWidth + '&px=' + si.pixelRatio, method: 'GET', fail: () => {} })
     } catch (e) {}
     if (factor > 1.01) this.setData({ fontScale: factor })
     this.setData({ quote: QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length] })
