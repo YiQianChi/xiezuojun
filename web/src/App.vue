@@ -18,6 +18,15 @@
       <router-link v-else to="/login" class="nav-link">登录</router-link>
     </div>
   </nav>
+    <!-- 小程序 web-view：网页顶栏已隐藏，左上角补官方样式的返回/主页悬浮钮（原生栏左键位下方对齐） -->
+    <div v-if="showMpNavBtns" class="mp-nav-btns">
+      <button class="mp-nav-btn" title="返回" @click="goBackMp">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button class="mp-nav-btn" title="主页" @click="goHomeMp">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      </button>
+    </div>
   <main class="app-main" :class="{ 'with-nav': showNav, 'editor-mode': route.name === 'Editor' }">
     <router-view />
   </main>
@@ -66,6 +75,15 @@ const route = useRoute()
 const inMiniProgram = isMiniProgramEnv
 const router = useRouter()
 const showNav = computed(() => !inMiniProgram && route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
+
+// 小程序左上角悬浮返回/主页（编辑器 mp-full 顶栏已隐藏也要能返回；登录注册页不用）
+const showMpNavBtns = computed(() => inMiniProgram && route.name !== 'Login' && route.name !== 'Register')
+function goBackMp() {
+  if (window.history.length > 1) window.history.back()
+}
+function goHomeMp() {
+  router.push(isLoggedIn.value ? '/home' : '/')
+}
 
 const isLoggedIn = ref(false)
 // 导航栏头像/昵称（登录后拉取；个人设置页改完派发 xzj-profile-updated 事件刷新）
@@ -297,7 +315,33 @@ onMounted(() => {
   font-weight: 600;
 }
 
-/* Toast */
+/* 小程序左上角悬浮返回/主页：贴原生栏左键位正下方，白底玻璃圆钮（细线图标） */
+.mp-nav-btns {
+  position: fixed;
+  top: 8px;
+  left: 10px;
+  z-index: 120;
+  display: flex;
+  gap: 8px;
+}
+.mp-nav-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, .82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .12);
+  padding: 0;
+}
+.mp-nav-btn:active { background: rgba(255, 255, 255, .95); }
+
+/* Toast 容器 */
 .toast-container {
   position: fixed;
   top: 20px;

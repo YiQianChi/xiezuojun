@@ -1,5 +1,5 @@
 <template>
-      <div class="editor-page" :class="{ 'focus-mode': focusMode }" :style="displayVars">
+      <div class="editor-page" :class="{ 'focus-mode': focusMode, 'mp-full': isMiniProgramEnv }" :style="displayVars">
     <!-- ponytail-focus: 专注模式底部字数激励（C 方案） -->
     <div v-if="focusMode" class="focus-today-words">今天 +{{ todayWords }} 字</div>
     <!-- 顶部栏 -->
@@ -29,6 +29,14 @@
       <button :class="{ on: contextPanelOpen }" @click="mpRailOpen = false; contextPanelOpen = true" title="设定 / 灵感 / 自检">📖</button>
       <button :class="{ on: sensitiveOpen }" @click="mpRailOpen = false; sensitiveOpen = !sensitiveOpen" title="敏感词">◉<span v-if="sensitiveTotal > 0" class="mp-dot">{{ sensitiveTotal > 99 ? '99+' : sensitiveTotal }}</span></button>
       <button @click="mpRailOpen = false; toolboxOpen = !toolboxOpen" title="工具箱">⋯</button>
+      <!-- mp-full（编辑器全屏）时顶栏隐藏，目录/模式切换挪进工具轨 -->
+      <button v-if="isMiniProgramEnv" @click="mpRailOpen = false; mobileSidebarOpen = true" title="目录">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      </button>
+      <button v-if="isMiniProgramEnv" :class="{ on: mode !== 'write' }" @click="mpRailOpen = false; switchMode(mode === 'write' ? 'review' : 'write')" :title="mode === 'write' ? '切到审阅' : '切到写作'">
+        <svg v-if="mode === 'write'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+      </button>
       <button class="mp-close" @click="mpRailOpen = false">✕</button>
     </div>
 
@@ -753,6 +761,13 @@ const chapterHeadingParts = computed(() => {
   return { num: m[1], name: m[2] }
 })
 const projectName = ref('')
+
+// 小程序全屏（mp-full）：编辑器顶栏隐藏，书名·章名走 document.title → web-view 原生栏自动同步显示
+watch([projectName, currentDocDisplayName], () => {
+  const p = projectName.value
+  const d = currentDocDisplayName.value
+  document.title = p ? (d ? `${p} · ${d}` : p) : '写作菌'
+}, { immediate: true })
 const loadingDocs = ref(false)
 const wordCount = ref(0)
 // 拼字房（单例 store）：HUD/面板消费。字数口径=按章折叠（与搭子增量同款）：

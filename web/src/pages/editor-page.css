@@ -2246,6 +2246,10 @@
    桌面（>768px）三者全隐藏，底栏原样；弹层（敏感词/码字锁/工具箱/显示设置）留在 status-bar 里，
    手机档只隐底栏可见 chrome（fixed 定位的弹层照常渲染，锚点改贴底） */
 .mp-chip, .mp-handle, .mp-rail { display: none; }
+
+/* 小程序编辑器全屏：顶栏（EditorHeader）隐藏，书名走原生栏 document.title；
+   目录/模式切换已挪进 mp-rail，返回走 App.vue 左上角悬浮钮 */
+.editor-page.mp-full .editor-header { display: none; }
 /* 工具箱里的「显示」入口：仅手机档出现（桌面用底栏 ⚙️） */
 .tool-btn.mp-only { display: none; }
 @media (max-width: 768px) { .tool-btn.mp-only { display: flex; } }
