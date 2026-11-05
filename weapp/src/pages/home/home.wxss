@@ -4,15 +4,17 @@ page { background: #f7f9f4; }
 
 .body { padding: 8px 24px 40px; display: flex; flex-direction: column; align-items: center; }
 .topbar { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0; }
-.hello { font-size: 12px; color: #9aa094; }
-.exit { font-size: 13px; color: #9aa094; padding: 4px 8px; }
+.hello { font-size: 12px; line-height: 16px; height: 16px; color: #9aa094; white-space: nowrap; }
+.exit { font-size: 13px; line-height: 18px; color: #9aa094; padding: 4px 8px; white-space: nowrap; }
 .top-right { display: flex; align-items: center; }
+/* 字体缩放加固：所有文本显式字号+定高容器+单行截断，系统字体放大不改变版式 */
+page { font-size: 14px; }
 .brand { text-align: center; margin-top: 18px; display: flex; flex-direction: column; align-items: center; }
-.slogan { font-size: 22px; font-weight: 600; color: #3d3a33; letter-spacing: 2px; }
-.quote { margin-top: 10px; font-size: 13px; color: #8b917f; min-height: 18px; }
+.slogan { font-size: 22px; line-height: 30px; height: 30px; font-weight: 600; color: #3d3a33; letter-spacing: 2px; white-space: nowrap; }
+.quote { margin-top: 10px; font-size: 13px; line-height: 18px; height: 18px; color: #8b917f; white-space: nowrap; overflow: hidden; max-width: 92%; text-overflow: ellipsis; }
 
 .start {
-  margin-top: 26px; width: 200px; height: 46px; border-radius: 999px;
+  margin-top: 26px; width: 200px; height: 46px; border-radius: 999px; line-height: 46px;
   background: linear-gradient(135deg, #8fc59b, #6aa877); color: #fff;
   font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center;
   gap: 8px; border: none; padding: 0;
@@ -20,15 +22,16 @@ page { background: #f7f9f4; }
 .start::after { border: none; }
 .start-icon { width: 16px; height: 16px; position: relative; }
 .pen-line { position: absolute; left: 1px; top: 6px; width: 12px; height: 2px; background: #fff; border-radius: 1px; transform: rotate(-40deg); }
-.start-sub { margin-top: 10px; font-size: 12px; color: #9aa094; }
+.start-sub { margin-top: 10px; font-size: 12px; line-height: 16px; height: 16px; color: #9aa094; white-space: nowrap; overflow: hidden; max-width: 92%; text-overflow: ellipsis; }
 
 .tiles { margin-top: 26px; width: 100%; display: flex; gap: 12px; }
 .tile {
-  flex: 1; background: #fff; border-radius: 14px; padding: 16px 8px 12px;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  flex: 1; height: 96px; background: #fff; border-radius: 14px; padding: 14px 8px 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
   box-shadow: 0 1px 4px rgba(74,122,88,.06); border: 1px solid rgba(74,122,88,.08);
+  overflow: hidden; box-sizing: border-box;
 }
-.tile text { font-size: 12px; color: #4a4f45; }
+.tile text { font-size: 12px; line-height: 16px; height: 16px; color: #4a4f45; white-space: nowrap; }
 .tile-icon { width: 34px; height: 34px; border-radius: 10px; background: rgba(106,168,119,.12); position: relative; }
 
 .tile-shelf .shelf-shape { position: absolute; left: 9px; top: 8px; width: 16px; height: 17px; border: 1.6px solid #4a7a58; border-radius: 2px; }
@@ -39,7 +42,7 @@ page { background: #f7f9f4; }
 .tile-import .imp-base { position: absolute; left: 9px; top: 21px; width: 16px; height: 1.8px; background: #4a7a58; border-radius: 1px; }
 
 .recent { margin-top: 28px; width: 100%; }
-.sec-title { font-size: 14px; font-weight: 600; color: #3d3a33; }
+.sec-title { font-size: 14px; line-height: 20px; height: 20px; font-weight: 600; color: #3d3a33; }
 .recent-item {
   margin-top: 10px; background: #fff; border-radius: 12px; padding: 10px 12px;
   display: flex; align-items: center; gap: 12px; border: 1px solid rgba(0,0,0,.04);
