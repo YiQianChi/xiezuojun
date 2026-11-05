@@ -782,13 +782,24 @@ const chapterHeadingParts = computed(() => {
 })
 const projectName = ref('')
 
-// 小程序全屏（mp-full）：编辑器顶栏隐藏，书名·章名走 document.title → web-view 原生栏自动同步显示
-// 原生栏标题居中且超长截尾（平台行为改不了）：书名超 6 字截短，把显示预算让给章名
-watch([projectName, currentDocDisplayName], () => {
+// 小程序全屏（mp-full）：编辑器顶栏隐藏，位置走 document.title → web-view 原生栏自动同步显示
+// 原生栏标题居中且超长截尾（平台行为改不了）——Boss 2026-11-05：只显示「第X卷 第N章」（卷内章号与树一致=全书连续编号）
+watch([projectName, currentDocDisplayName, documents, activeDocId], () => {
   const p = projectName.value
   const d = currentDocDisplayName.value
-  const shortP = p.length > 6 ? p.slice(0, 6) + '…' : p
-  document.title = p ? (d ? `${shortP} · ${d}` : p) : '写作菌'
+  const doc = documents.value.find((x: any) => x.id === activeDocId.value)
+  if (doc?.type === 'chapter') {
+    const volIdx = documents.value
+      .filter((x: any) => x.type === 'volume' && !x.parent_id)
+      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      .findIndex((v: any) => v.id === doc.parent_id)
+    const chNo = chapterOrdinal(doc, documents.value) || 1
+    document.title = volIdx >= 0
+      ? `第${numToChinese(volIdx + 1)}卷 第${numToChinese(chNo)}章`
+      : `第${numToChinese(chNo)}章` // 根级散章（楔子/番外等）没有卷
+    return
+  }
+  document.title = d || p || '写作菌'
 }, { immediate: true })
 const loadingDocs = ref(false)
 const wordCount = ref(0)
