@@ -2303,6 +2303,8 @@
   .editor-page .status-bar .status-item,
   .editor-page .status-bar .speech-btn,
   .editor-page .status-bar .memory-btn,
+  /* DisplaySettings 的 ⚙️ 在子组件里（scoped 挡住上面的浅选择器），必须 :deep 才藏得住 */
+  .editor-page .status-bar :deep(.memory-btn),
   .editor-page .status-bar .status-spacer { display: none !important; }
   /* 弹层贴底（原来锚在 44px 状态栏上方） */
   .editor-page .status-bar .toolbox-popup,
