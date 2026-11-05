@@ -30,7 +30,7 @@ Page({
       wx.navigateTo({ url: '/pages/index/index?' + fwd, fail: () => wx.reLaunch({ url: '/pages/index/index' }) })
       return
     }
-    // 微信字体缩放（适老化倍率）反向抵消：页面按 1/factor 缩回，视觉不随系统字体变
+    // 微信字体缩放（适老化倍率）：文字跟随（金句/标题/正文），只有宫格按钮反向抵消保持固定尺寸
     let factor = 1
     try {
       const a = wx.getAppBaseInfo ? wx.getAppBaseInfo() : wx.getSystemInfoSync()

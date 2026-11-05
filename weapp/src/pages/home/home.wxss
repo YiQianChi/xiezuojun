@@ -4,14 +4,14 @@ page { background: #f7f9f4; }
 
 .body { padding: 8px 24px 40px; display: flex; flex-direction: column; align-items: center; }
 .topbar { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0; }
-.hello { font-size: 12px; line-height: 16px; height: 16px; color: #9aa094; white-space: nowrap; }
+.hello { font-size: 12px; color: #9aa094; white-space: nowrap; }
 .exit { font-size: 13px; line-height: 18px; color: #9aa094; padding: 4px 8px; white-space: nowrap; }
 .top-right { display: flex; align-items: center; }
 /* 字体缩放加固：所有文本显式字号+定高容器+单行截断，系统字体放大不改变版式 */
 page { font-size: 14px; }
 .brand { text-align: center; margin-top: 18px; display: flex; flex-direction: column; align-items: center; }
-.slogan { font-size: 22px; line-height: 30px; height: 30px; font-weight: 600; color: #3d3a33; letter-spacing: 2px; white-space: nowrap; }
-.quote { margin-top: 10px; font-size: 13px; line-height: 18px; height: 18px; color: #8b917f; white-space: nowrap; overflow: hidden; max-width: 92%; text-overflow: ellipsis; }
+.slogan { font-size: 22px; line-height: 1.35; font-weight: 600; color: #3d3a33; letter-spacing: 2px; white-space: nowrap; }
+.quote { margin-top: 10px; font-size: 13px; line-height: 1.5; color: #8b917f; text-align: center; padding: 0 6px; } /* 跟随字体缩放（Boss 要求文字可动） */
 
 .start {
   margin-top: 26px; width: 200px; height: 46px; border-radius: 999px; line-height: 46px;
@@ -22,7 +22,7 @@ page { font-size: 14px; }
 .start::after { border: none; }
 .start-icon { width: 16px; height: 16px; position: relative; }
 .pen-line { position: absolute; left: 1px; top: 6px; width: 12px; height: 2px; background: #fff; border-radius: 1px; transform: rotate(-40deg); }
-.start-sub { margin-top: 10px; font-size: 12px; line-height: 16px; height: 16px; color: #9aa094; white-space: nowrap; overflow: hidden; max-width: 92%; text-overflow: ellipsis; }
+.start-sub { margin-top: 10px; font-size: 12px; color: #9aa094; white-space: nowrap; overflow: hidden; max-width: 92%; text-overflow: ellipsis; }
 
 .tiles { margin-top: 26px; width: 100%; display: flex; gap: 12px; }
 .tile {

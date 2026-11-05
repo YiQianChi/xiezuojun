@@ -1,4 +1,4 @@
-<view class="page" style="{{fontScale ? 'transform: scale(' + 1/fontScale + '); transform-origin: 50% 0; width: ' + fontScale*100 + '%; position: relative; left: ' + (1-fontScale)/2*100 + '%;' : ''}}">
+<view class="page">
   <!-- 微信原生导航栏：标题「写作菌」由平台渲染 -->
   <view class="body">
     <view class="topbar">
@@ -22,7 +22,7 @@
     <text class="start-sub" wx:if="{{recent}}">接着写《{{recent.name}}》</text>
     <text class="start-sub" wx:else>从第一句话开始你的故事</text>
 
-    <view class="tiles">
+    <view class="tiles" style="{{fontScale ? 'transform: scale(' + 1/fontScale + '); transform-origin: 50% 0; width: ' + fontScale*100 + '%; position: relative; left: ' + (1-fontScale)/2*100 + '%;' : ''}}">
       <view class="tile" bindtap="goShelf">
         <view class="tile-icon tile-shelf"><view class="shelf-shape"></view></view>
         <text>我的书架</text>
