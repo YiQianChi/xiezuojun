@@ -40,6 +40,13 @@
       <button class="mp-close" @click="mpRailOpen = false">✕</button>
     </div>
 
+    <!-- A+B 方案（2026-11-05 Boss 拍板）：手机档翻章条——相邻章顺写；点中间章名开目录（B 的长目录在抽屉里） -->
+    <div class="mp-chapnav" v-if="activeDocId && mode === 'write' && navChapters.length > 1">
+      <button :disabled="!navPrev" @click="navPrev && openDoc(navPrev)">‹ 上一章</button>
+      <span class="mp-chapnav-name" @click="mobileSidebarOpen = true">{{ currentDocDisplayName }} · {{ navIndex }}/{{ navChapters.length }}</span>
+      <button :disabled="!navNext" @click="navNext && openDoc(navNext)">下一章 ›</button>
+    </div>
+
     <div class="editor-body">
       <!-- 移动端抽屉遮罩 -->
       <div v-if="mobileSidebarOpen" class="sidebar-scrim" @click="mobileSidebarOpen = false"></div>
@@ -146,7 +153,18 @@
           </div>
         </div>
         <div v-else-if="!activeDocId" class="editor-empty">
-          <p>👈 请选择或新建一个章节</p>
+          <!-- C 方案（2026-11-05 Boss 拍板）：空书不再让用户找目录，一键建第一章开写 -->
+          <template v-if="chapterList.length === 0">
+            <div class="ee-icon">✍️</div>
+            <div class="ee-title">开始你的第一章</div>
+            <div class="ee-sub">不用先研究目录——一键建好「第一章」直接开写</div>
+            <button class="ee-go" :disabled="startingFirst" @click="startFirstChapter">{{ startingFirst ? '创建中…' : '✍️ 直接开写' }}</button>
+            <button class="ee-ghost" @click="mobileSidebarOpen = true">先看看目录结构</button>
+          </template>
+          <template v-else>
+            <p>👈 请选择或新建一个章节</p>
+            <button class="ee-ghost" @click="mobileSidebarOpen = true">打开目录</button>
+          </template>
         </div>
         <div v-else class="editor-wrapper" :class="{ 'show-line-numbers': lineNumbers, 'drop-target': leftDragOver }" @contextmenu.prevent="openContextMenu"
           @dragover.prevent="onLeftDragOver" @dragleave="onLeftDragLeave" @drop.prevent="onDropLeft">
@@ -933,6 +951,40 @@ const currentChapterIndex = computed(() => {
   const idx = chapterList.value.findIndex(d => d.id === activeDocId.value)
   return idx >= 0 ? idx + 1 : 0
 })
+
+// A 翻章条：只算可写章节（volume 不算），按全局 sort_order 线性排序
+const navChapters = computed(() => chapterList.value.filter(d => d.type === 'chapter'))
+const navIndex = computed(() => {
+  const idx = navChapters.value.findIndex(d => d.id === activeDocId.value)
+  return idx >= 0 ? idx + 1 : 0
+})
+const navPrev = computed(() => (navIndex.value >= 1 ? navChapters.value[navIndex.value - 2] : null) || null)
+const navNext = computed(() => (navIndex.value ? navChapters.value[navIndex.value] : null) || null)
+
+// C 首次直达：空书一键建「第一章」（顺带跑默认结构初始化，保证有第一卷挂靠）
+const startingFirst = ref(false)
+async function startFirstChapter() {
+  if (startingFirst.value) return
+  startingFirst.value = true
+  try {
+    let vol = documents.value.find(d => d.type === 'volume')
+    if (!vol) { await initDefaultStructure(); vol = documents.value.find(d => d.type === 'volume') }
+    const res = await documentApi.create({
+      project_id: projectId, title: '第一章', type: 'chapter',
+      parent_id: vol?.id || undefined, sort_order: 1,
+    })
+    await loadDocs()
+    const nd = res.data?.data || res.data
+    if (nd) openDoc(nd)
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '创建失败')
+  } finally {
+    startingFirst.value = false
+  }
+}
+
+// B 长目录：手机抽屉打开 → 收起无关卷、自动滚到当前章（几百章不用手动找）
+// （挂在 mobileSidebarOpen 声明后，见下方 watch）
 /* 方案B速查：上一章 doc id（供右栏「上一章结尾」卡取内容）——只认真正的 chapter，
    chapterList 混着卷容器：第一章的「上一章」其实是卷，会把卷 id 当章传出去 */
 const prevChapterId = computed(() => {
@@ -1258,6 +1310,19 @@ function toggleReference() {
 const focusMode = ref(false) // 专注模式：隐藏侧栏+顶栏，编辑器全屏
 // ponytail-mobile: 移动端抽屉侧栏（A 方案）——显示由 CSS @media 管，这里只管开合状态
 const mobileSidebarOpen = ref(false)
+// B 长目录：手机抽屉打开 → 收起无关卷、自动滚到当前章（几百章不用手动找）
+watch(mobileSidebarOpen, async (open) => {
+  if (!open || !activeDocId.value) return
+  const active = documents.value.find(d => d.id === activeDocId.value)
+  const keepVol = active?.parent_id || null
+  for (const d of documents.value) {
+    if (d.type === 'volume') d._expanded = d.id === keepVol
+  }
+  await nextTick()
+  setTimeout(() => {
+    document.querySelector('.doc-tree .tree-row.active')?.scrollIntoView({ block: 'center' })
+  }, 150) // 等 CSS transform 抽屉滑入完成再滚，否则滚的是移动前的位置
+})
 
 // ponytail-focus: 专注模式「今天字数」——首次进入记基线，之后 = 当前字数 - 基线（最小 0）
 const todayWords = ref(0)

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>章节导航 · 三方案</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:-apple-system,'PingFang SC','Noto Sans SC',sans-serif; background:#efe9dc; }
+  .phone { max-width:414px; margin:0 auto; min-height:100vh; background:#f7f2e7; position:relative; overflow:hidden;
+           display:flex; flex-direction:column; }
+  /* 原生状态栏模拟 */
+  .native { height:44px; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:600; color:#33302a;
+            background:linear-gradient(#f7f2e7,#f7f2e7); position:relative; }
+  .native .bk { position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:22px; color:#8a8272; }
+  /* 编辑器正文 */
+  .content { flex:1; padding:18px 22px 90px; overflow-y:auto; }
+  .content h2 { font-size:19px; margin:6px 0 18px; color:#33302a; }
+  .content p { font-size:16px; line-height:1.95; color:#4a463d; margin-bottom:14px; text-indent:2em; }
+  .caret { display:inline-block; width:2px; height:19px; background:#6a8c77; vertical-align:-3px; animation:blink 1s step-end infinite; }
+  @keyframes blink { 50% {opacity:0;} }
+  /* 字数胶囊 */
+  .chip { position:absolute; top:56px; right:12px; font-size:11px; color:#8a8272; background:rgba(255,255,255,.7);
+          padding:4px 10px; border-radius:12px; pointer-events:none; z-index:5; }
+  /* 方案切换器 */
+  .tabs { position:fixed; bottom:0; left:0; right:0; max-width:414px; margin:0 auto; display:flex; z-index:99;
+          background:#33302a; padding:8px 8px calc(8px + env(safe-area-inset-bottom)); gap:6px; }
+  .tabs button { flex:1; border:none; border-radius:10px; padding:10px 2px; font-size:13px; color:#d8d2c2; background:transparent; }
+  .tabs button.on { background:#6a8c77; color:#fff; font-weight:600; }
+  .variant { display:none; } .variant.show { display:block; }
+
+  /* ===== A：翻章条 ===== */
+  .va .navrow { position:fixed; bottom:calc(96px + env(safe-area-inset-bottom)); left:12px; right:12px; z-index:6;
+    display:flex; gap:8px; align-items:center; }
+  .va .navrow .chname { flex:1; text-align:center; font-size:12px; color:#8a8272; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .va .pv, .va .nx { width:84px; height:38px; border-radius:19px; border:1px solid #d9d0ba; background:rgba(255,255,255,.85);
+    font-size:13px; color:#5d5949; display:flex; align-items:center; justify-content:center; gap:4px; }
+  .va .pv:active,.va .nx:active { background:#ece5d3; }
+  .va .pv.dis,.va .nx.dis { opacity:.35; }
+
+  /* ===== B：章名下拉（点章名弹章节列表） ===== */
+  .vb .chnamebar { position:fixed; bottom:calc(96px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:6;
+    height:36px; padding:0 18px; border-radius:18px; background:rgba(255,255,255,.88); border:1px solid #d9d0ba;
+    font-size:13px; color:#5d5949; display:flex; align-items:center; gap:6px; }
+  .vb .sheet { position:fixed; left:0; right:0; bottom:0; z-index:50; background:#fff; border-radius:16px 16px 0 0;
+    padding:10px 0 calc(16px + env(safe-area-inset-bottom)); transform:translateY(110%); transition:transform .25s; max-height:72vh; display:flex; flex-direction:column; }
+  .vb .sheet.open { transform:translateY(0); }
+  .vb .sheet .grab { width:36px; height:4px; border-radius:2px; background:#ddd5c2; margin:2px auto 8px; flex-shrink:0; }
+  /* 卷快跳条：几十卷也只占一行 */
+  .vb .vols { display:flex; gap:6px; overflow-x:auto; padding:0 14px 8px; flex-shrink:0; -webkit-overflow-scrolling:touch; }
+  .vb .vols button { flex-shrink:0; border:1px solid #d9d0ba; background:#faf6ec; color:#5d5949; border-radius:14px;
+    font-size:12px; padding:5px 12px; }
+  .vb .vols button.on { background:#6a8c77; color:#fff; border-color:#6a8c77; }
+  .vb .list { overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .vb .sheet .vol { font-size:12px; color:#a89e88; padding:8px 18px 2px; position:sticky; top:0; background:#fff; display:flex; justify-content:space-between; }
+  .vb .sheet .vol .cnt { font-size:11px; }
+  .vb .sheet .it { display:flex; justify-content:space-between; padding:11px 18px; font-size:15px; color:#4a463d; }
+  .vb .sheet .it.on { color:#3f7a4f; font-weight:600; }
+  .vb .sheet .it .n { color:#b8b09c; font-size:12px; }
+  .vb .sheet .it.sub { display:none; }          /* 折叠卷里的章 */
+  .vb .sheet .volitem.open + .list .it.sub { display:flex; }
+  .vb .mask { position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:40; opacity:0; pointer-events:none; transition:opacity .2s; }
+  .vb .mask.open { opacity:1; pointer-events:auto; }
+
+  /* ===== C：首次自动建章+空状态直达 ===== */
+  .vc .first { position:fixed; inset:0; z-index:30; background:#f7f2e7; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:0; padding:40px; }
+  .vc .first .big { font-size:44px; margin-bottom:18px; }
+  .vc .first h3 { font-size:19px; color:#33302a; margin-bottom:8px; }
+  .vc .first p { font-size:13px; color:#8a8272; margin-bottom:34px; text-align:center; line-height:1.7; }
+  .vc .go { width:230px; height:48px; border-radius:24px; background:#6a8c77; color:#fff; font-size:16px; border:none;
+    display:flex; align-items:center; justify-content:center; }
+  .vc .go:active { background:#5a7a66; }
+  .vc .go.ghost { background:transparent; border:1px solid #cfc6ad; color:#8a8272; margin-top:12px; height:40px; font-size:14px; }
+  .vc .hidden { display:none; }
+
+  /* 说明条 */
+  .note { font-size:11px; color:#a89e88; text-align:center; padding:8px 20px calc(70px + env(safe-area-inset-bottom)); }
+  .drawer-hint { position:fixed; right:0; top:38%; writing-mode:vertical-rl; font-size:11px; color:#b8b09c; background:rgba(255,255,255,.8);
+    padding:10px 2px; border-radius:8px 0 0 8px; z-index:6; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="native"><span class="bk">‹</span>星海拾遗 · 第三章</div>
+  <div class="chip">1,204 字 · 已保存</div>
+  <div class="content">
+    <h2>第三章 潮汐之下</h2>
+    <p>海面的雾气还没有散去，少年站在礁石上，望着远处若隐若现的灯塔<span class="caret"></span></p>
+    <p>（示意正文，方案切换在最底部）</p>
+  </div>
+  <div class="drawer-hint">把手</div>
+
+  <!-- A -->
+  <div class="variant va" id="va">
+    <div class="navrow">
+      <button class="pv" onclick="alert('→ 上一章')">‹ 上一章</button>
+      <div class="chname">第三章 潮汐之下 · 3/12</div>
+      <button class="nx" onclick="alert('→ 下一章')">下一章 ›</button>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="variant vb" id="vb">
+    <button class="chnamebar" onclick="toggleSheet()">第三章 潮汐之下 ▾</button>
+    <div class="mask" id="mask" onclick="toggleSheet()"></div>
+    <div class="sheet" id="sheet">
+      <div class="grab"></div>
+      <div class="vols" id="vols"></div>
+      <div class="list" id="chlist"></div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="variant vc" id="vc">
+    <div class="first" id="firstPanel">
+      <div class="big">✍️</div>
+      <h3>开始你的第一章</h3>
+      <p>新建书后第一次进来，不再让你找目录——<br>一键建好「第一章」直接开写</p>
+      <button class="go" onclick="document.getElementById('firstPanel').classList.add('hidden')">✍️ 直接开写（自动建第一章）</button>
+      <button class="go ghost">先看看目录结构</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="on" onclick="pick('va',this)">A 翻章条</button>
+    <button onclick="pick('vb',this)">B 章名→目录</button>
+    <button onclick="pick('vc',this)">C 首次直达</button>
+  </div>
+</div>
+<script>
+function pick(id, btn) {
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('mask').classList.remove('open');
+}
+function toggleSheet() {
+  document.getElementById('sheet').classList.toggle('open');
+  document.getElementById('mask').classList.toggle('open');
+}
+// ===== B：几百章长篇形态——8 卷 × 40 章，卷折叠 + 卷快跳 + 自动定位当前章 =====
+const VOLS = 8, CHS = 40, CUR = { v: 5, c: 23 };  // 当前在第六卷第 23 章
+const vols = document.getElementById('vols'), list = document.getElementById('chlist');
+const cn = ['觉醒','异变','深海','潮汐','迷航','静默','风暴','归途'];
+for (let v = 0; v < VOLS; v++) {
+  const b = document.createElement('button');
+  b.textContent = '卷' + cn[v];
+  b.className = v === CUR.v ? 'on' : '';
+  b.onclick = () => {
+    const hdr = document.getElementById('vol' + v);
+    if (!hdr.classList.contains('open')) hdr.onclick();   // 先展开再跳
+    hdr.scrollIntoView({ block: 'start' });
+  };
+  vols.appendChild(b);
+}
+for (let v = 0; v < VOLS; v++) {
+  const hdr = document.createElement('div');
+  hdr.className = 'vol' + (v === CUR.v ? ' open' : '');
+  hdr.id = 'vol' + v;
+  hdr.innerHTML = `<span>第${'一二三四五六七八'[v]}卷 ${cn[v]}</span><span class="cnt">${CHS} 章 · ${(CHS*2.1).toFixed(1)}万字</span>`;
+  hdr.onclick = () => {                              // 点卷头展开/收起该卷章节
+    hdr.classList.toggle('open');
+    let n = hdr.nextElementSibling;
+    const show = hdr.classList.contains('open') || v === CUR.v;
+    while (n && !n.classList.contains('vol')) { n.style.display = show ? 'flex' : 'none'; n = n.nextElementSibling; }
+  };
+  
+  list.appendChild(hdr);
+  for (let c = 1; c <= CHS; c++) {
+    const cur = v === CUR.v && c === CUR.c;
+    const it = document.createElement('div');
+    it.className = 'it sub' + (v === CUR.v ? ' keep' : '') + (cur ? ' on' : '');
+    if (v === CUR.v) it.classList.remove('sub');      // 当前卷保持展开
+    it.innerHTML = `<span>第${v*CHS+c}章 ${cur ? '潮汐之下' : '章节标题示意'}</span><span class="n">${cur ? '1,204 字' : (c%7 ? '2,3xx 字' : '未写')}</span>`;
+    list.appendChild(it);
+  }
+}
+// 打开抽屉时自动滚到当前章
+// 初始收起非当前卷（直接藏 DOM，不动 class，保证点卷头第一次就生效）
+for (const h of list.querySelectorAll('.vol')) {
+  if (h.classList.contains('open')) continue;
+  let n = h.nextElementSibling;
+  while (n && !n.classList.contains('vol')) { n.style.display = 'none'; n = n.nextElementSibling; }
+}
+document.querySelector('.chnamebar').addEventListener('click', () => setTimeout(() => {
+  document.querySelector('.it.on').scrollIntoView({ block: 'center' });
+}, 280));
+pick('va', document.querySelector('.tabs button'));
+</script>
+</body>
+</html>

@@ -2,6 +2,7 @@
   <div class="doc-tree-node" :class="{ folder: isFolder, compact: compact }">
     <div
       class="tree-row"
+      :data-node-id="node.id"
       :class="{ active: node.id === activeId, 'drop-before': dropPos === 'before', 'drop-after': dropPos === 'after', 'drop-inside': dropPos === 'inside' }"
       :style="{ paddingLeft: depth * 12 + 6 + 'px' }"
       @click="handleClick"

@@ -78,6 +78,10 @@
         <div v-show="sideTab === 'chapters' || loadingDocs" class="article-zone">
           <!-- 方案一·瘦身：「＋ 新建 ▾」整行删掉，降级为分区标题行的小＋（分卷/楔子/番外菜单不变） -->
           <div class="zone-caption">正文<span ref="addMenuAnchor" class="zone-plus" @click.stop="toggleAddMenu" title="新建（分卷 / 楔子 / 番外）">＋</span></div>
+          <!-- B 长目录（2026-11-05）：卷快跳条——几百章只占一行，点卷直达（仅手机档显示） -->
+          <div v-if="volNodes.length > 1" class="vol-jump">
+            <span v-for="v in volNodes" :key="v.id" class="vj-chip" @click="jumpVol(v)">{{ volShort(v.title) }}</span>
+          </div>
           <DocTreeNode
             v-for="(node, i) in articleRootNodes"
             :key="node.id"
@@ -143,6 +147,19 @@ const props = defineProps<{
 
 /* 方案B：左栏双 Tab（默认正文） */
 const sideTab = ref<'chapters' | 'related'>('chapters')
+
+/* B 长目录：卷快跳 */
+const volNodes = computed(() => props.articleRootNodes.filter((n: any) => n.type === 'volume'))
+function volShort(t: string): string {
+  // 「第一卷 觉醒」→「觉醒」；短标题原样
+  return String(t || '').replace(/^第[一二三四五六七八九十百0-9]+卷\s*/, '').slice(0, 4) || String(t || '').slice(0, 4)
+}
+function jumpVol(v: any) {
+  v._expanded = true
+  nextTick(() => {
+    document.querySelector(`.doc-tree [data-node-id="${v.id}"]`)?.scrollIntoView({ block: 'start' })
+  })
+}
 const addMenuOpen = ref(false)
 const addMenuAnchor = ref<HTMLElement | null>(null)
 const addMenuStyle = ref<Record<string, string>>({})

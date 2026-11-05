@@ -478,12 +478,31 @@
 
 .editor-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
   color: var(--text-secondary);
   font-size: 15px;
 }
+
+/* C 首次直达：空书一键开写面板 */
+.editor-empty .ee-icon { font-size: 44px; margin-bottom: 14px; }
+.editor-empty .ee-title { font-size: 19px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.editor-empty .ee-sub { font-size: 13px; color: var(--text-tertiary); margin-bottom: 28px; text-align: center; line-height: 1.7; padding: 0 30px; }
+.editor-empty .ee-go {
+  width: 230px; height: 46px; border-radius: 23px; border: none; cursor: pointer;
+  background: var(--accent, #6a8c77); color: #fff; font-size: 16px;
+}
+.editor-empty .ee-go:active { filter: brightness(.95); }
+.editor-empty .ee-go:disabled { opacity: .6; }
+.editor-empty .ee-ghost {
+  width: 230px; height: 38px; margin-top: 10px; border-radius: 19px; cursor: pointer;
+  background: transparent; border: 1px solid var(--border, #cfc6ad); color: var(--text-secondary); font-size: 14px;
+}
+/* 「打开目录」按钮只对手机档有意义（桌面左栏常驻可见） */
+.editor-empty .ee-ghost { display: none; }
+@media (max-width: 768px) { .editor-empty .ee-ghost { display: block; } }
 
 .compare-view {
   flex: 1;
@@ -2246,6 +2265,10 @@
    桌面（>768px）三者全隐藏，底栏原样；弹层（敏感词/码字锁/工具箱/显示设置）留在 status-bar 里，
    手机档只隐底栏可见 chrome（fixed 定位的弹层照常渲染，锚点改贴底） */
 .mp-chip, .mp-handle, .mp-rail { display: none; }
+/* A 翻章条：桌面隐藏，手机档贴底居中（点章名=开目录） */
+.mp-chapnav { display: none; }
+/* B 卷快跳条：仅手机档抽屉里显示（规则在 ≤768 媒体块里） */
+.doc-tree .vol-jump { display: none; }
 
 /* 小程序编辑器全屏：顶栏（EditorHeader）隐藏，书名走原生栏 document.title；
    目录/模式切换已挪进 mp-rail，返回走 App.vue 左上角悬浮钮 */
@@ -2273,6 +2296,38 @@
     background: rgba(255,255,255,.7); margin: 0 auto;
   }
   .editor-page .mp-handle:active { background: rgba(74,68,56,.45); }
+
+  /* A 翻章条：贴底居中，避让右下搭子胶囊（左 12 右 84，buddy-fab 在右下 67px 宽） */
+  .editor-page .mp-chapnav {
+    display: flex; align-items: center; gap: 8px;
+    position: fixed; left: 12px; right: 84px; bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 320; pointer-events: none; /* 容器不挡正文点击，子元素自己开 pointer-events */
+  }
+  .editor-page .mp-chapnav button, .editor-page .mp-chapnav .mp-chapnav-name { pointer-events: auto; }
+  .editor-page .mp-chapnav button {
+    flex-shrink: 0; width: 84px; height: 36px; border-radius: 18px; border: 1px solid #d9d0ba;
+    background: rgba(250,248,242,.92); font-size: 13px; color: #5d5949; backdrop-filter: blur(6px);
+  }
+  .editor-page .mp-chapnav button:active { background: #ece5d3; }
+  .editor-page .mp-chapnav button:disabled { opacity: .35; }
+  .editor-page .mp-chapnav-name {
+    flex: 1; min-width: 0; text-align: center; font-size: 12px; color: #8a8272;
+    background: rgba(250,248,242,.92); border: 1px solid #e8e1cd; height: 32px; line-height: 30px;
+    border-radius: 16px; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    backdrop-filter: blur(6px);
+  }
+
+  /* B 长目录：卷快跳条（仅手机档抽屉里显示）；vol-jump 在 EditorSidebar 子组件里，必须 :deep */
+  .editor-page .doc-tree :deep(.vol-jump) {
+    display: flex; gap: 6px; overflow-x: auto; padding: 0 10px 8px; flex-shrink: 0;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .editor-page .doc-tree :deep(.vol-jump)::-webkit-scrollbar { display: none; }
+  .editor-page .doc-tree :deep(.vj-chip) {
+    flex-shrink: 0; border: 1px solid #d9d0ba; background: #faf6ec; color: #5d5949;
+    border-radius: 14px; font-size: 12px; padding: 5px 12px;
+  }
+  .editor-page .doc-tree :deep(.vj-chip):active { background: #ece5d3; }
   /* 玻璃工具轨：右上、悬浮覆盖、iOS 控制中心质感 */
   .editor-page .mp-rail {
     display: flex; flex-direction: column; gap: 2px; position: absolute; right: 8px; top: 9%;
