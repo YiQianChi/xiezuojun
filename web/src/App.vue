@@ -27,7 +27,7 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
       </button>
     </div>
-  <main class="app-main" :class="{ 'with-nav': showNav, 'editor-mode': route.name === 'Editor' }">
+  <main class="app-main" :class="{ 'with-nav': showNav, 'editor-mode': route.name === 'Editor', 'mp-pad': showMpNavBtns }">
     <router-view />
   </main>
   <!-- Toast 容器 -->
@@ -315,31 +315,36 @@ onMounted(() => {
   font-weight: 600;
 }
 
-/* 小程序左上角悬浮返回/主页：贴原生栏左键位正下方，白底玻璃圆钮（细线图标） */
+/* 小程序左上角返回/主页：贴原生标题栏下沿的同色子栏——视觉上与标题连成一体（原生栏本身是平台保留区，塞不进去） */
 .mp-nav-btns {
   position: fixed;
-  top: 8px;
-  left: 10px;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
   z-index: 120;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
+  padding-left: 14px;
+  background: #f7f9f4; /* = 壳 navigationBarBackgroundColor，与原生栏无缝衔接 */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 .mp-nav-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+  width: 36px;
+  height: 32px;
+  border-radius: 8px;
   border: none;
-  background: rgba(255, 255, 255, .82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: none;
   color: #333;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, .12);
   padding: 0;
 }
-.mp-nav-btn:active { background: rgba(255, 255, 255, .95); }
+.mp-nav-btn:active { background: rgba(0, 0, 0, 0.06); }
+/* 内容给顶部子栏让位 */
+.app-main.mp-pad { padding-top: 36px; box-sizing: border-box; }
 
 /* Toast 容器 */
 .toast-container {
