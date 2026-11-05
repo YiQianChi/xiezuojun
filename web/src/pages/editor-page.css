@@ -2235,31 +2235,6 @@
    打字胶囊：码字时「字数 · 保存态」浮在视线线上方——
    居中打字不用低头看状态栏（Boss 诉求）。停笔 4s 由 JS 摘除，不占常驻层。
    ===================================================================== */
-@media (min-width: 769px) {
-  .typing-hud {
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 260; /* 低于右栏(300)/AI浮层(400)，高于纸张 */
-    display: inline-flex;
-    align-items: baseline;
-    gap: 8px;
-    padding: 5px 16px;
-    border-radius: 999px;
-    background: var(--ed-panel, #f8f3e8);
-    border: 1px solid var(--ed-line, #e2d8c2);
-    box-shadow: 0 3px 12px var(--ed-shadow, rgba(96, 74, 40, 0.12));
-    font-size: 12px;
-    color: var(--ed-ink-mid, #7a7263);
-    pointer-events: none; /* 永不挡编辑 */
-    user-select: none;
-    animation: th-fade-in 0.25s ease;
-  }
-  .typing-hud .th-num { font-size: 14px; font-weight: 700; color: var(--ed-ink, #3a352c); font-variant-numeric: tabular-nums; }
-  .typing-hud .th-sep { color: var(--ed-ink-soft, #a39a86); }
-  .typing-hud .th-save { font-size: 11px; }
-}
-@keyframes th-fade-in { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* ═══ 手机档 H 方案（2026-11-03 Boss 定稿）：底栏退役，字数胶囊 + 贴边把手 + 玻璃工具轨 ═══
    桌面（>768px）三者全隐藏，底栏原样；弹层（敏感词/码字锁/工具箱/显示设置）留在 status-bar 里，

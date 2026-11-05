@@ -195,11 +195,6 @@
             </div>
           </template>
         </div>
-        <!-- 打字胶囊：字数/保存态浮在视线线上方，停笔淡出（Boss：居中打字不看页尾）；
-             保存态只报异常（失败/离线）——「编辑中/已保存」常态是噪音（Boss 2026-11-05 清除） -->
-        <div v-if="typingHudVisible" class="typing-hud" :style="{ top: `calc(${Math.round(eyeLineRatio * 100)}% - ${activeDoc && activeDoc.type === 'chapter' ? 96 : 76}px)` }">
-          <span class="th-num">{{ wordCount }} 字</span><span v-if="mpSaveChip" class="th-sep">·</span><span v-if="mpSaveChip" class="th-save">{{ saveStatus }}</span>
-        </div>
         <SearchPanel
           :visible="searchVisible"
           :scope="searchScope"
@@ -1538,15 +1533,6 @@ function setupTypewriterObserver() {
 }
 watch(activeDocId, () => { nextTick(setupTypewriterObserver) })
 
-// ---- 打字胶囊：码字时字数/保存态浮在视线线上方，眼睛不离中段（Boss：不能居中打字还得看页尾） ----
-const typingHudVisible = ref(false)
-let typingHudTimer: ReturnType<typeof setTimeout> | null = null
-function bumpTypingHud() {
-  typingHudVisible.value = true
-  if (typingHudTimer) clearTimeout(typingHudTimer)
-  typingHudTimer = setTimeout(() => { typingHudVisible.value = false }, 4000) // 停笔 4s 淡出
-}
-
 // 打字时若光标低于视线线，把容器上滚让光标回到视线线（光标在线上不动，不打扰阅读回看）
 function typewriterScroll() {
   if (!editor.value) return
@@ -1776,7 +1762,6 @@ onBeforeUnmount(() => {
   try { recog?.stop() } catch {}
   if (sensitiveTimer) clearTimeout(sensitiveTimer)
   if (phonePreviewTimer) clearTimeout(phonePreviewTimer)
-  if (typingHudTimer) clearTimeout(typingHudTimer)
   if (editor.value) editor.value.destroy()
   if (saveTimer) clearTimeout(saveTimer)
   if (selectionHandler) {
@@ -1837,7 +1822,6 @@ function initEditor() {
       if (saveTimer) clearTimeout(saveTimer)
       saveTimer = setTimeout(() => autoSave(), 1500)
       typewriterScroll() // 打字机视线：光标沉过视线线就把页面向上托
-      bumpTypingHud() // 打字胶囊：字数/保存态浮在视线线附近，不用低头看状态栏
     }
   })
 
