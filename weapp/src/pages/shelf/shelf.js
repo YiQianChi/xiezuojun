@@ -41,8 +41,9 @@ Page({
   },
 
   openBook(e) {
-    const pid = e.currentTarget.dataset.pid
-    if (pid) api.openEditor(pid)
+    // 点卡片 → 原生码字模式；重命名/删除在卡片操作行
+    const p = this.data.projects.find(x => String(x.id) === String(e.currentTarget.dataset.id))
+    if (p) wx.navigateTo({ url: '/pages/write/write?pid=' + p.id + '&pub=' + encodeURIComponent(p.public_id || '') })
   },
 
   // ---- 新建 ----
@@ -57,7 +58,7 @@ Page({
       const res = await api.post('/projects', { name, description: '', setting_types: [] })
       const p = res.data || res
       this.setData({ showCreate: false, creating: false })
-      api.openEditor(p.public_id || String(p.id))
+      wx.navigateTo({ url: '/pages/write/write?pid=' + p.id + '&pub=' + encodeURIComponent(p.public_id || '') })
     } catch (e) {
       this.setData({ creating: false })
       wx.showToast({ title: (e.data && e.data.error) || '创建失败', icon: 'none' })

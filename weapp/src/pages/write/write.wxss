@@ -1,0 +1,30 @@
+page { background: #fbfaf6; height: 100%; }
+.page { display: flex; flex-direction: column; height: 100vh; }
+
+.head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid #efece2; background: #fbfaf6; }
+.ch-title { font-size: 15px; font-weight: 600; color: #33302a; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status { font-size: 12px; color: #9aa89c; }
+
+.writer { flex: 1; width: 100%; min-height: 0; padding: 16px 18px 30px; box-sizing: border-box; font-size: 16px; line-height: 1.9; color: #33302a; background: #fbfaf6; }
+.ph { color: #c8c2b2; }
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #9aa094; font-size: 14px; }
+
+.foot { display: flex; align-items: center; justify-content: space-around; padding: 8px 0 calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid #efece2; background: #fbfaf6; }
+.f-btn { font-size: 14px; color: #4a7a58; padding: 6px 18px; }
+.f-btn.ghost { color: #9aa094; font-size: 13px; }
+
+.btn { border-radius: 999px; font-size: 14px; margin: 0; border: none; }
+.btn::after { border: none; }
+.btn.primary { background: #6aa877; color: #fff; height: 38px; line-height: 38px; width: 160px; }
+
+.mask { position: fixed; inset: 0; background: rgba(30,34,28,.4); z-index: 50; display: flex; align-items: flex-end; }
+.sheet { width: 100%; max-height: 68vh; background: #fff; border-radius: 18px 18px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid #f0f2ec; }
+.sheet-title { font-size: 15px; font-weight: 700; color: #33302a; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-new { font-size: 13px; color: #4a7a58; padding: 4px; }
+.sheet-scroll { max-height: 56vh; }
+.vol { font-size: 12px; color: #9aa094; padding: 12px 4px 4px; }
+.ch { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 6px; border-bottom: 1px solid #f6f7f3; }
+.ch.on { background: #f3f7f0; border-radius: 8px; }
+.ch-name { font-size: 14px; color: #33302a; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-wc { font-size: 11px; color: #b0b6aa; }

@@ -60,13 +60,18 @@ Page({
   },
 
   openRecent(e) {
-    const pid = e.currentTarget.dataset.pid
-    if (pid) api.openEditor(pid)
+    const item = this.data.projects[Number(e.currentTarget.dataset.idx)]
+    if (item) this.openWrite(item)
+  },
+
+  // 打开书 → 原生码字模式（网页完整编辑器从码字页进）
+  openWrite(item) {
+    wx.navigateTo({ url: '/pages/write/write?pid=' + item.id + '&pub=' + encodeURIComponent(item.public_id || '') })
   },
 
   // 开始写作：有最近的书 → 接着写；没有 → 弹新建
   startWriting() {
-    if (this.data.recent) api.openEditor(this.data.recent.public_id || String(this.data.recent.id))
+    if (this.data.recent) this.openWrite(this.data.recent)
     else this.openCreate()
   },
 
@@ -84,7 +89,7 @@ Page({
       const res = await api.post('/projects', { name, description: '', setting_types: [] })
       const p = res.data || res
       this.setData({ showCreate: false, creating: false })
-      api.openEditor(p.public_id || String(p.id))
+      this.openWrite({ id: p.id, public_id: p.public_id })
     } catch (e) {
       this.setData({ creating: false })
       wx.showToast({ title: (e.data && e.data.error) || '创建失败', icon: 'none' })

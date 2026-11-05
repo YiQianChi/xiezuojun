@@ -40,7 +40,7 @@
     <view class="recent" wx:if="{{projects.length}}">
       <text class="sec-title">最近打开</text>
       <view class="recent-item" wx:for="{{projects}}" wx:key="id" wx:if="{{index < 5}}"
-            data-pid="{{item.public_id}}" data-id="{{item.id}}" bindtap="openRecent">
+            data-idx="{{index}}" bindtap="openRecent">
         <view class="recent-cover">
           <image wx:if="{{item.cover_url}}" src="{{item.cover_url}}" mode="aspectFill" class="recent-img" />
           <text wx:else class="recent-letter">{{item.name[0]}}</text>
