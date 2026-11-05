@@ -29,3 +29,31 @@ export function mpPush(url: string) {
   s.onload = go
   document.body.appendChild(s)
 }
+
+// 关掉当前 web-view 层回上一原生页（jweixin 没加载时动态补载）
+export function mpBack() {
+  const w = window as any
+  const go = () => w.wx?.miniProgram?.navigateBack?.()
+  if (w.wx?.miniProgram) {
+    go()
+    return
+  }
+  const s = document.createElement('script')
+  s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js'
+  s.onload = go
+  document.body.appendChild(s)
+}
+
+// 回到壳的某个原生页（reLaunch 清栈）
+export function mpRelaunch(url: string) {
+  const w = window as any
+  const go = () => w.wx?.miniProgram?.reLaunch?.({ url })
+  if (w.wx?.miniProgram) {
+    go()
+    return
+  }
+  const s = document.createElement('script')
+  s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js'
+  s.onload = go
+  document.body.appendChild(s)
+}

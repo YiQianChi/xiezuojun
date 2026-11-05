@@ -66,7 +66,7 @@ import { toasts, toast, dismissToast } from './composables/useToast'
 import { usePwaInstall } from './composables/usePwaInstall'
 import OnboardingTour from './components/OnboardingTour.vue'
 import ProfileModal from './components/ProfileModal.vue'
-import { isMiniProgramEnv } from './core/mp'
+import { isMiniProgramEnv, mpNavigate, mpBack, mpRelaunch } from './core/mp'
 
 const route = useRoute()
 
@@ -76,16 +76,18 @@ const inMiniProgram = isMiniProgramEnv
 const router = useRouter()
 const showNav = computed(() => !inMiniProgram && route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
-// 小程序左上角悬浮返回/主页（编辑器 mp-full 顶栏已隐藏也要能返回；登录注册页不用）
-const showMpNavBtns = computed(() => inMiniProgram && route.name !== 'Login' && route.name !== 'Register')
+// 小程序顶部子栏：营销首页('/')是壳根页没有可返回的层级，隐藏；其余页面给返回/主页
+const showMpNavBtns = computed(() => inMiniProgram && route.path !== '/' && route.name !== 'Login' && route.name !== 'Register')
 function goBackMp() {
-  // 编辑器跑在独立 web-view 层：没有网页历史时返回=关层回原生页
-  if (window.history.length > 1) { window.history.back(); return }
-  const w = window as any
-  if (w.wx?.miniProgram?.navigateBack) w.wx.miniProgram.navigateBack()
+  // 有 SPA 内部上一页（router 记录在 history.state.back）才走网页后退，否则=关掉这层 web-view 回原生页
+  const st: any = window.history.state
+  if (st?.back) { window.history.back(); return }
+  mpBack()
 }
 function goHomeMp() {
-  router.push(isLoggedIn.value ? '/home' : '/')
+  // 小程序里「主页」= 回原生工作台；未登录回营销首页
+  if (isLoggedIn.value) { mpRelaunch('/pages/home/home'); return }
+  router.push('/')
 }
 
 const isLoggedIn = ref(false)

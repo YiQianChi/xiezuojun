@@ -680,7 +680,7 @@ import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
 import { documentApi, projectApi, threadApi, buddyApi } from '../core/api'
-import { mpPush } from '../core/mp'
+import { mpPush, mpBack } from '../core/mp'
 import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import { editorContentFromText, stripContentChapterHeading } from '../core/editorContent'
@@ -2545,10 +2545,7 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 function goBack() {
   if (!guardWordLock()) return
   // 小程序：编辑器跑在独立的 web-view 层里，返回=关掉这层回原生页，不去网页书架
-  if (isMiniProgramEnv) {
-    const w = window as any
-    if (w.wx?.miniProgram?.navigateBack) { w.wx.miniProgram.navigateBack(); return }
-  }
+  if (isMiniProgramEnv) { mpBack(); return }
   router.push('/bookshelf')
 }
 </script>
