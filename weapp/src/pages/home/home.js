@@ -92,6 +92,16 @@ Page({
   },
 
   goShelf() { wx.navigateTo({ url: '/pages/shelf/shelf' }) },
+
+  // 退出小程序（官方 API；确认弹窗防误触）
+  exitApp() {
+    wx.showModal({
+      title: '退出写作菌？',
+      confirmText: '退出',
+      confirmColor: '#d05252',
+      success: r => { if (r.confirm) wx.exitMiniProgram({ fail: () => wx.showToast({ title: '请用手势关闭', icon: 'none' }) }) }
+    })
+  },
   goImport() {
     // 导入走网页书架的导入面板（文件选择/解析逻辑网页已有）
     const at = wx.getStorageSync('xzj_token')

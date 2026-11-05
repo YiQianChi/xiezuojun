@@ -1,8 +1,11 @@
 <view class="page">
   <!-- 微信原生导航栏：标题「写作菌」由平台渲染 -->
   <view class="body">
-    <view class="brand">
+    <view class="topbar">
       <text class="hello">{{nickname ? nickname + '，欢迎回来' : ''}}</text>
+      <text class="exit" bindtap="exitApp">退出</text>
+    </view>
+    <view class="brand">
       <text class="slogan">让灵感不被打扰</text>
       <text class="quote">{{quote}}</text>
     </view>
