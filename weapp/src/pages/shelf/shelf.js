@@ -2,6 +2,14 @@
 const api = require('../../utils/api')
 
 Page({
+  // 临时诊断：上报页面栈深度——原生返回箭头只在栈深>1 时出现
+  onLoad() {
+    try {
+      const si = wx.getSystemInfoSync()
+      wx.request({ url: 'https://xiezuojun.com/api/diag-nav?page=shelf&stack=' + getCurrentPages().length + '&wx=' + si.version + '&os=' + si.platform + '&sdk=' + si.SDKVersion, method: 'GET', fail: () => {} })
+    } catch (e) {}
+  },
+
   data: {
     projects: [],
     trash: [],

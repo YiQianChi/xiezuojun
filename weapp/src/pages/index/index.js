@@ -16,6 +16,11 @@ Page({
     return app.globalData.site + '/home?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad(options) {
+    // 临时诊断：上报栈深（编辑器层的原生箭头依赖栈深>1）
+    try {
+      const si = wx.getSystemInfoSync()
+      wx.request({ url: 'https://xiezuojun.com/api/diag-nav?page=index&stack=' + getCurrentPages().length + '&wx=' + si.version + '&os=' + si.platform + '&sdk=' + si.SDKVersion + '&web=' + (options && options.web ? '1' : '0'), method: 'GET', fail: () => {} })
+    } catch (e) {}
     // 根层兜底：从聊天卡片/最近使用直接落到本页（栈深=1）时原生栏不会有返回箭头——
     // 先 reLaunch 原生首页垫层，再由首页 navigateTo 回来（带 __fromHome 防循环）
     const pages = getCurrentPages()
