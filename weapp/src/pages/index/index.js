@@ -11,28 +11,21 @@ Page({
   },
   buildUrl(at, rt) {
     // 首页工作台（Boss 拍板方案C：数据条+快捷宫格+最近打开）；登录后进这里，不再是直接弹书架
-    // sbh=状态栏高度：custom 导航全屏后网页顶栏自己让位
-    return app.globalData.site + '/home?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '') + '&sbh=' + this.sbh()
-  },
-  sbh() {
-    try {
-      return (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).statusBarHeight || 44
-    } catch (e) { return 44 }
-  },
-  withSbh(path) {
-    return path + (path.indexOf('?') >= 0 ? '&' : '?') + 'sbh=' + this.sbh()
+    // 注：web-view 页原生导航栏无法去除（官方文档：6.7.2 起 navigationStyle:custom 对 web-view 无效），
+    // 全屏方案改走「小程序内隐藏网页顶栏」——见 web App.vue showNav
+    return app.globalData.site + '/home?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad(options) {
     // 协议/隐私/章节分享页：公开可看，无需登录（小程序提审需要）。网页是 history 路由，不带 #
     if (options && options.web) {
-      this.setData({ url: this.withSbh(app.globalData.site + '/' + options.web) })
+      this.setData({ url: app.globalData.site + '/' + options.web })
       return
     }
     const at = wx.getStorageSync('xzj_token')
     const rt = wx.getStorageSync('xzj_rt')
     if (!at && !rt) {
       // 微信审核要求：先浏览后自主授权登录——无登录态进营销首页游客浏览，登录入口在网页里跳回壳登录页
-      this.setData({ url: this.withSbh(app.globalData.site + '/') })
+      this.setData({ url: app.globalData.site + '/' })
       return
     }
     if (at) {

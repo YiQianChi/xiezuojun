@@ -57,21 +57,15 @@ import { toasts, toast, dismissToast } from './composables/useToast'
 import { usePwaInstall } from './composables/usePwaInstall'
 import OnboardingTour from './components/OnboardingTour.vue'
 import ProfileModal from './components/ProfileModal.vue'
+import { isMiniProgramEnv } from './core/mp'
 
 const route = useRoute()
 
-// 小程序全屏（壳 custom 导航）：壳通过 URL 传 sbh=状态栏高度，
-// 顶栏下让 + 右侧给微信胶囊留位（设一次，路由切换不丢）
-{
-  const sbh = Number(new URLSearchParams(location.search).get('sbh'))
-  if (sbh > 0) {
-    const root = document.documentElement.style
-    root.setProperty('--mp-safe-top', sbh + 'px')
-    root.setProperty('--mp-capsule-pad', '92px')
-  }
-}
+// 小程序 web-view：原生导航栏去不掉（官方限制），改为隐藏网页自己的顶栏只留一条栏；
+// --mp-safe-top/--mp-capsule-pad CSS 变量留作日后开放 custom 导航时用（现在恒为 0）
+const inMiniProgram = isMiniProgramEnv
 const router = useRouter()
-const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
+const showNav = computed(() => !inMiniProgram && route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
 const isLoggedIn = ref(false)
 // 导航栏头像/昵称（登录后拉取；个人设置页改完派发 xzj-profile-updated 事件刷新）
