@@ -18,8 +18,8 @@
       <router-link v-else to="/login" class="nav-link">登录</router-link>
     </div>
   </nav>
-    <!-- 小程序 web-view：网页顶栏已隐藏，返回/主页子栏；编辑器里改透明悬浮小图标（不带背景条，让写作区最大化） -->
-    <div v-if="showMpNavBtns" class="mp-nav-btns" :class="{ 'ghost': route.name === 'Editor' }">
+    <!-- 小程序 web-view：网页顶栏已隐藏，返回/主页子栏；编辑器层由原生栏自带官方返回箭头，无需网页侧按钮 -->
+    <div v-if="showMpNavBtns" class="mp-nav-btns">
       <button class="mp-nav-btn" title="返回" @click="goBackMp">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
@@ -76,8 +76,8 @@ const inMiniProgram = isMiniProgramEnv
 const router = useRouter()
 const showNav = computed(() => !inMiniProgram && route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
-// 小程序顶部子栏：营销首页('/')是壳根页没有可返回的层级，隐藏；其余页面给返回/主页
-const showMpNavBtns = computed(() => inMiniProgram && route.path !== '/' && route.name !== 'Login' && route.name !== 'Register')
+// 小程序顶部子栏：营销首页('/')是壳根页没有可返回层级隐藏；编辑器层的原生栏自带官方返回箭头（navigateTo 自动出现），网页侧不再重复给
+const showMpNavBtns = computed(() => inMiniProgram && route.path !== '/' && route.name !== 'Login' && route.name !== 'Register' && route.name !== 'Editor')
 function goBackMp() {
   // 有 SPA 内部上一页（router 记录在 history.state.back）才走网页后退，否则=关掉这层 web-view 回原生页
   const st: any = window.history.state
@@ -348,27 +348,9 @@ onMounted(() => {
   padding: 0;
 }
 .mp-nav-btn:active { background: rgba(0, 0, 0, 0.06); }
-/* 内容给顶部子栏让位（编辑器用 ghost 悬浮，不让位） */
+/* 内容给顶部子栏让位（编辑器无子栏，不让位） */
 .app-main.mp-pad { padding-top: 36px; box-sizing: border-box; }
 .app-main.editor-mode.mp-pad { padding-top: 0; }
-
-/* 编辑器：透明悬浮小图标——无背景条，不占写作区 */
-.mp-nav-btns.ghost {
-  right: auto;
-  height: auto;
-  padding-left: 8px;
-  background: none;
-  border-bottom: none;
-  top: 10px;
-}
-.mp-nav-btns.ghost .mp-nav-btn {
-  width: 34px;
-  height: 34px;
-  background: rgba(255, 255, 255, .68);
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(74, 68, 56, .10);
-}
-.mp-nav-btns.ghost .mp-nav-btn:active { background: rgba(255, 255, 255, .9); }
 
 /* Toast 容器 */
 .toast-container {
