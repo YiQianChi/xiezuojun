@@ -44,6 +44,11 @@ Page({
       const si = wx.getSystemInfoSync()
       wx.request({ url: 'https://xiezuojun.com/api/diag-font?f=' + factor + '&fs=' + fs + '&fssf=' + fssf + '&ww=' + si.windowWidth + '&sw=' + si.screenWidth + '&px=' + si.pixelRatio, method: 'GET', fail: () => {} })
     } catch (e) {}
+    // 临时：页面上直接显示诊断数值（配合本地真机调试）
+    try {
+      const si = wx.getSystemInfoSync()
+      this.setData({ diagFs: fs, diagFssf: fssf, diagF: Math.round(factor * 100) / 100, diagWw: si.windowWidth, diagSw: si.screenWidth, diagPx: si.pixelRatio })
+    } catch (e) {}
     if (factor > 1.01) this.setData({ fontScale: factor })
     this.setData({ quote: QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length] })
   },

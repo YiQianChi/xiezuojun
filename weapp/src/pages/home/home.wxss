@@ -66,3 +66,5 @@ page { font-size: 14px; }
 .btn.ghost { background: #eef2ea; color: #4a4f45; height: 38px; line-height: 38px; }
 .btn.primary { background: #6aa877; color: #fff; height: 38px; line-height: 38px; }
 .btn.primary[disabled] { background: #b9d4bf; color: rgba(255,255,255,.8); }
+
+.font-diag { margin-top: 18px; font-size: 10px; color: #c2c8bc; text-align: center; word-break: break-all; }
