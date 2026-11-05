@@ -2257,7 +2257,7 @@
 @media (max-width: 768px) {
   /* 字数/保存胶囊：浮在编辑区右上，不占手指区 */
   .editor-page .mp-chip {
-    display: block; position: absolute; top: 6px; right: 12px; z-index: 60;
+    display: block; position: absolute; top: 12px; right: 12px; z-index: 60;
     font-size: 11px; color: #b0a78f; background: rgba(250,248,242,.92);
     border: 1px solid #e8e1cd; padding: 3px 10px; border-radius: 99px;
     pointer-events: none; white-space: nowrap;

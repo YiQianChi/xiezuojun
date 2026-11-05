@@ -18,8 +18,8 @@
       <router-link v-else to="/login" class="nav-link">登录</router-link>
     </div>
   </nav>
-    <!-- 小程序 web-view：网页顶栏已隐藏，左上角补官方样式的返回/主页悬浮钮（原生栏左键位下方对齐） -->
-    <div v-if="showMpNavBtns" class="mp-nav-btns">
+    <!-- 小程序 web-view：网页顶栏已隐藏，返回/主页子栏；编辑器里改透明悬浮小图标（不带背景条，让写作区最大化） -->
+    <div v-if="showMpNavBtns" class="mp-nav-btns" :class="{ 'ghost': route.name === 'Editor' }">
       <button class="mp-nav-btn" title="返回" @click="goBackMp">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
@@ -348,8 +348,27 @@ onMounted(() => {
   padding: 0;
 }
 .mp-nav-btn:active { background: rgba(0, 0, 0, 0.06); }
-/* 内容给顶部子栏让位 */
+/* 内容给顶部子栏让位（编辑器用 ghost 悬浮，不让位） */
 .app-main.mp-pad { padding-top: 36px; box-sizing: border-box; }
+.app-main.editor-mode.mp-pad { padding-top: 0; }
+
+/* 编辑器：透明悬浮小图标——无背景条，不占写作区 */
+.mp-nav-btns.ghost {
+  right: auto;
+  height: auto;
+  padding-left: 8px;
+  background: none;
+  border-bottom: none;
+  top: 10px;
+}
+.mp-nav-btns.ghost .mp-nav-btn {
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, .68);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(74, 68, 56, .10);
+}
+.mp-nav-btns.ghost .mp-nav-btn:active { background: rgba(255, 255, 255, .9); }
 
 /* Toast 容器 */
 .toast-container {
