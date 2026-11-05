@@ -12,7 +12,7 @@ const path = require('path')
   })
   const result = await ci.upload({
     project,
-    version: '0.4.0',
+    version: '0.4.1',
     desc: '分享页配图+转发卡片缩略图；小程序内直接注册',
     setting: { es6: true, minify: true },
     onProgressUpdate: () => {}

@@ -6,9 +6,9 @@
     <!-- 微信审核要求：未勾选协议不得拉起任何授权，勾选后才挂 open-type=getPhoneNumber -->
     <button wx:if="{{agreed}}" class="btn-wx {{wxLoading ? 'btn-loading' : ''}}" open-type="getPhoneNumber"
             bindgetphonenumber="onWxLogin" disabled="{{wxLoading}}">
-      {{wxLoading ? '登录中…' : '微信一键登录'}}
+      {{wxLoading ? '登录中…' : '手机号快捷登录'}}
     </button>
-    <button wx:else class="btn-wx" bindtap="needAgree">微信一键登录</button>
+    <button wx:else class="btn-wx" bindtap="needAgree">手机号快捷登录</button>
     <view class="divider"><text>或邮箱登录</text></view>
     <input class="input" type="text" value="{{email}}" bindinput="onEmail"
            placeholder="邮箱" placeholder-class="ph" />

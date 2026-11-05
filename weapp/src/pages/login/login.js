@@ -57,7 +57,7 @@ Page({
         this.saveTokens(d)
         return
       }
-      wx.showToast({ title: (res.data && res.data.error) || '微信登录失败，试试邮箱登录', icon: 'none' })
+      wx.showToast({ title: (res.data && res.data.error) || '手机号登录失败，试试邮箱登录', icon: 'none' })
     } catch (e) {
       wx.showToast({ title: '网络错误，请重试', icon: 'none' })
     }
