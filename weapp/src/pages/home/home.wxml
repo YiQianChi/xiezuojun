@@ -52,9 +52,6 @@
         <text class="recent-go">›</text>
       </view>
     </view>
-
-    <!-- 临时字体诊断：定位鸿蒙缩放机制，读完数值即删 -->
-    <view class="font-diag">diag fs={{diagFs}} fssf={{diagFssf}} f={{diagF}} ww={{diagWw}} sw={{diagSw}} px={{diagPx}}</view>
   </view>
 
   <!-- 新建弹窗 -->

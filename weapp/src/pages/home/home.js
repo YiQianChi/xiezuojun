@@ -30,24 +30,12 @@ Page({
       wx.navigateTo({ url: '/pages/index/index?' + fwd, fail: () => wx.reLaunch({ url: '/pages/index/index' }) })
       return
     }
-    // 微信字体缩放倍率：优先 fontSizeScaleFactor；老版本/鸿蒙拿不到时用 fontSizeSetting 换算
-    // （Android 标准 16px、iOS 17px），同时上报诊断数据定位实际缩放机制
-    let factor = 1, fs = 0, fssf = 0
+    // 微信字体缩放倍率：优先 fontSizeScaleFactor；老版本拿不到时用 fontSizeSetting 换算（iOS 标准 17/其余 16）
+    let factor = 1
     try {
       const a = wx.getAppBaseInfo ? wx.getAppBaseInfo() : wx.getSystemInfoSync()
       const si = wx.getSystemInfoSync()
-      fs = si.fontSizeSetting || 0
-      fssf = a.fontSizeScaleFactor || 0
-      factor = fssf || (fs ? fs / (si.platform === 'ios' ? 17 : 16) : 1)
-    } catch (e) {}
-    try {
-      const si = wx.getSystemInfoSync()
-      wx.request({ url: 'https://xiezuojun.com/api/diag-font?f=' + factor + '&fs=' + fs + '&fssf=' + fssf + '&ww=' + si.windowWidth + '&sw=' + si.screenWidth + '&px=' + si.pixelRatio, method: 'GET', fail: () => {} })
-    } catch (e) {}
-    // 临时：页面上直接显示诊断数值（配合本地真机调试）
-    try {
-      const si = wx.getSystemInfoSync()
-      this.setData({ diagFs: fs, diagFssf: fssf, diagF: Math.round(factor * 100) / 100, diagWw: si.windowWidth, diagSw: si.screenWidth, diagPx: si.pixelRatio })
+      factor = a.fontSizeScaleFactor || (si.fontSizeSetting ? si.fontSizeSetting / (si.platform === 'ios' ? 17 : 16) : 1)
     } catch (e) {}
     if (factor > 1.01) this.setData({ fontScale: factor })
     this.setData({ quote: QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length] })
