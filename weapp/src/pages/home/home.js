@@ -24,7 +24,14 @@ Page({
     creating: false
   },
 
-  onLoad() {
+  onLoad(options) {
+    // 垫层转发：index 根层落地时 reLaunch 到这里，再 navigateTo 回目标 web-view 层（保证原生栏有返回箭头）
+    if (options && options.forward) {
+      this._forwarding = true // onShow 别抢跳（转发进行中）
+      const fwd = decodeURIComponent(options.forward) + '&__fromHome=1'
+      wx.navigateTo({ url: '/pages/index/index?' + fwd, fail: () => wx.reLaunch({ url: '/pages/index/index' }) })
+      return
+    }
     const sbh = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).statusBarHeight || 44
     let capsuleRight = 87
     try {
@@ -39,6 +46,8 @@ Page({
   },
 
   onShow() {
+    // 垫层转发进行中：onShow 先让路（游客读分享章的场景，避免被未登录跳转打断）
+    if (this._forwarding) { this._forwarding = false; return }
     // 每次回到首页刷新（从编辑器返回能看到最新最近打开）
     const at = wx.getStorageSync('xzj_token')
     if (!at) {

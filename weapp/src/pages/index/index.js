@@ -16,6 +16,14 @@ Page({
     return app.globalData.site + '/home?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad(options) {
+    // 根层兜底：从聊天卡片/最近使用直接落到本页（栈深=1）时原生栏不会有返回箭头——
+    // 先 reLaunch 原生首页垫层，再由首页 navigateTo 回来（带 __fromHome 防循环）
+    const pages = getCurrentPages()
+    if (pages.length === 1 && options && options.web && !options.__fromHome) {
+      const fwd = Object.keys(options).map(k => k + '=' + encodeURIComponent(options[k])).join('&')
+      wx.reLaunch({ url: '/pages/home/home?forward=' + encodeURIComponent(fwd) })
+      return
+    }
     // 深链：?web=editor/PUBID&xzj_at=…（从原生首页/书架打开编辑器、导入面板——token 桥接拼进 URL）
     if (options && options.web) {
       let path = decodeURIComponent(options.web)
