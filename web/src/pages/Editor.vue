@@ -195,9 +195,10 @@
             </div>
           </template>
         </div>
-        <!-- 打字胶囊：字数/保存态浮在视线线上方，停笔淡出（Boss：居中打字不看页尾） -->
+        <!-- 打字胶囊：字数/保存态浮在视线线上方，停笔淡出（Boss：居中打字不看页尾）；
+             保存态只报异常（失败/离线）——「编辑中/已保存」常态是噪音（Boss 2026-11-05 清除） -->
         <div v-if="typingHudVisible" class="typing-hud" :style="{ top: `calc(${Math.round(eyeLineRatio * 100)}% - ${activeDoc && activeDoc.type === 'chapter' ? 96 : 76}px)` }">
-          <span class="th-num">{{ wordCount }} 字</span><span class="th-sep">·</span><span class="th-save">{{ saveStatus }}</span>
+          <span class="th-num">{{ wordCount }} 字</span><span v-if="mpSaveChip" class="th-sep">·</span><span v-if="mpSaveChip" class="th-save">{{ saveStatus }}</span>
         </div>
         <SearchPanel
           :visible="searchVisible"
