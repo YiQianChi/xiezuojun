@@ -5,10 +5,10 @@
       <p class="hero-tagline">专注小说创作的写作工具</p>
       <p class="hero-desc">让灵感不被打扰，让创作更加纯粹</p>
       <div class="home-actions">
-        <button v-if="!isLoggedIn" class="btn primary big" @click="goLogin">登录开始创作</button>
+        <!-- 小程序里一律给登录入口（网页残留的过期 token 会把按钮藏掉，导致用户卡死无出口） -->
+        <button v-if="!isLoggedIn || inMiniProgram" class="btn primary big" @click="goLogin">登录开始创作</button>
         <router-link v-else to="/bookshelf" class="btn primary big">进入书架</router-link>
         <router-link v-if="!isLoggedIn && !inMiniProgram" to="/register" class="btn big">注册</router-link>
-        <button v-else-if="!isLoggedIn" class="btn big" @click="goRegister">注册</button>
       </div>
     </div>
 
