@@ -3,7 +3,10 @@
   <view class="body">
     <view class="topbar">
       <text class="hello">{{nickname ? nickname + '，欢迎回来' : ''}}</text>
-      <text class="exit" bindtap="exitApp">退出</text>
+      <view class="top-right">
+        <text class="exit" bindtap="goSettings">设置</text>
+        <text class="exit" bindtap="exitApp">退出</text>
+      </view>
     </view>
     <view class="brand">
       <text class="slogan">让灵感不被打扰</text>

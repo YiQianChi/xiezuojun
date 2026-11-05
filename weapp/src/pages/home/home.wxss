@@ -6,6 +6,7 @@ page { background: #f7f9f4; }
 .topbar { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0; }
 .hello { font-size: 12px; color: #9aa094; }
 .exit { font-size: 13px; color: #9aa094; padding: 4px 8px; }
+.top-right { display: flex; align-items: center; }
 .brand { text-align: center; margin-top: 18px; display: flex; flex-direction: column; align-items: center; }
 .slogan { font-size: 22px; font-weight: 600; color: #3d3a33; letter-spacing: 2px; }
 .quote { margin-top: 10px; font-size: 13px; color: #8b917f; min-height: 18px; }

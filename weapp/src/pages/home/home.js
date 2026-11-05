@@ -92,6 +92,43 @@ Page({
   },
 
   goShelf() { wx.navigateTo({ url: '/pages/shelf/shelf' }) },
+  goSettings() { wx.navigateTo({ url: '/pages/settings/settings' }) },
+
+  // 原生导入：选 txt（从聊天记录）→ 解析卷/章 → 确认 → 分批入库
+  async goImport() {
+    let parsed
+    try {
+      parsed = await require('../../utils/importer').pickAndParse()
+    } catch (e) {
+      if (e.message !== 'cancel') wx.showToast({ title: e.message || '选择文件失败', icon: 'none' })
+      return
+    }
+    const modeHint = parsed.mode === 'chapters'
+      ? '识别到 ' + parsed.total + ' 章'
+      : '未识别到章节标题，将按约 3000 字切分（' + parsed.total + ' 部分）'
+    wx.showModal({
+      title: '导入《' + parsed.name + '》',
+      content: modeHint + '。确认导入吗？',
+      editable: true,
+      placeholderText: '书名（可改）',
+      confirmText: '导入',
+      success: r => {
+        if (!r.confirm) return
+        const bookName = (r.content || '').trim() || parsed.name
+        wx.showLoading({ title: '导入中…', mask: true })
+        require('../../utils/importer').runImport(bookName, parsed.vols, null)
+          .then(out => {
+            wx.hideLoading()
+            wx.showToast({ title: '已导入 ' + out.total + ' 章', icon: 'none' })
+            this.load()
+          })
+          .catch(e => {
+            wx.hideLoading()
+            wx.showToast({ title: (e.data && e.data.error) || '导入失败', icon: 'none' })
+          })
+      }
+    })
+  },
 
   // 退出小程序（官方 API；确认弹窗防误触）
   exitApp() {
@@ -101,14 +138,5 @@ Page({
       confirmColor: '#d05252',
       success: r => { if (r.confirm) wx.exitMiniProgram({ fail: () => wx.showToast({ title: '请用手势关闭', icon: 'none' }) }) }
     })
-  },
-  goImport() {
-    // 导入走网页书架的导入面板（文件选择/解析逻辑网页已有）
-    const at = wx.getStorageSync('xzj_token')
-    const rt = wx.getStorageSync('xzj_rt')
-    let url = '/pages/index/index?web=bookshelf%3Fimport%3D1'
-    if (at) url += '&xzj_at=' + encodeURIComponent(at)
-    if (rt) url += '&xzj_rt=' + encodeURIComponent(rt)
-    wx.navigateTo({ url })
   }
 })
