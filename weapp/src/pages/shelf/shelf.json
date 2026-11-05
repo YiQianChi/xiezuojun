@@ -1,0 +1,6 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "书架",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
+}

@@ -1102,6 +1102,12 @@ const shareDoc = ref<any>(null)
 const shareCode = ref('')
 const shareLoading = ref(false)
 const isMiniProgramEnv = /miniProgram/i.test(navigator.userAgent) || (window as any).__wxjs_environment === 'miniProgram'
+// 小程序里预载 jweixin（返回时要用 miniProgram.navigateBack 关 web-view 层）
+if (isMiniProgramEnv && !(window as any).wx) {
+  const s = document.createElement('script')
+  s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js'
+  document.head.appendChild(s)
+}
 const shareLink = computed(() => shareCode.value ? `${location.origin}/read/${shareCode.value}` : '')
 
 // 一键分享：没开启过就自动开启；小程序直接拉起转发页，浏览器直接复制链接
@@ -2538,6 +2544,11 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 
 function goBack() {
   if (!guardWordLock()) return
+  // 小程序：编辑器跑在独立的 web-view 层里，返回=关掉这层回原生页，不去网页书架
+  if (isMiniProgramEnv) {
+    const w = window as any
+    if (w.wx?.miniProgram?.navigateBack) { w.wx.miniProgram.navigateBack(); return }
+  }
   router.push('/bookshelf')
 }
 </script>

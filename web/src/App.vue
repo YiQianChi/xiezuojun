@@ -79,7 +79,10 @@ const showNav = computed(() => !inMiniProgram && route.name !== 'Editor' && rout
 // 小程序左上角悬浮返回/主页（编辑器 mp-full 顶栏已隐藏也要能返回；登录注册页不用）
 const showMpNavBtns = computed(() => inMiniProgram && route.name !== 'Login' && route.name !== 'Register')
 function goBackMp() {
-  if (window.history.length > 1) window.history.back()
+  // 编辑器跑在独立 web-view 层：没有网页历史时返回=关层回原生页
+  if (window.history.length > 1) { window.history.back(); return }
+  const w = window as any
+  if (w.wx?.miniProgram?.navigateBack) w.wx.miniProgram.navigateBack()
 }
 function goHomeMp() {
   router.push(isLoggedIn.value ? '/home' : '/')

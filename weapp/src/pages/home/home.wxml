@@ -1,0 +1,71 @@
+<view class="page">
+  <!-- 自绘标题栏：与状态栏一体，返回/主页跟标题在一起（原生页面才有此能力） -->
+  <view class="navbar" style="padding-top:{{sbh}}px; padding-right:{{capsuleRight}}px;">
+    <view class="nav-inner">
+      <text class="nav-title">写作菌</text>
+      <text class="nav-hello">{{nickname ? nickname + '，欢迎回来' : '欢迎回来'}}</text>
+    </view>
+  </view>
+
+  <view class="body">
+    <view class="brand">
+      <text class="slogan">让灵感不被打扰</text>
+      <text class="quote">{{quote}}</text>
+    </view>
+
+    <button class="start" bindtap="startWriting">
+      <view class="start-icon">
+        <view class="pen-line"></view>
+      </view>
+      <text>开始写作</text>
+    </button>
+    <text class="start-sub" wx:if="{{recent}}">接着写《{{recent.name}}》</text>
+    <text class="start-sub" wx:else>从第一句话开始你的故事</text>
+
+    <view class="tiles">
+      <view class="tile" bindtap="goShelf">
+        <view class="tile-icon tile-shelf"><view class="shelf-shape"></view></view>
+        <text>我的书架</text>
+      </view>
+      <view class="tile" bindtap="openCreate">
+        <view class="tile-icon tile-add"><view class="plus-h"></view><view class="plus-v"></view></view>
+        <text>新建作品</text>
+      </view>
+      <view class="tile" bindtap="goImport">
+        <view class="tile-icon tile-import"><view class="imp-arrow"></view><view class="imp-base"></view></view>
+        <text>导入书稿</text>
+      </view>
+    </view>
+
+    <view class="recent" wx:if="{{projects.length}}">
+      <text class="sec-title">最近打开</text>
+      <view class="recent-item" wx:for="{{projects}}" wx:key="id" wx:if="{{index < 5}}"
+            data-pid="{{item.public_id}}" data-id="{{item.id}}" bindtap="openRecent">
+        <view class="recent-cover">
+          <image wx:if="{{item.cover_url}}" src="{{item.cover_url}}" mode="aspectFill" class="recent-img" />
+          <text wx:else class="recent-letter">{{item.name[0]}}</text>
+        </view>
+        <view class="recent-info">
+          <text class="recent-name">{{item.name}}</text>
+          <text class="recent-meta">{{item.word_count ? item.word_count + ' 字' : '尚未开笔'}}</text>
+        </view>
+        <text class="recent-go">›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 新建弹窗 -->
+  <view class="mask" wx:if="{{showCreate}}" catchtap="cancelCreate">
+    <view class="dlg" catchtap="">
+      <text class="dlg-title">新建作品</text>
+      <input class="input" value="{{newName}}" bindinput="onName" placeholder="书名"
+             placeholder-class="ph" maxlength="50" confirm-type="done" bindconfirm="createProject" />
+      <view class="dlg-btns">
+        <button class="btn ghost" catchtap="cancelCreate">取消</button>
+        <button class="btn primary" disabled="{{creating || !newName.trim()}}" catchtap="createProject">
+          {{creating ? '创建中…' : '创建'}}
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

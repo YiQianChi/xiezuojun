@@ -16,9 +16,14 @@ Page({
     return app.globalData.site + '/home?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad(options) {
-    // 协议/隐私/章节分享页：公开可看，无需登录（小程序提审需要）。网页是 history 路由，不带 #
+    // 深链：?web=editor/PUBID&xzj_at=…（从原生首页/书架打开编辑器、导入面板——token 桥接拼进 URL）
     if (options && options.web) {
-      this.setData({ url: app.globalData.site + '/' + options.web })
+      let path = decodeURIComponent(options.web)
+      if (options.xzj_at) {
+        path += (path.indexOf('?') >= 0 ? '&' : '?') + 'xzj_at=' + encodeURIComponent(options.xzj_at)
+        if (options.xzj_rt) path += '&xzj_rt=' + encodeURIComponent(options.xzj_rt)
+      }
+      this.setData({ url: app.globalData.site + '/' + path })
       return
     }
     const at = wx.getStorageSync('xzj_token')
@@ -29,8 +34,8 @@ Page({
       return
     }
     if (at) {
-      // 桥接 token 进 web-view（一次性，storage 里的留作续期用）
-      this.setData({ url: this.buildUrl(at, rt) })
+      // 兜底：老入口直接进 index 且带登录态 → 原生首页（正常流程 home 是启动页，轮不到这里）
+      wx.reLaunch({ url: '/pages/home/home' })
       return
     }
     // 无 access 有 refresh：静默续期

@@ -1,7 +1,9 @@
 {
   "pages": [
+    "pages/home/home",
     "pages/index/index",
     "pages/login/login",
+    "pages/shelf/shelf",
     "pages/share/share"
   ],
   "window": {
