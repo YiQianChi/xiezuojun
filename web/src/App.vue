@@ -18,16 +18,7 @@
       <router-link v-else to="/login" class="nav-link">登录</router-link>
     </div>
   </nav>
-    <!-- 小程序 web-view：网页顶栏已隐藏，返回/主页子栏；编辑器层由原生栏自带官方返回箭头，无需网页侧按钮 -->
-    <div v-if="showMpNavBtns" class="mp-nav-btns">
-      <button class="mp-nav-btn" title="返回" @click="goBackMp">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-      </button>
-      <button class="mp-nav-btn" title="主页" @click="goHomeMp">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
-      </button>
-    </div>
-  <main class="app-main" :class="{ 'with-nav': showNav, 'editor-mode': route.name === 'Editor', 'mp-pad': showMpNavBtns }">
+  <main class="app-main" :class="{ 'with-nav': showNav, 'editor-mode': route.name === 'Editor' }">
     <router-view />
   </main>
   <!-- Toast 容器 -->
@@ -66,7 +57,7 @@ import { toasts, toast, dismissToast } from './composables/useToast'
 import { usePwaInstall } from './composables/usePwaInstall'
 import OnboardingTour from './components/OnboardingTour.vue'
 import ProfileModal from './components/ProfileModal.vue'
-import { isMiniProgramEnv, mpBack, mpRelaunch } from './core/mp'
+import { isMiniProgramEnv } from './core/mp'
 
 const route = useRoute()
 
@@ -74,21 +65,8 @@ const route = useRoute()
 // --mp-safe-top/--mp-capsule-pad CSS 变量留作日后开放 custom 导航时用（现在恒为 0）
 const inMiniProgram = isMiniProgramEnv
 const router = useRouter()
+// 小程序 web-view：所有网页层都叠在原生页上（navigateTo+垫层兜底），返回一律用微信原生栏箭头，网页零自绘返回
 const showNav = computed(() => !inMiniProgram && route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
-
-// 小程序顶部子栏：营销首页('/')是壳根页没有可返回层级隐藏；编辑器层的原生栏自带官方返回箭头（navigateTo 自动出现），网页侧不再重复给
-const showMpNavBtns = computed(() => inMiniProgram && route.path !== '/' && route.name !== 'Login' && route.name !== 'Register' && route.name !== 'Editor')
-function goBackMp() {
-  // 有 SPA 内部上一页（router 记录在 history.state.back）才走网页后退，否则=关掉这层 web-view 回原生页
-  const st: any = window.history.state
-  if (st?.back) { window.history.back(); return }
-  mpBack()
-}
-function goHomeMp() {
-  // 小程序里「主页」= 回原生工作台；未登录回营销首页
-  if (isLoggedIn.value) { mpRelaunch('/pages/home/home'); return }
-  router.push('/')
-}
 
 const isLoggedIn = ref(false)
 // 导航栏头像/昵称（登录后拉取；个人设置页改完派发 xzj-profile-updated 事件刷新）
@@ -320,37 +298,6 @@ onMounted(() => {
   font-weight: 600;
 }
 
-/* 小程序左上角返回/主页：贴原生标题栏下沿的同色子栏——视觉上与标题连成一体（原生栏本身是平台保留区，塞不进去） */
-.mp-nav-btns {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 36px;
-  z-index: 120;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding-left: 14px;
-  background: #f7f9f4; /* = 壳 navigationBarBackgroundColor，与原生栏无缝衔接 */
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-.mp-nav-btn {
-  width: 36px;
-  height: 32px;
-  border-radius: 8px;
-  border: none;
-  background: none;
-  color: #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-.mp-nav-btn:active { background: rgba(0, 0, 0, 0.06); }
-/* 内容给顶部子栏让位（编辑器无子栏，不让位） */
-.app-main.mp-pad { padding-top: 36px; box-sizing: border-box; }
-.app-main.editor-mode.mp-pad { padding-top: 0; }
 
 /* Toast 容器 */
 .toast-container {
