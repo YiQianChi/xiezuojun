@@ -44,7 +44,9 @@
     <div class="mp-chapnav" v-if="activeDocId && mode === 'write' && navChapters.length > 1">
       <button :disabled="!navPrev" @click="navPrev && openDoc(navPrev)">‹ 上一章</button>
       <span class="mp-chapnav-name" @click="mobileSidebarOpen = true">{{ currentDocDisplayName }} · {{ navIndex }}/{{ navChapters.length }}</span>
-      <button :disabled="!navNext" @click="navNext && openDoc(navNext)">下一章 ›</button>
+      <!-- 最后一章：下一章变「+ 新章」——顺写到底直接续写，不用开目录建章（Boss 2026-11-05） -->
+      <button v-if="!navNext" class="chapnav-new" @click="createNextChapter">+ 新章</button>
+      <button v-else @click="openDoc(navNext)">下一章 ›</button>
     </div>
 
     <div class="editor-body">
@@ -960,6 +962,30 @@ const navIndex = computed(() => {
 })
 const navPrev = computed(() => (navIndex.value >= 1 ? navChapters.value[navIndex.value - 2] : null) || null)
 const navNext = computed(() => (navIndex.value ? navChapters.value[navIndex.value] : null) || null)
+
+// 最后一章的「+ 新章」：同卷下顺排新建（编号自动第N章），建完直接开写
+const creatingNext = ref(false)
+async function createNextChapter() {
+  if (creatingNext.value) return
+  creatingNext.value = true
+  try {
+    const cur = documents.value.find(d => d.id === activeDocId.value)
+    const parentId = cur?.parent_id || undefined
+    const siblings = documents.value.filter(d => d.parent_id === parentId && d.type === 'chapter')
+    const maxSort = siblings.reduce((m, d) => Math.max(m, d.sort_order || 0), 0)
+    const res = await documentApi.create({
+      project_id: projectId, title: '新章', type: 'chapter',
+      parent_id: parentId, sort_order: maxSort + 1,
+    })
+    await loadDocs()
+    const nd = res.data?.data || res.data
+    if (nd) openDoc(nd)
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '创建失败')
+  } finally {
+    creatingNext.value = false
+  }
+}
 
 // C 首次直达：空书一键建「第一章」（顺带跑默认结构初始化，保证有第一卷挂靠）
 const startingFirst = ref(false)
