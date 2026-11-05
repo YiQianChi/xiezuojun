@@ -13,8 +13,6 @@ const QUOTES = [
 
 Page({
   data: {
-    sbh: 44,          // 状态栏高
-    capsuleRight: 87, // 胶囊左缘距屏右（标题栏右侧留白）
     quote: '',
     nickname: '',
     projects: [],
@@ -32,17 +30,7 @@ Page({
       wx.navigateTo({ url: '/pages/index/index?' + fwd, fail: () => wx.reLaunch({ url: '/pages/index/index' }) })
       return
     }
-    const sbh = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).statusBarHeight || 44
-    let capsuleRight = 87
-    try {
-      const m = wx.getMenuButtonBoundingClientRect()
-      capsuleRight = m && m.width ? Math.round(m.width + (m.left >= 0 ? (wx.getSystemInfoSync().windowWidth - m.right) : 10) + 10) : 87
-    } catch (e) {}
-    this.setData({
-      sbh,
-      capsuleRight,
-      quote: QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length]
-    })
+    this.setData({ quote: QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length] })
   },
 
   onShow() {

@@ -1,14 +1,8 @@
 <view class="page">
-  <!-- 自绘标题栏：与状态栏一体，返回/主页跟标题在一起（原生页面才有此能力） -->
-  <view class="navbar" style="padding-top:{{sbh}}px; padding-right:{{capsuleRight}}px;">
-    <view class="nav-inner">
-      <text class="nav-title">写作菌</text>
-      <text class="nav-hello">{{nickname ? nickname + '，欢迎回来' : '欢迎回来'}}</text>
-    </view>
-  </view>
-
+  <!-- 微信原生导航栏：标题「写作菌」由平台渲染 -->
   <view class="body">
     <view class="brand">
+      <text class="hello">{{nickname ? nickname + '，欢迎回来' : ''}}</text>
       <text class="slogan">让灵感不被打扰</text>
       <text class="quote">{{quote}}</text>
     </view>

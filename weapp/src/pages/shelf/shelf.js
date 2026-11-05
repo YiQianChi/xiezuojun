@@ -3,8 +3,6 @@ const api = require('../../utils/api')
 
 Page({
   data: {
-    sbh: 44,
-    capsuleRight: 87,
     projects: [],
     trash: [],
     loading: true,
@@ -14,16 +12,6 @@ Page({
     renameTarget: null,
     renameName: '',
     showTrash: false
-  },
-
-  onLoad() {
-    const sbh = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).statusBarHeight || 44
-    let capsuleRight = 87
-    try {
-      const m = wx.getMenuButtonBoundingClientRect()
-      capsuleRight = m && m.width ? Math.round(m.width + (wx.getSystemInfoSync().windowWidth - m.right) + 10) : 87
-    } catch (e) {}
-    this.setData({ sbh, capsuleRight })
   },
 
   onShow() { this.load() },
@@ -42,12 +30,6 @@ Page({
 
   onPullDownRefresh() {
     this.load().then(() => wx.stopPullDownRefresh())
-  },
-
-  goBack() {
-    const pages = getCurrentPages()
-    if (pages.length > 1) wx.navigateBack()
-    else wx.reLaunch({ url: '/pages/home/home' })
   },
 
   openBook(e) {

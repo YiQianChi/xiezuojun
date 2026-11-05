@@ -1,23 +1,10 @@
 page { background: #f7f9f4; }
 .page { display: flex; flex-direction: column; min-height: 100vh; }
 
-/* 自绘标题栏：与状态栏连成一体 */
-.navbar {
-  background: #f7f9f4;
-  padding-left: 20px;
-  box-sizing: border-box;
-}
-.nav-inner {
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.nav-title { font-size: 18px; font-weight: 700; color: #3d3a33; }
-.nav-hello { font-size: 12px; color: #9aA094; }
 
 .body { padding: 8px 24px 40px; display: flex; flex-direction: column; align-items: center; }
 
+.hello { font-size: 12px; color: #9aa094; }
 .brand { text-align: center; margin-top: 18px; display: flex; flex-direction: column; align-items: center; }
 .slogan { font-size: 22px; font-weight: 600; color: #3d3a33; letter-spacing: 2px; }
 .quote { margin-top: 10px; font-size: 13px; color: #8b917f; min-height: 18px; }

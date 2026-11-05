@@ -1,20 +1,11 @@
 <view class="page">
-  <!-- 自绘标题栏：左上返回跟标题一体 -->
-  <view class="navbar" style="padding-top:{{sbh}}px; padding-right:{{capsuleRight}}px;">
-    <view class="nav-inner">
-      <view class="nav-left">
-        <view class="back-btn" bindtap="goBack">
-          <view class="back-chev"></view>
-        </view>
-        <text class="nav-title">书架</text>
-      </view>
-      <view class="nav-actions">
-        <text class="nav-act" bindtap="openTrash">回收站</text>
-      </view>
-    </view>
-  </view>
-
   <view class="body">
+    <!-- 微信原生导航栏：返回箭头+标题「书架」由平台渲染；回收站入口落进内容区 -->
+    <view class="toolbar">
+      <text class="tb-hint">{{projects.length ? projects.length + ' 部作品' : ''}}</text>
+      <text class="tb-trash" bindtap="openTrash">回收站</text>
+    </view>
+
     <view wx:if="{{loading}}" class="empty">加载中…</view>
     <view wx:elif="{{!projects.length}}" class="empty">
       <text>书架还是空的</text>
