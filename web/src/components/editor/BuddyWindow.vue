@@ -8,10 +8,10 @@
 
     <!-- 悬浮窗 -->
     <div v-if="visible" class="buddy-window" :class="{ 'sprint-tab': tab === 'sprint' }" :style="winStyle" @mousedown="onDragStart">
-      <!-- 手机端抽屉抓手条（点按=收起） -->
-      <div class="bw-grabber" @click="visible = false"><span></span></div>
-      <!-- 头部跟页签走：陪伴=个人计时器；拼字=房间状态（倒计时/房间名），不再混显 -->
-      <div class="bw-head">
+      <!-- 手机端抽屉抓手条（点按=收起）——2026-11-05 改悬浮窗后全端隐藏，收起走头部「—」 -->
+      <div class="bw-grabber"><span></span></div>
+      <!-- 头部跟页签走：陪伴=个人计时器；拼字=房间状态（倒计时/房间名），不再混显；手机拖头部=移动悬浮窗 -->
+      <div class="bw-head" @touchstart="onDragStartTouch">
         <template v-if="tab === 'buddy'">
           <span class="bw-title">
             <span class="pulse-dot" v-if="state === 'running'"></span>
@@ -479,7 +479,6 @@ const winPos = ref({ x: 0, y: 0 })
 const isMobile = ref(false)
 function updateMobile() { isMobile.value = window.innerWidth <= 768 }
 const winStyle = computed(() => {
-  if (isMobile.value) return {}
   if (winPos.value.x === 0 && winPos.value.y === 0) return {}
   return { right: 'auto', bottom: 'auto', left: winPos.value.x + 'px', top: winPos.value.y + 'px' }
 })
@@ -493,9 +492,25 @@ function onDragStart(e: MouseEvent) {
   dragOffY = e.clientY - r.top
   e.preventDefault()
 }
-function onDragMove(e: MouseEvent) {
+// 手机悬浮窗：拖头部移动；prevent 放 handler 里——按钮上 touchstart 不拦（拦了 click 不触发）
+function onDragStartTouch(e: TouchEvent) {
+  if ((e.target as HTMLElement).closest('button')) return
+  e.preventDefault()
+  dragging = true
+  const el = document.querySelector('.buddy-window') as HTMLElement
+  const r = el.getBoundingClientRect()
+  dragOffX = e.touches[0].clientX - r.left
+  dragOffY = e.touches[0].clientY - r.top
+}
+function onDragMove(e: MouseEvent | TouchEvent) {
   if (!dragging) return
-  winPos.value = { x: Math.max(0, e.clientX - dragOffX), y: Math.max(0, e.clientY - dragOffY) }
+  const pt = 'touches' in e ? e.touches[0] : e
+  if (!pt) return
+  const maxX = window.innerWidth - 60, maxY = window.innerHeight - 60
+  winPos.value = {
+    x: Math.min(maxX, Math.max(0, pt.clientX - dragOffX)),
+    y: Math.min(maxY, Math.max(0, pt.clientY - dragOffY)),
+  }
 }
 function onDragEnd() { dragging = false }
 
@@ -854,6 +869,8 @@ onMounted(() => {
   if (isMobile.value) visible.value = false
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup', onDragEnd)
+  document.addEventListener('touchmove', onDragMove as EventListener, { passive: false })
+  document.addEventListener('touchend', onDragEnd)
   // 深度融合：useSprint 的开窗请求（邀请链接/再来一局/专注胶囊）→ 开窗+切拼字页签
   window.addEventListener('xzj-sprint-focus', onFocusSprint)
   if (sprint.inRoom) tab.value = 'sprint'
@@ -867,6 +884,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateMobile)
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
+  document.removeEventListener('touchmove', onDragMove as EventListener)
+  document.removeEventListener('touchend', onDragEnd)
   window.removeEventListener('xzj-sprint-focus', onFocusSprint)
   if (intervalRef.value) clearInterval(intervalRef.value)
   if (beatRef.value) clearInterval(beatRef.value)
@@ -1171,26 +1190,23 @@ onBeforeUnmount(() => {
 /* ==================== 手机端（≤768px）：浮动窗 → 底部抽屉 ==================== */
 .bw-grabber { display: none; }
 @media (max-width: 768px) {
+  /* 2026-11-05 Boss：手机端搭子=悬浮窗（不再全宽底部抽屉）——右下浮卡，骑在翻章条上方，
+     拖头部可挪走；内容超高自己滚 */
   .buddy-window {
-    left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
-    width: 100% !important; max-width: 100% !important;
-    border-radius: 16px 16px 0 0;
-    max-height: 62dvh; overflow-y: auto;
+    /* 定位不带 !important——拖动写入的内联 left/top 要能赢这里（Boss 拖悬浮窗） */
+    right: 10px; left: auto;
+    bottom: calc(58px + env(safe-area-inset-bottom)); top: auto;
+    width: 300px !important; max-width: calc(100vw - 20px) !important;
+    border-radius: 14px;
+    max-height: 56dvh; overflow-y: auto;
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
-    user-select: auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,.18);
+    font-size: 13px;
   }
-  .buddy-window.sprint-tab { width: 100% !important; }
-  .bw-grabber {
-    display: flex; align-items: center; justify-content: center;
-    padding: 8px 0 2px; cursor: pointer;
-  }
-  .bw-grabber span {
-    width: 38px; height: 4px; border-radius: 2px;
-    background: rgba(0, 0, 0, 0.18);
-  }
-  .bw-head { padding: 6px 14px 2px; }
-  .bw-tabs { padding: 6px 14px 0; }
-  .bw-body { padding: 10px 14px 12px; }
+  .buddy-window.sprint-tab { width: 320px !important; }
+  .bw-head { padding: 8px 12px 4px; touch-action: none; cursor: grab; }
+  .bw-tabs { padding: 6px 12px 0; }
+  .bw-body { padding: 8px 12px 10px; }
   .bs-btn { padding: 11px 0; font-size: 13px; }
   .bs-input { font-size: 16px; } /* 防 iOS 聚焦缩放 */
   .bs-input.code { font-size: 21px; }
