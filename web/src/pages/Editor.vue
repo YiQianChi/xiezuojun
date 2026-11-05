@@ -2555,7 +2555,9 @@ function contextAction(action: string, color?: string) {
     oneClickFormat()
     return
   }
-  const sel = cachedSelection || getSelection()
+  // 手机长按初选只有 1~2 字，用户拖手柄扩选后缓存就过期了——优先读实时选区（posAtDOM 永远新鲜），
+  // 实时选区没了（点菜单已把选区点丢）才退回缓存（Boss 2026-11-05：只染最后2字的根因）
+  const sel = (() => { const live = getSelection(); return live.text ? live : (cachedSelection || live) })()
   cachedSelection = null
   if (!sel.text && action !== 'paste') return
   switch (action) {
