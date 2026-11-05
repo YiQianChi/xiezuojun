@@ -146,10 +146,10 @@ if (typeof document !== 'undefined') {
 .menu-btn { display: none; }
 
 .editor-header {
-  height: 52px;
+  height: calc(52px + var(--mp-safe-top, 0px));
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  padding: var(--mp-safe-top, 0px) calc(20px + var(--mp-capsule-pad, 0px)) 0 20px;
   /* backdrop-filter 会创建层叠上下文，把弹层（主题选择）困在 header 层；
      提到右栏(300)/搭子窗(900) 之间——主题弹层要压右栏 */
   position: relative;
@@ -308,7 +308,7 @@ if (typeof document !== 'undefined') {
 
 /* ponytail-mobile: 窄屏——汉堡出、返回文字缩、模式切换和操作按钮收紧 */
 @media (max-width: 768px) {
-  .editor-header { padding: 0 10px; gap: 8px; height: 48px; }
+  .editor-header { padding: var(--mp-safe-top, 0px) calc(10px + var(--mp-capsule-pad, 0px)) 0 10px; gap: 8px; height: calc(48px + var(--mp-safe-top, 0px)); }
   .menu-btn { display: inline-flex; }
   .back-btn { font-size: 12px; padding: 6px 4px; }
   .doc-name { font-size: 13px; min-width: 0; flex: 1; }

@@ -12,7 +12,8 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding: 6px 24px;
+  /* 小程序全屏：顶部让状态栏(--mp-safe-top)，右侧让微信胶囊(--mp-capsule-pad) */
+  padding: calc(6px + var(--mp-safe-top, 0px)) calc(24px + var(--mp-capsule-pad, 0px)) 6px 24px;
   background: var(--glass-bg-solid);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);

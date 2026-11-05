@@ -59,6 +59,17 @@ import OnboardingTour from './components/OnboardingTour.vue'
 import ProfileModal from './components/ProfileModal.vue'
 
 const route = useRoute()
+
+// 小程序全屏（壳 custom 导航）：壳通过 URL 传 sbh=状态栏高度，
+// 顶栏下让 + 右侧给微信胶囊留位（设一次，路由切换不丢）
+{
+  const sbh = Number(new URLSearchParams(location.search).get('sbh'))
+  if (sbh > 0) {
+    const root = document.documentElement.style
+    root.setProperty('--mp-safe-top', sbh + 'px')
+    root.setProperty('--mp-capsule-pad', '92px')
+  }
+}
 const router = useRouter()
 const showNav = computed(() => route.name !== 'Editor' && route.name !== 'Login' && route.name !== 'Register')
 
@@ -188,11 +199,11 @@ onMounted(() => {
 <style scoped>
 .top-nav {
   flex-shrink: 0;
-  height: var(--nav-height);
+  height: calc(var(--nav-height) + var(--mp-safe-top, 0px));
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 32px;
+  padding: var(--mp-safe-top, 0px) calc(32px + var(--mp-capsule-pad, 0px)) 0 32px;
   background: var(--glass-bg-solid);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
@@ -267,7 +278,7 @@ onMounted(() => {
 
 /* 窄屏适配：导航所有项单行排布，防止按钮内文字折行/整行换行 */
 @media (max-width: 560px) {
-  .top-nav { padding: 0 14px; }
+  .top-nav { padding: var(--mp-safe-top, 0px) calc(14px + var(--mp-capsule-pad, 0px)) 0 14px; }
   .logo { font-size: 18px; gap: 6px; height: 28px; letter-spacing: 0; }
   .logo-icon { width: 22px; height: 22px; border-radius: 6px; }
   .nav-right { gap: 12px; }
