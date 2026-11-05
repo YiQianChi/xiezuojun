@@ -12,8 +12,8 @@ const path = require('path')
   })
   const result = await ci.upload({
     project,
-    version: '0.6.5',
-    desc: '分享页配图+转发卡片缩略图；小程序内直接注册',
+    version: '0.6.6',
+    desc: '下线原生码字页：开书恢复直达网页编辑器',
     setting: { es6: true, minify: true },
     onProgressUpdate: () => {}
   })

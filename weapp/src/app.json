@@ -4,7 +4,6 @@
     "pages/index/index",
     "pages/login/login",
     "pages/shelf/shelf",
-    "pages/write/write",
     "pages/settings/settings",
     "pages/share/share",
     "pages/read/read"
