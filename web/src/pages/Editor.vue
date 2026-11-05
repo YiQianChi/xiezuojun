@@ -21,7 +21,7 @@
     />
 
     <!-- 手机档 H 方案（Boss 定稿）：字数/保存胶囊 + 贴边把手 + 玻璃工具轨；底栏退役（CSS 控制仅 ≤768px 显示） -->
-    <div class="mp-chip">{{ wordCount }} 字 · {{ saveStatus || '就绪' }}<template v-if="isOffline"> · 离线</template></div>
+    <div class="mp-chip">{{ wordCount }} 字{{ mpSaveChip }}<template v-if="isOffline"> · 离线</template></div>
     <div class="mp-handle" @click.stop="mpRailOpen = !mpRailOpen"></div>
     <div class="mp-rail" :class="{ open: mpRailOpen }" @click.stop>
       <button :class="{ on: !!wordLock }" @click="mpRailOpen = false; wordLockOpen = !wordLockOpen" title="码字锁">🔒</button>
@@ -859,6 +859,12 @@ watch(() => sprint.running, (on) => {
   }
 })
 const saveStatus = ref('')
+// Boss 2026-11-05：小程序胶囊只报异常（保存失败/离线）——「编辑中/已保存」常态是噪音，清除
+const mpSaveChip = computed(() => {
+  const s = saveStatus.value
+  if (!s || /^(编辑中|保存中|已保存|就绪|📡 离线读取)/.test(s)) return ''
+  return ' · ' + s
+})
 // 手机档 H 方案：贴边把手 + 玻璃工具轨 + 显示设置远程开关
 const mpRailOpen = ref(false)
 const dsRef = ref<any>(null)
