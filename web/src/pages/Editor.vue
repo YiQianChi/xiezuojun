@@ -696,7 +696,7 @@ import { TableHeader } from '@tiptap/extension-table-header'
 // ponytail: 4 fixed highlight colors, no config needed
 const highlightColors = ['#ffeb3b', '#4caf50', '#2196f3', '#ff5252']
 import { documentApi, projectApi, threadApi, buddyApi } from '../core/api'
-import { mpPush, mpBack } from '../core/mp'
+import { mpPush, mpRelaunch } from '../core/mp'
 import { scanSensitive } from '../core/sensitiveWords'
 import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese } from '../core/chapterTitle'
 import { editorContentFromText, stripContentChapterHeading } from '../core/editorContent'
@@ -2641,8 +2641,13 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 
 function goBack() {
   if (!guardWordLock()) return
-  // 小程序：编辑器跑在独立的 web-view 层里，返回=关掉这层回原生页，不去网页书架
-  if (isMiniProgramEnv) { mpBack(); return }
+  if (isMiniProgramEnv) {
+    // 纯 web-view 壳（2026-11-06）：编辑器和工作台同一层，navigateBack 关无可关——
+    // 有 SPA 内部历史（从工作台/书架点进来）就网页后退；深链直达编辑器就回壳首页
+    if (window.history.state && window.history.state.back != null) router.back()
+    else mpRelaunch('/pages/index/index')
+    return
+  }
   router.push('/bookshelf')
 }
 </script>
