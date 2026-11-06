@@ -41,7 +41,7 @@
     </div>
 
     <!-- 手机档翻章条：一体居中胶囊（2026-11-06 拍 demo A）——相邻章顺写；点中间章名开目录（长目录在抽屉里） -->
-    <div class="mp-chapnav" v-if="activeDocId && mode === 'write' && navChapters.length > 1">
+    <div class="mp-chapnav" v-if="!keyboardOpen && activeDocId && mode === 'write' && navChapters.length > 1">
       <button :disabled="!navPrev" title="上一章" @click="navPrev && openDoc(navPrev)">‹</button>
       <span class="mp-chapnav-name" @click="mobileSidebarOpen = true">{{ currentDocDisplayName }} · {{ navIndex }}/{{ navChapters.length }}</span>
       <!-- 最后一章：下一章变「+ 新章」——弹新建章节框（可留空=自动编号），Boss 2026-11-06 -->
@@ -862,6 +862,9 @@ const mpSaveChip = computed(() => {
   return ' · ' + s
 })
 // 手机档 H 方案：贴边把手 + 玻璃工具轨 + 显示设置远程开关
+// 手机：键盘弹起时收起底部弹层（fixed bottom 元素会被键盘顶起挡住视线）
+// keyboardOpen：软键盘弹起时翻章条整体隐藏——它悬在键盘上方压正文，而打字时用不到翻章
+const keyboardOpen = ref(false)
 const mpRailOpen = ref(false)
 const dsRef = ref<any>(null)
 const draftBanner = ref<{ docId: number; text: string } | null>(null)
@@ -1687,11 +1690,11 @@ onMounted(async () => {
   document.addEventListener('click', closeToolboxOnClickOutside)
   window.addEventListener('online', onOnlineStatusChange)
   window.addEventListener('offline', onOnlineStatusChange)
-  // 手机：键盘弹起时收起底部弹层（fixed bottom 元素会被键盘顶起挡住视线）
   if (window.visualViewport) {
     let lastVh = window.visualViewport.height
     window.visualViewport.addEventListener('resize', () => {
       const vh = window.visualViewport!.height
+      keyboardOpen.value = lastVh - vh > 150
       if (lastVh - vh > 150) {
         dsRef.value?.close()
         sensitiveOpen.value = false
