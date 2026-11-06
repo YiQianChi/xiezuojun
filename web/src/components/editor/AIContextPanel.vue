@@ -597,10 +597,6 @@ async function runCheck() {
   }
 }
 
-/* 数据加载入口：放在所有声明之后（immediate watch 同步执行，
-   若写在灵感 refs 之前会在初始化竞态下触发 TDZ——踩过：Cannot access 'B' before initialization） */
-watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPinned() }, { immediate: true })
-
 /* ─── 画布钉选：读取画布布局里 pinned 的卡片，置顶展示 ─── */
 const pinnedCards = ref<{ id: string; kind: string; title: string; text?: string; desc?: string; docId?: number }[]>([])
 async function loadPinned() {
@@ -618,6 +614,10 @@ function jumpPinned(p: { docId?: number }) {
 function onCanvasClosed() { loadPinned() }
 onMounted(() => window.addEventListener('xzj-canvas-closed', onCanvasClosed))
 onBeforeUnmount(() => window.removeEventListener('xzj-canvas-closed', onCanvasClosed))
+
+/* 数据加载入口：必须在全部 ref/函数声明之后（immediate watch 同步执行，
+   写到 refs 之前会在初始化竞态下 TDZ 崩掉整个编辑器——已踩两次：'B'、画布钉选 'Re'） */
+watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPinned() }, { immediate: true })
 </script>
 
 <style scoped>
