@@ -52,7 +52,9 @@ Page({
         if (!r.confirm) return
         wx.removeStorageSync('xzj_token')
         wx.removeStorageSync('xzj_rt')
-        wx.reLaunch({ url: '/pages/index/index' }) // 回游客营销页
+        // 走 webview 的 /logout 清网页侧 localStorage（和原生存储是两个世界，
+        // 只清原生会出现「退出了、书架还有书」）；顺带落回游客营销页
+        wx.reLaunch({ url: '/pages/index/index?web=logout' })
       }
     })
   },

@@ -23,6 +23,11 @@ const router = createRouter({
       component: () => import('../pages/Register.vue')
     },
     {
+      path: '/logout',
+      name: 'Logout',
+      component: () => import('../pages/Logout.vue')
+    },
+    {
       path: '/agreement',
       name: 'Agreement',
       component: () => import('../pages/Agreement.vue')
