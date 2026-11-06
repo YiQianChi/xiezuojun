@@ -2272,25 +2272,27 @@
   }
   .editor-page .mp-handle:active { background: rgba(74,68,56,.45); }
 
-  /* A 翻章条：贴底居中，避让右下搭子胶囊（左 12 右 84，buddy-fab 在右下 67px 宽） */
+  /* A 翻章条：一体胶囊真居中（2026-11-06 Boss 拍 demo A），不再 right:84 偏左躲搭子——搭子胶囊上移让位 */
   .editor-page .mp-chapnav {
-    display: flex; align-items: center; gap: 8px;
-    position: fixed; left: 12px; right: 84px; bottom: calc(12px + env(safe-area-inset-bottom));
-    z-index: 320; pointer-events: none; /* 容器不挡正文点击，子元素自己开 pointer-events */
+    display: flex; align-items: stretch;
+    position: fixed; left: 50%; transform: translateX(-50%);
+    width: min(320px, calc(100% - 32px)); height: 42px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    background: rgba(250,248,242,.94); border: 1px solid #d9d0ba; border-radius: 21px;
+    overflow: hidden; box-shadow: 0 4px 16px rgba(74,68,56,.10);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    z-index: 320;
   }
-  .editor-page .mp-chapnav button, .editor-page .mp-chapnav .mp-chapnav-name { pointer-events: auto; }
   .editor-page .mp-chapnav button {
-    flex-shrink: 0; width: 84px; height: 36px; border-radius: 18px; border: 1px solid #d9d0ba;
-    background: rgba(250,248,242,.92); font-size: 13px; color: #5d5949; backdrop-filter: blur(6px);
+    flex-shrink: 0; width: 56px; border: none; background: transparent; font-size: 18px; color: #5d5949;
   }
   .editor-page .mp-chapnav button:active { background: #ece5d3; }
   .editor-page .mp-chapnav button:disabled { opacity: .35; }
-  .editor-page .mp-chapnav button.chapnav-new { border-color: #6a8c77; color: #3f7a4f; background: rgba(236,243,238,.95); }
+  .editor-page .mp-chapnav button.chapnav-new { width: 64px; font-size: 13px; color: #3f7a4f; }
   .editor-page .mp-chapnav-name {
-    flex: 1; min-width: 0; text-align: center; font-size: 12px; color: #8a8272;
-    background: rgba(250,248,242,.92); border: 1px solid #e8e1cd; height: 32px; line-height: 30px;
-    border-radius: 16px; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    backdrop-filter: blur(6px);
+    flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #8a8272; border-left: 1px solid #ece5d3; border-right: 1px solid #ece5d3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px;
   }
 
   /* B 长目录：卷快跳条（仅手机档抽屉里显示）；vol-jump 在 EditorSidebar 子组件里，必须 :deep */

@@ -40,13 +40,13 @@
       <button class="mp-close" @click="mpRailOpen = false">✕</button>
     </div>
 
-    <!-- A+B 方案（2026-11-05 Boss 拍板）：手机档翻章条——相邻章顺写；点中间章名开目录（B 的长目录在抽屉里） -->
+    <!-- 手机档翻章条：一体居中胶囊（2026-11-06 拍 demo A）——相邻章顺写；点中间章名开目录（长目录在抽屉里） -->
     <div class="mp-chapnav" v-if="activeDocId && mode === 'write' && navChapters.length > 1">
-      <button :disabled="!navPrev" @click="navPrev && openDoc(navPrev)">‹ 上一章</button>
+      <button :disabled="!navPrev" title="上一章" @click="navPrev && openDoc(navPrev)">‹</button>
       <span class="mp-chapnav-name" @click="mobileSidebarOpen = true">{{ currentDocDisplayName }} · {{ navIndex }}/{{ navChapters.length }}</span>
       <!-- 最后一章：下一章变「+ 新章」——弹新建章节框（可留空=自动编号），Boss 2026-11-06 -->
       <button v-if="!navNext" class="chapnav-new" @click="createNextChapter">+ 新章</button>
-      <button v-else @click="openDoc(navNext)">下一章 ›</button>
+      <button v-else title="下一章" @click="openDoc(navNext)">›</button>
     </div>
 
     <div class="editor-body">

@@ -909,6 +909,10 @@ onBeforeUnmount(() => {
 }
 .buddy-fab .fab-dot { width: 7px; height: 7px; border-radius: 50%; background: #30d158; animation: bfab 1.5s infinite; }
 @keyframes bfab { 50% { opacity: .35; } }
+/* 手机档：翻章条贴底居中，搭子胶囊上移让位（2026-11-06 demo A 拍板） */
+@media (max-width: 768px) {
+  .buddy-fab { bottom: calc(68px + env(safe-area-inset-bottom)); right: 16px; }
+}
 
 .buddy-window {
   position: fixed; right: 24px; bottom: 44px; z-index: 900;
