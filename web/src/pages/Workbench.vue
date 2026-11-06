@@ -152,7 +152,8 @@ async function createProject() {
 </script>
 
 <style scoped>
-.wb { max-width: 640px; margin: 0 auto; padding: 36px 24px 48px; text-align: center; }
+.wb { width: 100%; max-width: 640px; margin: 0 auto; padding: 36px 24px 48px; text-align: center; }
+/* width:100% 是必须的：flex 父级里 auto 边距会让本容器按内容收缩（金句打字变宽→三个格子跟着变宽），锁死后与子内容解耦 */
 
 .wb-logo { width: 76px; height: 76px; border-radius: 22px; box-shadow: 0 8px 24px rgba(0, 122, 255, .22); }
 .wb-name { font-size: 24px; font-weight: 800; letter-spacing: 1px; margin-top: 14px; color: var(--text-primary); }
