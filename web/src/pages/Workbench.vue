@@ -159,7 +159,8 @@ async function createProject() {
 .wb-name { font-size: 24px; font-weight: 800; letter-spacing: 1px; margin-top: 14px; color: var(--text-primary); }
 .wb-slogan { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 
-.wb-quote { min-height: 46px; margin: 24px auto 0; max-width: 280px; font-size: 14px; line-height: 1.7; color: var(--text-primary); }
+.wb-quote { min-height: 48px; margin: 24px auto 0; max-width: 280px; font-size: 14px; line-height: 1.7; color: var(--text-primary); }
+/* min-height=两行正文高（14×1.7×2）：打字从 0 到换行全程零纵向顶动（手机适配） */
 .wb-caret { display: inline-block; width: 2px; height: 15px; background: var(--accent); vertical-align: -2px; margin-left: 1px; animation: wb-blink 1s steps(1) infinite; }
 @keyframes wb-blink { 50% { opacity: 0; } }
 
