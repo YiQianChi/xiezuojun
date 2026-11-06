@@ -1,7 +1,10 @@
 <web-view wx:if="{{url}}" src="{{url}}" binderror="onError" bindmessage="onWebViewMsg"></web-view>
 
 <view wx:if="{{loadFailed}}" class="fail">
-  <view class="fail-icon">📡</view>
+  <view class="fail-icon">
+    <!-- 细线断网图标（WXML 不支持 <svg>，走 base64 image） -->
+    <image class="fail-svg" mode="aspectFit" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2YWE4NzciIHN0cm9rZS13aWR0aD0iMS42IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yIDguNUM1IDYgOSA0LjUgMTIgNC41czcgMS41IDEwIDQiLz48cGF0aCBkPSJNNS41IDEyLjVDNy41IDExIDkuOCAxMCAxMiAxMHM0LjUgMSA2LjUgMi41Ii8+PHBhdGggZD0iTTkgMTYuNWMxLS44IDItMS4yIDMtMS4yczIgLjQgMyAxLjIiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjIwIiByPSIwLjgiIGZpbGw9IiM2YWE4NzciIHN0cm9rZT0ibm9uZSIvPjwvc3ZnPg==" />
+  </view>
   <view class="fail-title">连接不上服务器</view>
   <view class="fail-desc">请检查网络后重试</view>
   <button class="fail-btn" bindtap="onRetry">重试</button>

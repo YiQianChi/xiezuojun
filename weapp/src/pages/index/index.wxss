@@ -7,6 +7,7 @@
   gap: 12rpx;
 }
 .fail-icon { font-size: 80rpx; }
+.fail-svg { width: 128rpx; height: 128rpx; }
 .fail-title { font-size: 32rpx; font-weight: 600; color: #333; }
 .fail-desc { font-size: 26rpx; color: #999; }
 .fail-btn {

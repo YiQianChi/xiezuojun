@@ -27,9 +27,26 @@
     <meta name="twitter:title" content="写作菌 · 专注小说创作的AI写作工具" />
     <meta name="twitter:description" content="沉浸式编辑器 + AI智能辅助，支持章节管理、设定面板、续写润色、多文档上下文。" />
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"写作菌","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"专注小说创作的AI写作工具，支持章节管理、设定面板、AI续写润色、多文档上下文、版本历史与故事线分支。","inLanguage":"zh-CN","url":"https://xiezuojun.com/"}</script>
+    <style>
+      /* 首开骨架屏（Vue mount 前）：纯 inline 无依赖，配色与 style.css 基调一致 */
+      .boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#f5f5f7}
+      .boot-logo{width:64px;height:64px;border-radius:16px}
+      .boot-name{font-family:"Noto Serif SC","PingFang SC",serif;font-size:20px;letter-spacing:6px;text-indent:6px;color:#1d1d1f}
+      .boot-dots{display:flex;gap:8px}
+      .boot-dots span{width:6px;height:6px;border-radius:50%;background:#6aa877;opacity:.3;animation:bootp 1.2s infinite}
+      .boot-dots span:nth-child(2){animation-delay:.2s}
+      .boot-dots span:nth-child(3){animation-delay:.4s}
+      @keyframes bootp{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app"><!-- Vue mount 时整体替换；首开骨架屏：微信/鸿蒙 webview 壳 + 浏览器/PWA 共用 -->
+      <div class="boot">
+        <img class="boot-logo" src="/icons/icon-192.png" alt="写作菌" />
+        <div class="boot-name">写作菌</div>
+        <div class="boot-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

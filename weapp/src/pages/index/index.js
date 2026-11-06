@@ -75,8 +75,10 @@ Page({
     this.setData({ loadFailed: true })
   },
   onRetry() {
+    // 重试原 URL（可能带 xzj_at 桥接参数），不再是裸站首页
+    const u = this.data.url || app.globalData.site + '/'
     this.setData({ loadFailed: false, url: '' })
-    setTimeout(() => this.setData({ url: app.globalData.site }), 200)
+    setTimeout(() => this.setData({ url: u }), 200)
   },
 
   // ===== 分享 =====
