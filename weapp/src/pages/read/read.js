@@ -42,7 +42,7 @@ Page({
 
   goCreate() {
     if (wx.getStorageSync('xzj_token')) {
-      wx.reLaunch({ url: '/pages/home/home' })
+      wx.reLaunch({ url: '/pages/index/index' }) // 原生页已全撤：回 index 网页壳
     } else {
       wx.reLaunch({ url: '/pages/index/index' }) // 游客营销页
     }

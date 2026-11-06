@@ -16,15 +16,7 @@ Page({
     return app.globalData.site + '/home?xzj_at=' + encodeURIComponent(at) + (rt ? '&xzj_rt=' + encodeURIComponent(rt) : '')
   },
   async onLoad(options) {
-    // 根层兜底：从聊天卡片/最近使用直接落到本页（栈深=1）时原生栏不会有返回箭头——
-    // 先 reLaunch 原生首页垫层，再由首页 navigateTo 回来（带 __fromHome 防循环）
-    const pages = getCurrentPages()
-    if (pages.length === 1 && options && options.web && !options.__fromHome) {
-      const fwd = Object.keys(options).map(k => k + '=' + encodeURIComponent(options[k])).join('&')
-      wx.reLaunch({ url: '/pages/home/home?forward=' + encodeURIComponent(fwd) })
-      return
-    }
-    // 深链：?web=editor/PUBID&xzj_at=…（从原生首页/书架打开编辑器、导入面板——token 桥接拼进 URL）
+    // 深链：?web=path&xzj_at=…（开书进编辑器/导入面板——token 桥接拼进 URL）
     if (options && options.web) {
       let path = decodeURIComponent(options.web)
       if (options.xzj_at) {
@@ -42,8 +34,8 @@ Page({
       return
     }
     if (at) {
-      // 兜底：老入口直接进 index 且带登录态 → 原生首页（正常流程 home 是启动页，轮不到这里）
-      wx.reLaunch({ url: '/pages/home/home' })
+      // 有登录态：桥接进网页工作台（2026-11-06 Boss 拍板全撤原生页，回纯 web-view 壳）
+      this.setData({ url: this.buildUrl(at, rt) })
       return
     }
     // 无 access 有 refresh：静默续期

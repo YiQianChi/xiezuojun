@@ -1,10 +1,7 @@
 {
   "pages": [
-    "pages/home/home",
     "pages/index/index",
     "pages/login/login",
-    "pages/shelf/shelf",
-    "pages/settings/settings",
     "pages/share/share",
     "pages/read/read"
   ],

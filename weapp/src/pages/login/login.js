@@ -22,8 +22,8 @@ Page({
   saveTokens(d) {
     if (d.access_token) wx.setStorageSync('xzj_token', d.access_token)
     if (d.refresh_token) wx.setStorageSync('xzj_rt', d.refresh_token)
-    // 登录成功 → 原生首页（工作台）
-    wx.reLaunch({ url: '/pages/home/home' })
+    // 登录成功 → index（web-view 桥接进网页工作台；原生页已全撤）
+    wx.reLaunch({ url: '/pages/index/index' })
   },
 
   // 微信一键登录：getPhoneNumber 授权 + wx.login 一次完成；用户拒绝手机号授权则降级纯微信登录

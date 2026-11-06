@@ -12,8 +12,8 @@ const path = require('path')
   })
   const result = await ci.upload({
     project,
-    version: '0.6.7',
-    desc: '退出登录同步清网页登录态(经 /logout)；配合网页工作台/编辑器更新',
+    version: '0.6.8',
+    desc: '全撤原生页回纯web-view壳(仅留登录/分享阅读页)',
     setting: { es6: true, minify: true },
     onProgressUpdate: () => {}
   })
