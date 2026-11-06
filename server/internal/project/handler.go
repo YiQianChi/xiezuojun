@@ -26,7 +26,7 @@ type Handler struct {
 }
 
 type documentUpdateRequest struct {
-	Title              string `json:"title"`
+	Title              *string `json:"title"` // nil=不更新；章节允许显式清空（回到自动编号）
 	Content            string `json:"content"`
 	LastKnownUpdatedAt string `json:"last_known_updated_at"`
 	Force              bool   `json:"force"`

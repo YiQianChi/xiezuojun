@@ -978,7 +978,8 @@ const navIndex = computed(() => {
 const navPrev = computed(() => (navIndex.value >= 1 ? navChapters.value[navIndex.value - 2] : null) || null)
 const navNext = computed(() => (navIndex.value ? navChapters.value[navIndex.value] : null) || null)
 
-// 最后一章的「+ 新章」：同卷下顺排新建（编号自动第N章），建完直接开写
+// 最后一章的「+ 新章」：同卷下顺排新建，建完直接开写。
+// 不命名（Boss 2026-11-06：名是作者的，产品不抢笔）——空标题走显示层自动编号「第N章」，插章顺延永远正确
 const creatingNext = ref(false)
 async function createNextChapter() {
   if (creatingNext.value) return
@@ -989,7 +990,7 @@ async function createNextChapter() {
     const siblings = documents.value.filter(d => d.parent_id === parentId && d.type === 'chapter')
     const maxSort = siblings.reduce((m, d) => Math.max(m, d.sort_order || 0), 0)
     const res = await documentApi.create({
-      project_id: projectId, title: '新章', type: 'chapter',
+      project_id: projectId, title: '', type: 'chapter',
       parent_id: parentId, sort_order: maxSort + 1,
     })
     await loadDocs()
@@ -1011,7 +1012,7 @@ async function startFirstChapter() {
     let vol = documents.value.find(d => d.type === 'volume')
     if (!vol) { await initDefaultStructure(); vol = documents.value.find(d => d.type === 'volume') }
     const res = await documentApi.create({
-      project_id: projectId, title: '第一章', type: 'chapter',
+      project_id: projectId, title: '', type: 'chapter', // unnamed：显示层自动编号「第一章」
       parent_id: vol?.id || undefined, sort_order: 1,
     })
     await loadDocs()
@@ -1194,6 +1195,8 @@ const confirmModal = ref<{ title: string; desc: string; action: () => void } | n
 const shareDoc = ref<any>(null)
 const shareCode = ref('')
 const shareLoading = ref(false)
+// 树外场景（分享卡片/确认弹窗）的章节名：unnamed 章要显示自动编号「第N章」，不是空串
+const docDisplayTitle = (d: any) => (d?.type === 'chapter' ? chapterDisplayTitle(d, documents.value) : (d?.title || ''))
 const isMiniProgramEnv = /miniProgram/i.test(navigator.userAgent) || (window as any).__wxjs_environment === 'miniProgram'
 // 小程序里预载 jweixin（返回时要用 miniProgram.navigateBack 关 web-view 层）
 if (isMiniProgramEnv && !(window as any).wx) {
@@ -1235,7 +1238,7 @@ async function stopShareFromMenu() {
   if (!doc) return
   confirmModal.value = {
     title: '停止分享',
-    desc: `「${doc.title}」的分享链接将立刻失效，已发出的链接也无法再打开。`,
+    desc: `「${docDisplayTitle(doc)}」的分享链接将立刻失效，已发出的链接也无法再打开。`,
     action: async () => {
       try {
         await documentApi.unshare(doc.id)
@@ -1257,13 +1260,13 @@ function copyShareLink() {
 function notifyMpShare() {
   const w = window as any
   w.wx?.miniProgram?.postMessage?.({
-    data: { type: 'xzj-share', code: shareCode.value, title: shareDoc.value?.title, book: projectName.value, ts: Date.now() }
+    data: { type: 'xzj-share', code: shareCode.value, title: docDisplayTitle(shareDoc.value), book: projectName.value, ts: Date.now() }
   })
 }
 
 // 拉起壳的原生分享页（参数带在页面路径里，卡片零竞态——比 postMessage 可靠）
 function pushMpShare() {
-  const q = `code=${shareCode.value}&title=${encodeURIComponent(shareDoc.value?.title || '')}&book=${encodeURIComponent(projectName.value || '')}`
+  const q = `code=${shareCode.value}&title=${encodeURIComponent(docDisplayTitle(shareDoc.value))}&book=${encodeURIComponent(projectName.value || '')}`
   mpPush('/pages/share/share?' + q)
 }
 const renameModal = ref<{ docId: number; title: string } | null>(null)
@@ -2461,8 +2464,10 @@ async function renameDoc() {
 async function confirmRename() {
   if (!renameModal.value) return
   const { docId, title } = renameModal.value
-  if (!title.trim()) return
   const trimmed = title.trim()
+  // 章节允许清空名字=回到自动编号「第N章」（名是作者的，包括「不起名」）；卷/设定仍必须有名
+  const doc = documents.value.find((d: any) => d.id === docId)
+  if (!trimmed && doc?.type !== 'chapter') return
   renameModal.value = null
   try {
     await documentApi.update(docId, { title: trimmed })
@@ -2479,7 +2484,7 @@ async function deleteDoc() {
   closeDocContextMenu()
   confirmModal.value = {
     title: '删除文档',
-    desc: `确定删除「${doc.title}」？删除后可在回收站恢复。`,
+    desc: `确定删除「${docDisplayTitle(doc)}」？删除后可在回收站恢复。`,
     action: async () => {
       try {
         await documentApi.delete(doc.id)

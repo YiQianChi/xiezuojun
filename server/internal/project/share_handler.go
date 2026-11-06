@@ -3,6 +3,7 @@ package project
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -90,8 +91,25 @@ func (h *Handler) PublicRead(c *gin.Context) {
 	if content == "" {
 		content, _ = h.ds.loadDocContentFallback(doc.ID)
 	}
+	// unnamed 章（作者没起名）：分享出去显示自动编号「第N章」，与树/导出同口径
+	title := strings.TrimSpace(doc.Title)
+	if doc.Type == "chapter" && title == "" {
+		var docs []model.Document
+		h.db.Where("project_id = ? AND status = 1", doc.ProjectID).Order("sort_order, id").Find(&docs)
+		ord := 0
+		for _, d := range flattenDocTree(docs) {
+			if d.Type != "chapter" || exportNoCountTitleRe.MatchString(strings.TrimSpace(d.Title)) {
+				continue
+			}
+			ord++
+			if d.ID == doc.ID {
+				title = "第" + numToChinese(ord) + "章"
+				break
+			}
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{
-		"code": code, "title": doc.Title, "project_name": proj.Name,
+		"code": code, "title": title, "project_name": proj.Name,
 		"content": content, "word_count": doc.WordCount,
 		"updated_at": doc.UpdatedAt.Format("2006-01-02"),
 		"_ts":       time.Now().Unix(),

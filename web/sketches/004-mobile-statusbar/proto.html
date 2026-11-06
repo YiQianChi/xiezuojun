@@ -30,7 +30,8 @@
   .wc-chip.dirty { color:#c99a3f; border-color:#ead9ae; }
 
   /* 正文 */
-  .doc { flex:1; overflow-y:auto; padding:20px 20px 24px; font-size:16.5px; line-height:2.05; color:#4a4438; }
+  .doc { flex:1; overflow-y:auto; padding:20px 20px 24px; font-size:16.5px; line-height:2.05; color:#4a4438; scrollbar-width:none; }
+  .doc::-webkit-scrollbar { display:none; } /* 手机 app 惯例：正文不露滚动条，滚动手势照常——右侧只留把手 */
   .doc:focus { outline:none; }
   .vh { text-align:center; font-size:15px; letter-spacing:2px; color:#9a8f74; margin-bottom:20px; }
   .vh::before,.vh::after{ content:"—"; margin:0 10px; color:#d5cbb0; }
@@ -80,19 +81,20 @@
   .dsrow input{ flex:1; accent-color:#6aa877; }
   .dsrow b{ width:34px; text-align:right; font-size:12px; color:#b0a78f }
 
-  /* ===== 方案H：华为感侧栏——贴边把手 + 滑出工具轨 ===== */
-  .edge-handle { position:absolute; right:0; top:44%; width:6px; height:76px; border-radius:8px 0 0 8px; background:rgba(74,68,56,.32); z-index:22; display:none; align-items:center; transition:background .15s; }
-  .edge-handle::after { content:''; width:3px; height:30px; border-radius:2px; background:rgba(255,255,255,.75); margin:0 auto; }
-  .edge-handle:active { background:rgba(74,68,56,.55); }
+  /* ===== 方案H：贴边把手 + 悬浮工具轨（透明、靠上） ===== */
+  .edge-handle { position:absolute; right:0; top:14%; width:6px; height:76px; border-radius:8px 0 0 8px; background:rgba(74,68,56,.22); z-index:22; display:none; align-items:center; transition:background .15s; }
+  .edge-handle::after { content:''; width:3px; height:30px; border-radius:2px; background:rgba(255,255,255,.7); margin:0 auto; }
+  .edge-handle:active { background:rgba(74,68,56,.45); }
   body[data-variant="H"] .edge-handle { display:flex; }
   body[data-variant="H"] .bar { display:none; }
   body[data-variant="H"] .doc { padding:20px 16px 40px; }
-  .rail { position:absolute; right:12px; top:34%; display:flex; flex-direction:column; gap:6px; background:rgba(255,255,255,.94); backdrop-filter:blur(10px); border:1px solid #e8e1cd; border-radius:18px; padding:7px 5px; box-shadow:0 3px 14px rgba(0,0,0,.1); z-index:21; transform:translateX(130%); transition:transform .22s cubic-bezier(.3,1.2,.4,1); }
+  /* 工具轨：苹果玻璃感（毛玻璃+高光描边，iOS 控制中心那味），右上方，悬浮覆盖 */
+  .rail { position:absolute; right:8px; top:16%; display:flex; flex-direction:column; gap:2px; background:rgba(255,255,255,.52); backdrop-filter:blur(22px) saturate(1.7); -webkit-backdrop-filter:blur(22px) saturate(1.7); border:1px solid rgba(255,255,255,.65); border-radius:18px; padding:5px 4px; box-shadow:0 4px 18px rgba(74,68,56,.12); z-index:21; transform:translateX(130%); transition:transform .22s cubic-bezier(.3,1.2,.4,1); }
   .rail.open { transform:translateX(0); }
-  .rail button { width:42px; height:42px; border:none; background:none; border-radius:12px; font-size:18px; color:#6b6353; position:relative; }
-  .rail button:active { background:#eae4d3; }
-  .rail .dot { position:absolute; top:3px; right:3px; min-width:14px; height:14px; border-radius:7px; background:#e05252; color:#fff; font-size:9px; line-height:14px; padding:0 3px; }
-  .rail .rail-close { font-size:14px; color:#b0a78f; }
+  .rail button { width:42px; height:40px; border:none; background:none; border-radius:11px; font-size:19px; color:#5c5546; position:relative; }
+  .rail button:active { background:rgba(74,68,56,.1); }
+  .rail .dot { position:absolute; top:4px; right:5px; min-width:14px; height:14px; border-radius:7px; background:#e05252; color:#fff; font-size:9px; line-height:14px; padding:0 3px; }
+  .rail .rail-close { font-size:13px; color:#a89e88; }
 
   .toast { position:absolute; left:50%; bottom:130px; transform:translateX(-50%); background:rgba(74,68,56,.92); color:#f5f0e4; font-size:13px; padding:9px 16px; border-radius:99px; opacity:0; transition:opacity .2s; z-index:50; pointer-events:none; }
   .toast.show { opacity:1; }
@@ -218,7 +220,7 @@ $('aDs').onclick=()=>openSheet('sheetDs'); $('dDs').onclick=()=>openSheet('sheet
 function setLock(n){ lockOn=true; lockRemain=n; $('lockChip').classList.add('show'); $('lockChip').textContent=`🔒 还差 ${n} 字`; $('lockTitle').textContent='换目标 / 解锁'; $('lockCancel').style.display='block'; closeSheet(); toast(`码字锁：写满 ${n} 字解锁`) }
 function clearLock(){ lockOn=false; $('lockChip').classList.remove('show'); $('lockTitle').textContent='写满多少字解锁？'; $('lockCancel').style.display='none'; closeSheet(); toast('已解锁') }
 
-// H：把手 → 工具轨开合（网页里做不了"屏幕外滑入"，把手贴边点/拖是等效手势）
+// H：把手 → 工具轨开合（悬浮覆盖式：不推让正文，收起即走）
 const rail = $('rail')
 function railOpen(){ rail.classList.add('open') }
 function railClose(){ rail.classList.remove('open') }

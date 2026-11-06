@@ -137,9 +137,7 @@ func (h *Handler) createDefaultProjectDocuments(proj model.Project, branchID uin
 	}
 
 	chapterTitle := strings.TrimSpace(firstChapterTitle)
-	if chapterTitle == "" {
-		chapterTitle = "第一章"
-	}
+	// 空标题=unnamed 章：显示层自动编号「第一章」，产品不替作者起名（Boss 2026-11-06）
 	if len([]rune(chapterTitle)) > 100 {
 		chapterTitle = string([]rune(chapterTitle)[:100])
 	}

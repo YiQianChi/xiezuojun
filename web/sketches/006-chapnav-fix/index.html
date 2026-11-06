@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>翻章条修正 · 三方案</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:-apple-system,'PingFang SC','Noto Sans SC',sans-serif; background:#efe9dc; }
+  .phone { max-width:414px; margin:0 auto; min-height:100vh; background:#f7f2e7; position:relative; overflow:hidden;
+           display:flex; flex-direction:column; }
+  .native { height:44px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:600; color:#33302a; position:relative; }
+  .native .bk { position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:22px; color:#8a8272; font-weight:400; }
+  .content { flex:1; padding:14px 22px 150px; overflow-y:auto; }
+  .content h2 { font-size:19px; margin:6px 0 16px; color:#33302a; font-weight:600; }
+  .content p { font-size:16px; line-height:1.95; color:#4a463d; margin-bottom:14px; text-indent:2em; }
+  .caret { display:inline-block; width:2px; height:19px; background:#6a8c77; vertical-align:-3px; animation:blink 1s step-end infinite; }
+  @keyframes blink { 50% {opacity:0;} }
+
+  /* 搭子胶囊（抬高避让底部方案切换器；真机位置=right:24 bottom:44） */
+  .fab { position:fixed; right:24px; bottom:118px; z-index:60; display:flex; align-items:center; gap:6px;
+         padding:8px 12px; border-radius:999px; border:none; background:#fff; color:#33302a;
+         box-shadow:0 4px 20px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06); font-size:12px; font-weight:600; }
+  .fab .dot { width:7px; height:7px; border-radius:50%; background:#30d158; }
+  .fab.lift { bottom:130px; right:16px; }   /* A/B 方案：搭子上移让位 */
+
+  /* ===== v0 现状复刻：left:12 right:84 偏左三胶囊 ===== */
+  .v0 .navrow { position:fixed; left:12px; right:84px; bottom:calc(70px + env(safe-area-inset-bottom)); z-index:50;
+    display:flex; align-items:center; gap:8px; }
+  .v0 .navrow .nv { flex-shrink:0; width:84px; height:36px; border-radius:18px; border:1px solid #d9d0ba;
+    background:rgba(250,248,242,.92); font-size:13px; color:#5d5949; }
+  .v0 .navrow .nm { flex:1; min-width:0; text-align:center; font-size:12px; color:#8a8272;
+    background:rgba(250,248,242,.92); border:1px solid #e8e1cd; height:32px; line-height:30px;
+    border-radius:16px; padding:0 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* ===== A 一体胶囊：整条一个容器，真居中，搭子上移 ===== */
+  .va .navrow { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(70px + env(safe-area-inset-bottom)); z-index:50;
+    display:flex; align-items:stretch; width:min(320px, calc(100% - 32px)); height:42px;
+    background:rgba(250,248,242,.94); border:1px solid #d9d0ba; border-radius:21px; overflow:hidden;
+    box-shadow:0 4px 16px rgba(74,68,56,.10); backdrop-filter:blur(8px); }
+  .va .nv { width:56px; border:none; background:transparent; font-size:18px; color:#5d5949; flex-shrink:0; }
+  .va .nv:active { background:#ece5d3; }
+  .va .nv.dis { opacity:.3; }
+  .va .nv.new { color:#3f7a4f; font-size:13px; width:64px; }
+  .va .nm { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:#8a8272;
+    border-left:1px solid #ece5d3; border-right:1px solid #ece5d3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 6px; }
+
+  /* ===== B 阅读器通栏：贴底通宽，不悬浮 ===== */
+  .vb .navrow { position:fixed; left:0; right:0; bottom:calc(58px + env(safe-area-inset-bottom)); z-index:50;
+    display:flex; align-items:stretch; height:calc(50px + env(safe-area-inset-bottom));
+    background:#faf6ec; border-top:1px solid #e3dac4; padding-bottom:env(safe-area-inset-bottom); }
+  .vb .nv { width:96px; border:none; background:transparent; font-size:14px; color:#5d5949; flex-shrink:0; }
+  .vb .nv:active { background:#efe8d6; }
+  .vb .nv.dis { opacity:.3; }
+  .vb .nv.new { color:#3f7a4f; }
+  .vb .nm { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; font-size:13px; color:#8a8272;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* ===== C 顶部细栏：翻章归顶部，底部彻底干净 ===== */
+  .vc .topbar { position:fixed; top:44px; left:0; right:0; z-index:50; height:38px;
+    display:flex; align-items:center; background:rgba(247,242,231,.96); border-bottom:1px solid #ece5d3; }
+  .vc .nv { width:52px; height:100%; border:none; background:transparent; font-size:17px; color:#5d5949; flex-shrink:0; }
+  .vc .nv.dis { opacity:.3; }
+  .vc .nv.new { color:#3f7a4f; font-size:12px; width:64px; }
+  .vc .nm { flex:1; min-width:0; text-align:center; font-size:13px; color:#5d5949;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .variant { display:none; } .variant.show { display:block; }
+  .verdict { position:fixed; top:96px; left:50%; transform:translateX(-50%); z-index:40; width:min(340px, calc(100% - 40px));
+    background:rgba(255,255,255,.88); border:1px solid #e3dac4; border-radius:12px; padding:8px 12px;
+    font-size:11px; color:#8a8272; line-height:1.6; }
+  .verdict b { color:#5d5949; }
+  .verdict .rec { color:#3f7a4f; font-weight:600; }
+
+  .tabs { position:fixed; bottom:0; left:0; right:0; max-width:414px; margin:0 auto; display:flex; z-index:99;
+          background:#33302a; padding:8px 8px calc(8px + env(safe-area-inset-bottom)); gap:6px; }
+  .tabs button { flex:1; border:none; border-radius:10px; padding:10px 2px; font-size:12px; color:#d8d2c2; background:transparent; }
+  .tabs button.on { background:#6a8c77; color:#fff; font-weight:600; }
+  .demo-pad { height:64px; } /* 给方案切换器让位 */
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="native"><span class="bk">‹</span>星海拾遗</div>
+  <div class="content">
+    <h2 id="chtitle">第五章 潮汐之下</h2>
+    <p>海面的雾气还没有散去，少年站在礁石上，望着远处若隐若现的灯塔。潮水涨上来了，细碎的浪花在石缝间碎成白沫<span class="caret"></span></p>
+    <p>（正文示意。点翻章按钮可真翻；翻到最后一章，右侧按钮会变成「＋ 新章」，点它演示新命名：自动叫「第十三章」，不再出现「新章」俩字。）</p>
+    <div class="demo-pad"></div>
+  </div>
+
+  <div class="verdict" id="verdict"></div>
+
+  <!-- 搭子胶囊 -->
+  <button class="fab" id="fab"><span class="dot"></span>搭子</button>
+
+  <!-- v0 现状 -->
+  <div class="variant v0" id="v0">
+    <div class="navrow">
+      <button class="nv pv" data-d="-1">‹ 上一章</button>
+      <div class="nm" data-nm></div>
+      <button class="nv nx" data-d="1">下一章 ›</button>
+    </div>
+  </div>
+
+  <!-- A 一体胶囊 -->
+  <div class="variant va" id="va">
+    <div class="navrow">
+      <button class="nv pv" data-d="-1">‹</button>
+      <div class="nm" data-nm></div>
+      <button class="nv nx" data-d="1">›</button>
+    </div>
+  </div>
+
+  <!-- B 阅读器通栏 -->
+  <div class="variant vb" id="vb">
+    <div class="navrow">
+      <button class="nv pv" data-d="-1">‹ 上一章</button>
+      <div class="nm" data-nm></div>
+      <button class="nv nx" data-d="1">下一章 ›</button>
+    </div>
+  </div>
+
+  <!-- C 顶部细栏 -->
+  <div class="variant vc" id="vc">
+    <div class="topbar">
+      <button class="nv pv" data-d="-1">‹</button>
+      <div class="nm" data-nm></div>
+      <button class="nv nx" data-d="1">›</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="on" onclick="pick('v0',this)">现状（病灶）</button>
+    <button onclick="pick('va',this)">A 一体居中</button>
+    <button onclick="pick('vb',this)">B 通栏底栏</button>
+    <button onclick="pick('vc',this)">C 顶部细栏</button>
+  </div>
+</div>
+
+<script>
+const CN='零一二三四五六七八九';
+function numToCn(n){ if(n<10)return CN_DIG(n); if(n<20)return '十'+(n%10?CN_DIG(n%10):''); if(n<100)return CN_DIG(Math.floor(n/10))+'十'+(n%10?CN_DIG(n%10):''); return String(n); }
+function CN_DIG(n){ return '零一二三四五六七八九'[n]; }
+
+let cur = 5, total = 12;
+const NAMES = {5:'潮汐之下'};
+const VERDICTS = {
+  v0: '<b>现状病灶：</b>右侧缩进 84px 躲搭子胶囊 → 整条偏左不居中；三个独立悬浮胶囊高矮不一（36/32px），右下还和搭子胶囊挤作一团。',
+  va: '<b>A 一体胶囊（<span class="rec">推荐</span>）：</b>翻章条合成一个胶囊、水平真居中；搭子胶囊上移让位。改动最小，视觉平衡，保留「点章名开目录」。',
+  vb: '<b>B 阅读器通栏：</b>贴底通宽一条，像番茄/微信读书。最稳最不飘，但底部多一条常驻栏，搭子仍需上移。',
+  vc: '<b>C 顶部细栏：</b>翻章收进顶部章名行，底部彻底干净只剩搭子。代价：翻章离拇指远，单手够不着。'
+};
+let mode = 'v0';
+
+function render(){
+  document.getElementById('chtitle').textContent = '第'+numToCn(cur)+'章' + (NAMES[cur] ? ' '+NAMES[cur] : '');
+  document.querySelectorAll('#'+mode+' [data-nm]').forEach(el=>{
+    let t = '第'+numToCn(cur)+'章' + (NAMES[cur] ? ' '+NAMES[cur] : '');
+    if (mode==='v0') t += ' · '+cur+'/'+total;
+    if (mode==='va') t += ' · '+cur+'/'+total;
+    el.textContent = t;
+  });
+  document.querySelectorAll('#'+mode+' .pv').forEach(b=>{ b.disabled = cur<=1; b.classList.toggle('dis', cur<=1); });
+  document.querySelectorAll('#'+mode+' .nx').forEach(b=>{
+    const isNew = cur>=total;
+    if (isNew){ b.textContent = mode==='v0'||mode==='vb' ? '＋ 新章' : '＋ 新章'; b.classList.add('new'); b.dataset.d='new'; }
+    else { b.textContent = (mode==='va'||mode==='vc') ? '›' : '下一章 ›'; b.classList.remove('new'); b.dataset.d='1'; }
+  });
+}
+document.querySelectorAll('.nv').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    if (b.dataset.d==='new'){ total++; cur=total; }
+    else { cur = Math.min(total, Math.max(1, cur + parseInt(b.dataset.d))); }
+    render();
+  });
+});
+function pick(id, btn){
+  mode = id;
+  document.querySelectorAll('.variant').forEach(v=>v.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('fab').classList.toggle('lift', id==='va'||id==='vb');
+  document.getElementById('verdict').innerHTML = VERDICTS[id];
+  document.getElementById('fab').style.display = id==='vc' ? 'flex' : 'flex';
+  render();
+}
+pick('v0', document.querySelector('.tabs button'));
+</script>
+</body>
+</html>

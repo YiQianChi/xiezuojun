@@ -23,7 +23,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		BranchID  *uint  `json:"branch_id"`
 		ParentID  *uint  `json:"parent_id"`
 		Type      string `json:"type" binding:"required"`
-		Title     string `json:"title" binding:"required"`
+		Title     string `json:"title"` // 章节允许空标题= unnamed（显示层自动编号「第N章」，名是作者的，产品不抢笔）
 		SortOrder int    `json:"sort_order"`
 		Content   string `json:"content"`
 
@@ -32,6 +32,11 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Title == "" && req.Type != "chapter" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "标题不能为空"})
 		return
 	}
 
@@ -170,8 +175,14 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{"updated_at": time.Now()}
-	if req.Title != "" {
-		updates["title"] = req.Title
+	newTitle := ""
+	if req.Title != nil {
+		newTitle = strings.TrimSpace(*req.Title)
+		if newTitle == "" && doc.Type != "chapter" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "标题不能为空"})
+			return
+		}
+		updates["title"] = newTitle
 	}
 	if req.HasContent {
 		updates["word_count"] = countWords(req.Content)
@@ -219,9 +230,9 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 		// 自动保存只更新当前正文；用户主动保存时才创建历史版本。
 		if req.HasContent {
 			h.updateDocWithMeta(proj.UserID, proj.ID, projName, *doc, req.Content, req.CreateVersion, req.VersionLabel)
-		} else if req.Title != "" {
+		} else if req.Title != nil {
 			// 仅标题变更，只更新 structure.json
-			h.updateStructure(proj.UserID, proj.ID, projName, doc.ID, req.Title, doc.Type, "update")
+			h.updateStructure(proj.UserID, proj.ID, projName, doc.ID, newTitle, doc.Type, "update")
 		}
 		h.locks.Unlock(proj.UserID)
 	}
@@ -229,7 +240,7 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	projName := h.getProjectName(doc.ProjectID)
 	_ = store.AppendChangelog(h.paths, userID, store.ChangeEntry{
 		Action: "update_doc", Project: projName,
-		Doc: uintToStr(doc.ID), Summary: "更新: " + req.Title,
+		Doc: uintToStr(doc.ID), Summary: "更新: " + newTitle,
 	})
 
 	var updatedDoc model.Document

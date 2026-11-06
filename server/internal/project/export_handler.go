@@ -25,7 +25,10 @@ var exportNoCountTitleRe = regexp.MustCompile(`^(序章|序|楔子|引子|尾声
 
 func exportChapterTitle(ordinal int, title string) string {
 	t := strings.TrimSpace(title)
-	if t == "" || exportSpecialTitleRe.MatchString(t) {
+	if t == "" {
+		return fmt.Sprintf("第%s章", numToChinese(ordinal)) // unnamed 章：纯自动编号
+	}
+	if exportSpecialTitleRe.MatchString(t) {
 		return t
 	}
 	return fmt.Sprintf("第%s章 %s", numToChinese(ordinal), t)
