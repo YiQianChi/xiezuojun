@@ -23,7 +23,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn" @click="close">取消</button>
-        <button class="btn primary" @click="confirm" :disabled="!name.trim()">创建</button>
+        <button class="btn primary" @click="confirm" :disabled="!name.trim() && docType !== 'chapter'">创建</button>
       </div>
     </div>
   </div>
@@ -78,7 +78,8 @@ function close() {
 
 function confirm() {
   const trimmed = name.value.trim()
-  if (!trimmed) return
+  // 章节允许留空=不命名，显示层自动编号「第N章」（Boss 2026-11-06：名是作者的，包括不起名）
+  if (!trimmed && props.docType !== 'chapter') return
   emit('create', trimmed, selectedFolderType.value || undefined)
 }
 </script>
