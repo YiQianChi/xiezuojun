@@ -1691,18 +1691,24 @@ onMounted(async () => {
   window.addEventListener('online', onOnlineStatusChange)
   window.addEventListener('offline', onOnlineStatusChange)
   if (window.visualViewport) {
-    let lastVh = window.visualViewport.height
+    // 基线=历史最高视口：有的机型键盘分两步缩（每步<150px），逐次差值会漏判；
+    // 旋转/折叠后 400ms 重立基线。iOS WKWebView / 安卓 WebView / 鸿蒙 ArkWeb（Chromium 系）均支持 visualViewport
+    let vvFullH = window.visualViewport.height
     window.visualViewport.addEventListener('resize', () => {
       const vh = window.visualViewport!.height
-      keyboardOpen.value = lastVh - vh > 150
-      if (lastVh - vh > 150) {
+      if (vh > vvFullH) vvFullH = vh
+      keyboardOpen.value = vvFullH - vh > 150
+      if (keyboardOpen.value) {
         dsRef.value?.close()
         sensitiveOpen.value = false
         wordLockOpen.value = false
         toolboxOpen.value = false
       }
-      lastVh = vh
     })
+    window.addEventListener('orientationchange', () => setTimeout(() => {
+      vvFullH = window.visualViewport!.height
+      keyboardOpen.value = false
+    }, 400))
   }
   loadProjectName()
   await loadDocs()
