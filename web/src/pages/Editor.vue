@@ -486,6 +486,8 @@
     </div>
 
     <BuddyWindow :current-word-count="wordCount" :active-doc-id="activeDocId" />
+    <!-- 键盘上方标点条：手机打字时的高频标点（选区点引号=包住） -->
+    <PunctBar :show="keyboardOpen && editorFocused" :editor="editor" />
     <SprintPanel />
 
     <!-- 拼字房专注模式降级：右上倒计时胶囊（贴退出胶囊）+ 底部一行淡字 -->
@@ -714,6 +716,7 @@ import RelationshipGraph from '../components/editor/RelationshipGraph.vue'
 import TrashPanel from '../components/editor/TrashPanel.vue'
 import WritingStatsPanel from '../components/editor/WritingStatsPanel.vue'
 import BuddyWindow from '../components/editor/BuddyWindow.vue'
+import PunctBar from '../components/editor/PunctBar.vue'
 import SprintPanel from '../components/editor/SprintPanel.vue'
 import StickyNotes from '../components/editor/StickyNotes.vue'
 import { useSprint } from '../composables/useSprint'
@@ -865,6 +868,8 @@ const mpSaveChip = computed(() => {
 // 手机：键盘弹起时收起底部弹层（fixed bottom 元素会被键盘顶起挡住视线）
 // keyboardOpen：软键盘弹起时翻章条整体隐藏——它悬在键盘上方压正文，而打字时用不到翻章
 const keyboardOpen = ref(false)
+// 正文编辑器是否聚焦（标点条出现条件之一；声明必须顶层，模板要用）
+const editorFocused = ref(false)
 const mpRailOpen = ref(false)
 const dsRef = ref<any>(null)
 const draftBanner = ref<{ docId: number; text: string } | null>(null)
@@ -1822,8 +1827,9 @@ function initEditor() {
   // 注册搜索高亮 ProseMirror 插件
   editor.value.registerPlugin(createSearchHighlightPlugin())
 
-  // 分屏：左编辑器聚焦=左页成为活动页（侧栏点章开进它）
-  editor.value.on('focus', () => { lastPane.value = 'left' })
+  // 分屏：左编辑器聚焦=左页成为活动页（侧栏点章开进它）；标点条只在正文聚焦时出现
+  editor.value.on('focus', () => { lastPane.value = 'left'; editorFocused.value = true })
+  editor.value.on('blur', () => { editorFocused.value = false })
 
   selectionHandler = () => {
     if (!editor.value || !editor.value.isFocused) return
