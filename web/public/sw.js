@@ -1,6 +1,6 @@
 // 写作菌 PWA service worker
 // 策略：导航请求走网络（SPA 必须拿到最新 index.html），静态资源（/assets/ 哈希文件）缓存优先
-const CACHE = 'xzj-static-v1'
+const CACHE = 'xzj-static-v3' // v3: 2026-11-08 bump——activate 时清掉 v1/v2 全部缓存（含旧首页兜底副本），配合 nginx no-cache，发版即生效
 
 self.addEventListener('install', (e) => {
   self.skipWaiting()
