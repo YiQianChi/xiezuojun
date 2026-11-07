@@ -1,6 +1,14 @@
 <template>
   <!-- 键盘上方标点条：只在手机键盘弹起且正文编辑器聚焦时出现——占键盘的地盘，不压正文 -->
   <div v-if="show" class="punct-bar" ref="barRef">
+    <!-- 撤销/重做：手机没有 Ctrl+Z，删多了就地撤回 -->
+    <button class="pb-hist" title="撤销" @mousedown.prevent @click="hist('undo')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 016 6v1"/></svg>
+    </button>
+    <button class="pb-hist" title="重做" @mousedown.prevent @click="hist('redo')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 00-6 6v1"/></svg>
+    </button>
+    <span class="pb-sep"></span>
     <button
       v-for="(s, i) in symbols" :key="i"
       @mousedown.prevent @click="tap(s)"
@@ -36,6 +44,12 @@ function tap(s: string) {
   } else {
     ed.chain().focus().insertContent(s).run()
   }
+}
+
+function hist(cmd: 'undo' | 'redo') {
+  const ed = props.editor
+  if (!ed) return
+  ed.chain().focus()[cmd]().run()
 }
 
 /* 贴键盘顶：fixed 元素锚的是布局视口，iOS 键盘弹起布局视口不变、可视视口缩——
@@ -89,4 +103,6 @@ onBeforeUnmount(cleanup)
   padding: 0;
 }
 .punct-bar button:active { background: rgba(0, 0, 0, 0.07); }
+.pb-hist { color: #6aa877 !important; min-width: 34px !important; }
+.pb-sep { width: 1px; height: 22px; background: rgba(0, 0, 0, 0.12); flex-shrink: 0; margin: 0 4px; }
 </style>
