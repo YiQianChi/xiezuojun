@@ -18,8 +18,9 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { toast } from '../../composables/useToast'
 
-const props = defineProps<{ show: boolean; editor: any }>()
+const props = defineProps<{ show: boolean; editor: any; baseline?: number }>()
 
 // 写小说高频标点：成对引号写前面（选中文字点它=包住选区）
 const symbols = ['「」', '『』', '“”', '……', '——', '、', '。', '！', '？', '；', '：']
@@ -49,7 +50,23 @@ function tap(s: string) {
 function hist(cmd: 'undo' | 'redo') {
   const ed = props.editor
   if (!ed) return
-  ed.chain().focus()[cmd]().run()
+  if (cmd === 'undo') {
+    const words = ed.getText().replace(/\n/g, '').length
+    const floor = props.baseline ?? 0
+    if (words <= floor) {
+      // 地板：已回到本章打开时的内容，再往前不撤——防连点把全文撤没（撤没还会被自动保存存走）
+      toast.info('已回到本章打开时的内容')
+      return
+    }
+    ed.chain().focus().undo().run()
+    if (ed.getText().replace(/\n/g, '').length < floor) {
+      // 这一步撤过了头（成组跨越地板）：退回来守住地板
+      ed.chain().redo().run()
+      toast.info('已回到本章打开时的内容')
+    }
+  } else {
+    ed.chain().focus().redo().run()
+  }
 }
 
 /* 贴键盘顶：fixed 元素锚的是布局视口，iOS 键盘弹起布局视口不变、可视视口缩——

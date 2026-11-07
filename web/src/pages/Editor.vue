@@ -487,7 +487,7 @@
 
     <BuddyWindow :current-word-count="wordCount" :active-doc-id="activeDocId" />
     <!-- 键盘上方标点条：手机打字时的高频标点（选区点引号=包住） -->
-    <PunctBar :show="keyboardOpen && editorFocused" :editor="editor" />
+    <PunctBar :show="keyboardOpen && editorFocused" :editor="editor" :baseline="openBaselineWords" />
     <SprintPanel />
 
     <!-- 拼字房专注模式降级：右上倒计时胶囊（贴退出胶囊）+ 底部一行淡字 -->
@@ -868,6 +868,8 @@ const mpSaveChip = computed(() => {
 // 手机：键盘弹起时收起底部弹层（fixed bottom 元素会被键盘顶起挡住视线）
 // keyboardOpen：软键盘弹起时翻章条整体隐藏——它悬在键盘上方压正文，而打字时用不到翻章
 const keyboardOpen = ref(false)
+// 撤销地板：本章打开时的字数——标点条撤回到此为止，防止连点把全文撤没
+const openBaselineWords = ref(0)
 // 正文编辑器是否聚焦（标点条出现条件之一；声明必须顶层，模板要用）
 const editorFocused = ref(false)
 const mpRailOpen = ref(false)
@@ -1778,7 +1780,7 @@ function initEditor() {
   editor.value = new Editor({
     content: '',
     extensions: [
-      StarterKit,
+      StarterKit.configure({ undoRedo: { newGroupDelay: 200 } }), // 撤销分组调细：一键退一小组，不是一长串
       Highlight.configure({ multicolor: true }),
       Table.configure({ resizable: true }),
       TableRow,
@@ -2157,6 +2159,7 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
         editor.value.commands.setContent(editorContentFromText(content), { emitUpdate: false })
       }
       wordCount.value = countWords(getEditorText())
+      openBaselineWords.value = wordCount.value // 撤销地板：本章打开时的字数，撤到此为止
       rescanSensitive()
       syncPhonePreview()
       saveStatus.value = fromCache ? '📡 离线读取' : '已保存'
