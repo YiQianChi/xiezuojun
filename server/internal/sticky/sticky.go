@@ -38,8 +38,18 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 func handleList(c *gin.Context) {
 	uid := c.GetString("userID")
 	pid, _ := strconv.ParseUint(c.Query("project_id"), 10, 64)
-	if db == nil || pid == 0 {
+	if db == nil {
 		c.JSON(http.StatusOK, gin.H{"data": []Note{}})
+		return
+	}
+	if pid == 0 {
+		// 全局随手记：type=quick 未归档碎片（速记笔入口）
+		var quick []Note
+		db.Where("user_id = ? AND project_id = 0 AND type = ?", uid, "quick").Order("created_at DESC").Limit(200).Find(&quick)
+		if quick == nil {
+			quick = []Note{}
+		}
+		c.JSON(http.StatusOK, gin.H{"data": quick})
 		return
 	}
 	var out []Note
@@ -58,12 +68,22 @@ func handleCreate(c *gin.Context) {
 		Content   string `json:"content"`
 		Color     string `json:"color"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil || req.ProjectID == 0 || req.Content == "" {
+	if err := c.ShouldBindJSON(&req); err != nil || req.Content == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 		return
 	}
-	if req.Type != "insp" {
+	switch req.Type {
+	case "insp", "quick":
+	default:
 		req.Type = "note"
+	}
+	// quick=全局随手记不挂书；note/insp 必须挂书（右栏/贴纸语义）
+	if req.Type != "quick" && req.ProjectID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+	if req.Type == "quick" {
+		req.ProjectID = 0
 	}
 	switch req.Color {
 	case "y", "b", "g":
@@ -85,11 +105,16 @@ func handleUpdate(c *gin.Context) {
 	uid := c.GetString("userID")
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 	var req struct {
-		Content *string `json:"content"`
-		Color   *string `json:"color"`
+		Content   *string `json:"content"`
+		Color     *string `json:"color"`
+		ProjectID *uint   `json:"project_id"` // >0 = 转入某书（变该书灵感，速记笔归档流）
 	}
 	_ = c.ShouldBindJSON(&req)
 	updates := map[string]interface{}{}
+	if req.ProjectID != nil && *req.ProjectID > 0 {
+		updates["project_id"] = *req.ProjectID
+		updates["type"] = "insp"
+	}
 	if req.Content != nil && *req.Content != "" {
 		v := *req.Content
 		if len([]rune(v)) > 500 {

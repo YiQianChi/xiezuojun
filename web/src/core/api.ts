@@ -277,10 +277,13 @@ export const stickyApi = {
   list(projectId: number) {
     return api.get('/sticky', { params: { project_id: projectId } })
   },
-  create(data: { project_id: number; type: 'note' | 'insp'; content: string; color?: string }) {
+  listQuick() {
+    return api.get('/sticky', { params: { project_id: 0, type: 'quick' } })
+  },
+  create(data: { project_id: number; type: 'note' | 'insp' | 'quick'; content: string; color?: string }) {
     return api.post('/sticky', data)
   },
-  update(id: number, data: { content?: string; color?: string }) {
+  update(id: number, data: { content?: string; color?: string; project_id?: number }) {
     return api.patch(`/sticky/${id}`, data)
   },
   remove(id: number) {

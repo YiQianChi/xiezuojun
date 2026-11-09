@@ -48,6 +48,8 @@
   </Teleport>
   <ProfileModal ref="profileRef" />
   <OnboardingTour ref="onboardingRef" />
+  <!-- 全局随手记（编辑器/登录/阅读页不出现） -->
+  <QuickNote v-if="isLoggedIn && quickNoteVisible" />
 </template>
 
 <script setup lang="ts">
@@ -57,9 +59,13 @@ import { toasts, toast, dismissToast } from './composables/useToast'
 import { usePwaInstall } from './composables/usePwaInstall'
 import OnboardingTour from './components/OnboardingTour.vue'
 import ProfileModal from './components/ProfileModal.vue'
+import QuickNote from './components/QuickNote.vue'
 import { isMiniProgramEnv } from './core/mp'
 
 const route = useRoute()
+
+// 速记笔只在「自己的日常面」出现：编辑器（有书内灵感页签）、登录/注册、阅读页、管理后台不出
+const quickNoteVisible = computed(() => !['Editor', 'Login', 'Register', 'Logout', 'Reader', 'Admin'].includes(String(route.name)))
 
 // 小程序 web-view：原生导航栏去不掉（官方限制），改为隐藏网页自己的顶栏只留一条栏；
 // --mp-safe-top/--mp-capsule-pad CSS 变量留作日后开放 custom 导航时用（现在恒为 0）
