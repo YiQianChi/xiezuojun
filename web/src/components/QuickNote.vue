@@ -6,21 +6,24 @@
   <Teleport to="body">
     <Transition name="qn-fade">
       <div v-if="open" class="qn-overlay" @click.self="close">
-        <!-- 记 -->
-        <div v-if="view === 'compose'" class="qn-sheet">
+        <!-- 单页速记：上输入下时间流，无二级视图 -->
+        <div class="qn-sheet">
           <div class="qn-top">
             <button class="qn-x" title="收起" @click="close">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
             </button>
             <span class="qn-title">随手记</span>
-            <button class="qn-done" :disabled="saving" @click="save">{{ saving ? '…' : '记好了' }}</button>
+            <button class="qn-done" :disabled="saving || !draft.trim()" @click="save">{{ saving ? '…' : '记好了' }}</button>
           </div>
-          <button class="qn-chip" @click="showPicker = !showPicker">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            {{ pickedProject ? `《${pickedProject.name}》` : '未归档 · 可选挂到某书' }}
-            <svg v-if="!showPicker" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            <svg v-else width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg>
-          </button>
+          <div class="qn-input-zone">
+            <button class="qn-chip" @click="showPicker = !showPicker">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              {{ pickedProject ? `《${pickedProject.name}》` : '未归档 · 可选挂到某书' }}
+              <svg v-if="!showPicker" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+              <svg v-else width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg>
+            </button>
+            <span class="qn-hint">{{ draft.length }}/500 · 自动存草稿</span>
+          </div>
           <div v-if="showPicker" class="qn-picker">
             <button class="qn-opt" :class="{ on: !pickedProject }" @click="pickedProject = null; showPicker = false">未归档（之后再转）</button>
             <button v-for="p in projects" :key="p.id" class="qn-opt" :class="{ on: pickedProject?.id === p.id }" @click="pickedProject = p; showPicker = false">《{{ p.name }}》</button>
@@ -34,25 +37,10 @@
             maxlength="500"
             @keydown.esc="close"
           ></textarea>
-          <div class="qn-foot">
-            <button class="qn-history" @click="openList">{{ quickCount }} 条速记 ›</button>
-            <span class="qn-hint">{{ draft.length }}/500 · 草稿自动保存</span>
-          </div>
-        </div>
-        <!-- 看列表 -->
-        <div v-else class="qn-sheet qn-list-sheet">
-          <div class="qn-top">
-            <button class="qn-x" title="返回" @click="view = 'compose'">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <span class="qn-title">速记本 · {{ items.length }}</span>
-            <button class="qn-x" title="收起" @click="close">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-            </button>
-          </div>
+          <div class="qn-stream-label">速记流 · {{ items.length }} 条</div>
           <div class="qn-cards">
             <p v-if="loadingList" class="qn-empty">加载中…</p>
-            <p v-else-if="!items.length" class="qn-empty">还没有速记——右下角那支笔，随想随记</p>
+            <p v-else-if="!items.length" class="qn-empty">还没有速记——写完点「记好了」，都会攒在这里</p>
             <div v-for="it in items" :key="it.id" class="qn-card">
               <p class="qn-card-t">{{ it.content }}</p>
               <div class="qn-card-m">
@@ -106,7 +94,6 @@ const DRAFT_KEY = 'xzj-quick-draft'
 const LAST_BOOK_KEY = 'xzj-quick-last-book'
 
 const open = ref(false)
-const view = ref<'compose' | 'list'>('compose')
 const draft = ref('')
 const saving = ref(false)
 const taRef = ref<HTMLTextAreaElement | null>(null)
@@ -132,7 +119,6 @@ function rememberBook(p: { id: number; name: string }) {
 function shortBook(name: string) {
   return name.length > 6 ? name.slice(0, 6) + '…' : name
 }
-const quickCount = computed(() => items.value.length)
 const filteredProjects = computed(() =>
   searchQ.value ? projects.value.filter(p => p.name.includes(searchQ.value)) : projects.value
 )
@@ -147,7 +133,6 @@ function fmtTime(iso: string) {
 
 async function openCompose() {
   open.value = true
-  view.value = 'compose'
   try { draft.value = localStorage.getItem(DRAFT_KEY) || '' } catch {}
   await nextTick()
   taRef.value?.focus()
@@ -157,21 +142,11 @@ async function openCompose() {
       projects.value = (res.data?.data || []).map((p: { id: number; name: string }) => ({ id: Number(p.id), name: p.name }))
     } catch { /* 挂书可选，拉不到书目不影响记 */ }
   }
-  refreshCount()
+  loadItems()
 }
 
-async function refreshCount() {
-  if (items.value.length || loadingList.value) return
-  loadingList.value = true
-  try {
-    const res = await stickyApi.listQuick()
-    items.value = res.data?.data || []
-  } catch { /* 计数失败不拦主流程 */ }
-  loadingList.value = false
-}
-
-function openList() {
-  view.value = 'list'
+// 速记流与输入区同屏，每次打开都拉最新
+function loadItems() {
   loadingList.value = true
   stickyApi.listQuick().then(res => { items.value = res.data?.data || [] }).catch(() => {}).finally(() => { loadingList.value = false })
 }
@@ -197,7 +172,7 @@ async function save() {
       content: text,
     })
     draft.value = ''
-    items.value = []
+    loadItems()
     toast.success(pickedProject.value ? `已记进《${pickedProject.value.name}》灵感` : '已记下')
     close()
   } catch {
@@ -285,11 +260,12 @@ async function del(it: { id: number }) {
   box-shadow: 0 4px 10px rgba(106, 168, 119, .35);
 }
 .qn-done:disabled { opacity: .6; }
+.qn-input-zone { display: flex; align-items: center; justify-content: space-between; padding: 2px 16px 8px; gap: 8px; }
 .qn-chip {
-  align-self: flex-start; margin: 2px 16px 8px; cursor: pointer;
+  cursor: pointer; margin: 0;
   font-size: 11px; color: #3f7a4e; background: rgba(129, 187, 142, .13);
   border: 1px solid rgba(129, 187, 142, .35); padding: 4px 11px; border-radius: 99px;
-  display: inline-flex; align-items: center; gap: 5px;
+  display: inline-flex; align-items: center; gap: 5px; max-width: 70%; overflow: hidden; white-space: nowrap;
 }
 .qn-picker { margin: 0 16px 8px; background: #fff; border-radius: 12px; padding: 6px; max-height: 180px; overflow-y: auto; }
 .qn-opt {
@@ -300,16 +276,14 @@ async function del(it: { id: number }) {
 .qn-opt.on { color: #3f7a4e; font-weight: 700; }
 .qn-picker-empty { font-size: 11px; color: #aeaeb2; padding: 8px 10px; }
 .qn-textarea {
-  flex: 1; min-height: 180px; margin: 0 12px; background: #fff; border: none; outline: none;
-  border-radius: 14px; padding: 14px; font-size: 16px; line-height: 1.8; color: #33302a;
-  resize: none; font-family: inherit;
+  min-height: 108px; margin: 0 12px; background: #fff; border: none; outline: none;
+  border-radius: 14px; padding: 13px; font-size: 16px; line-height: 1.75; color: #33302a;
+  resize: none; font-family: inherit; flex: 0 0 auto;
 }
 .qn-textarea::placeholder { color: #b8b8bd; }
-.qn-foot { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 14px; }
-.qn-history { background: none; border: none; cursor: pointer; font-size: 12px; color: #3f7a4e; padding: 2px; }
-.qn-hint { font-size: 10px; color: #b0b0b5; }
-
-.qn-list-sheet .qn-cards { overflow-y: auto; padding: 4px 12px 16px; }
+.qn-hint { font-size: 10px; color: #b0b0b5; white-space: nowrap; }
+.qn-stream-label { font-size: 11px; font-weight: 700; color: #86868b; padding: 12px 18px 7px; }
+.qn-cards { flex: 1; overflow-y: auto; padding: 0 12px 16px; }
 .qn-empty { font-size: 12px; color: #aeaeb2; text-align: center; padding: 40px 0; }
 .qn-card { background: #fff; border-radius: 12px; padding: 11px 13px; margin-bottom: 8px; }
 .qn-card-t { font-size: 13px; line-height: 1.7; color: #33302a; white-space: pre-wrap; word-break: break-word; }
