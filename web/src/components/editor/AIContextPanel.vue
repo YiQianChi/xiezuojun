@@ -249,7 +249,7 @@
 
       <!-- 随手记：右栏底部常驻输入框，三个页签都在（Boss 2026-11：编辑器内就地记，不用悬浮笔/切页签） -->
       <div class="qn-bar">
-        <textarea v-model="inspDraft" rows="3" placeholder="随手记一句…回车存进灵感库，Shift+回车换行" @keydown.enter.exact.prevent="addInsp"></textarea>
+        <textarea v-model="inspDraft" rows="6" placeholder="随手记一句…回车存进灵感库，Shift+回车换行" @keydown.enter.exact.prevent="addInsp"></textarea>
       </div>
     </div>
   </div>
@@ -992,15 +992,15 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 }
 /* ─── 灵感页签 ─── */
 /* ─── 随手记常驻条（三个页签共用，原灵感页签输入框迁来） ─── */
-.qn-bar { padding: 10px 12px 12px; border-top: 1px solid rgba(0, 0, 0, 0.05); flex-shrink: 0; }
+.qn-bar { padding: 12px 14px 14px; border-top: 1px solid rgba(0, 0, 0, 0.05); flex-shrink: 0; }
 .qn-bar textarea {
   width: 100%;
   box-sizing: border-box;
   border: 1px dashed var(--accent, #81bb8e);
-  border-radius: 10px;
-  padding: 9px 11px;
-  font-size: 13.5px;
-  line-height: 1.55;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  line-height: 1.6;
   background: var(--bg-primary, #fff);
   outline: none;
   resize: none;
