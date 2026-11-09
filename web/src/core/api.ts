@@ -277,8 +277,8 @@ export const stickyApi = {
   list(projectId: number) {
     return api.get('/sticky', { params: { project_id: projectId } })
   },
-  listQuick() {
-    return api.get('/sticky', { params: { project_id: 0, type: 'quick' } })
+  listQuick(params?: { q?: string; page?: number; page_size?: number }) {
+    return api.get('/sticky', { params: { project_id: 0, type: 'quick', ...params } })
   },
   create(data: { project_id: number; type: 'note' | 'insp' | 'quick'; content: string; color?: string }) {
     return api.post('/sticky', data)

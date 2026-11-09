@@ -37,11 +37,19 @@
             maxlength="500"
             @keydown.esc="close"
           ></textarea>
-          <div class="qn-stream-label">速记流 · {{ items.length }} 条</div>
+          <div class="qn-stream-head">
+            <span class="qn-stream-label">速记流 · {{ total }} 条</span>
+            <div class="qn-stream-search">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#aeaeb2" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+              <input v-model.trim="streamQ" placeholder="搜速记" @input="onSearch" />
+            </div>
+          </div>
           <div class="qn-cards">
             <p v-if="loadingList" class="qn-empty">加载中…</p>
-            <p v-else-if="!items.length" class="qn-empty">还没有速记——写完点「记好了」，都会攒在这里</p>
-            <div v-for="it in items" :key="it.id" class="qn-card">
+            <p v-else-if="!items.length" class="qn-empty">{{ streamQ ? '没找到这条速记' : '还没有速记——写完点「记好了」，都会攒在这里' }}</p>
+            <template v-for="g in grouped" :key="g.label">
+              <div class="qn-date">{{ g.label }}</div>
+              <div v-for="it in g.items" :key="it.id" class="qn-card">
               <p class="qn-card-t">{{ it.content }}</p>
               <div class="qn-card-m">
                 <span>{{ fmtTime(it.created_at) }}</span>
@@ -55,7 +63,9 @@
                   <button class="qn-del" @click="del(it)">删除</button>
                 </span>
               </div>
-            </div>
+              </div>
+            </template>
+            <button v-if="hasMore && !loadingList" class="qn-more" @click="loadMore">加载更多 · 还剩 {{ total - items.length }} 条</button>
           </div>
           <!-- 选书面板：整行大按钮，避免内联小字难点击 -->
           <Transition name="qn-sheet-up">
@@ -106,6 +116,30 @@ const items = ref<{ id: number; content: string; created_at: string }[]>([])
 const loadingList = ref(false)
 const transferItem = ref<{ id: number } | null>(null)
 const searchQ = ref('')
+const streamQ = ref('')
+const total = ref(0)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+const hasMore = computed(() => items.value.length < total.value)
+// 日期分组（今天/昨天/M月D日）；跨页拼接后同日合并
+const grouped = computed(() => {
+  const groups: { label: string; items: { id: number; content: string; created_at: string }[] }[] = []
+  for (const it of items.value) {
+    const label = dateLabel(it.created_at)
+    const lastG = groups[groups.length - 1]
+    if (lastG && lastG.label === label) lastG.items.push(it)
+    else groups.push({ label, items: [it] })
+  }
+  return groups
+})
+function dateLabel(iso: string) {
+  const d = new Date(iso)
+  const now = new Date()
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const diff = (day(now) - day(d)) / 86400000
+  if (diff === 0) return '今天'
+  if (diff === 1) return '昨天'
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+}
 // 上次转入的书：一键直达，换书才弹面板（▾）
 const lastBook = ref<{ id: number; name: string } | null>(null)
 try {
@@ -125,10 +159,7 @@ const filteredProjects = computed(() =>
 
 function fmtTime(iso: string) {
   const d = new Date(iso)
-  const today = new Date()
-  const same = d.toDateString() === today.toDateString()
-  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  return same ? `今天 ${hm}` : `${d.getMonth() + 1}/${d.getDate()} ${hm}`
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 async function openCompose() {
@@ -145,10 +176,23 @@ async function openCompose() {
   loadItems()
 }
 
-// 速记流与输入区同屏，每次打开都拉最新
-function loadItems() {
+let curPage = 1
+// 速记流与输入区同屏；量大走分页 + 搜索（服务端 LIKE）
+function loadItems(reset = true, page = 1) {
   loadingList.value = true
-  stickyApi.listQuick().then(res => { items.value = res.data?.data || [] }).catch(() => {}).finally(() => { loadingList.value = false })
+  stickyApi.listQuick({ q: streamQ.value || undefined, page, page_size: 50 }).then(res => {
+    const list = res.data?.data || []
+    items.value = reset ? list : items.value.concat(list)
+    total.value = res.data?.total ?? list.length
+    curPage = page
+  }).catch(() => {}).finally(() => { loadingList.value = false })
+}
+function loadMore() {
+  loadItems(false, curPage + 1)
+}
+function onSearch() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => loadItems(true), 300)
 }
 
 function close() {
@@ -199,6 +243,7 @@ async function doTransfer(it: { id: number }, p: { id: number; name: string }) {
   try {
     await stickyApi.update(it.id, { project_id: p.id })
     items.value = items.value.filter(x => x.id !== it.id)
+    total.value = Math.max(0, total.value - 1)
     transferItem.value = null
     rememberBook(p)
     toast.success(`已转入《${p.name}》灵感——编辑器右栏可见`)
@@ -217,6 +262,7 @@ async function del(it: { id: number }) {
   try {
     await stickyApi.remove(it.id)
     items.value = items.value.filter(x => x.id !== it.id)
+    total.value = Math.max(0, total.value - 1)
   } catch { /* 下次打开自然对齐 */ }
 }
 </script>
@@ -282,14 +328,26 @@ async function del(it: { id: number }) {
 }
 .qn-textarea::placeholder { color: #b8b8bd; }
 .qn-hint { font-size: 10px; color: #b0b0b5; white-space: nowrap; }
-.qn-stream-label { font-size: 11px; font-weight: 700; color: #86868b; padding: 12px 18px 7px; }
+.qn-stream-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 7px; gap: 8px; }
+.qn-stream-label { font-size: 11px; font-weight: 700; color: #86868b; white-space: nowrap; }
+.qn-stream-search {
+  display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 99px;
+  padding: 6px 12px; flex: 1; max-width: 180px;
+}
+.qn-stream-search input { border: none; outline: none; background: none; font-size: 12px; flex: 1; font-family: inherit; min-width: 0; }
+.qn-date { font-size: 10px; color: #b0b0b5; padding: 8px 6px 5px; font-weight: 600; }
+.qn-more {
+  display: block; margin: 4px auto 8px; background: none; cursor: pointer;
+  border: 1px solid rgba(129, 187, 142, .4); color: #3f7a4e; font-size: 11px;
+  border-radius: 99px; padding: 7px 16px;
+}
 .qn-cards { flex: 1; overflow-y: auto; padding: 0 12px 16px; }
 .qn-empty { font-size: 12px; color: #aeaeb2; text-align: center; padding: 40px 0; }
 .qn-card { background: #fff; border-radius: 12px; padding: 11px 13px; margin-bottom: 8px; }
 .qn-card-t { font-size: 13px; line-height: 1.7; color: #33302a; white-space: pre-wrap; word-break: break-word; }
 .qn-card-m { display: flex; align-items: baseline; gap: 8px; margin-top: 7px; font-size: 10px; color: #b0b0b5; flex-wrap: wrap; }
 .qn-acts { margin-left: auto; display: flex; gap: 9px; flex-wrap: wrap; }
-.qn-acts button { background: none; border: none; cursor: pointer; font-size: 10px; color: #86868b; padding: 0; }
+.qn-acts button { background: none; border: none; cursor: pointer; font-size: 10px; color: #86868b; padding: 6px 1px; }
 .qn-acts button:hover { color: #3f7a4e; }
 .qn-tolast { color: #3f7a4e !important; font-weight: 700; font-size: 11px !important; }
 .qn-swap { font-size: 10px !important; padding: 0 2px !important; }

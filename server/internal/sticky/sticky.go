@@ -50,13 +50,29 @@ func handleList(c *gin.Context) {
 		return
 	}
 	if pid == 0 {
-		// 全局随手记：type=quick 未归档碎片（速记笔入口）
+		// 全局随手记：type=quick 未归档碎片（速记笔入口）；量大支持 q 搜索 + 分页
+		where := "user_id = ? AND project_id = 0 AND type = ?"
+		args := []interface{}{uid, "quick"}
+		if kw := c.Query("q"); kw != "" {
+			where += " AND content LIKE ?"
+			args = append(args, "%"+kw+"%")
+		}
+		var total int64
+		db.Model(&Note{}).Where(where, args...).Count(&total)
+		page, _ := strconv.Atoi(c.Query("page"))
+		if page < 1 {
+			page = 1
+		}
+		size, _ := strconv.Atoi(c.Query("page_size"))
+		if size < 1 || size > 200 {
+			size = 50
+		}
 		var quick []Note
-		db.Where("user_id = ? AND project_id = 0 AND type = ?", uid, "quick").Order("created_at DESC").Limit(200).Find(&quick)
+		db.Model(&Note{}).Where(where, args...).Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&quick)
 		if quick == nil {
 			quick = []Note{}
 		}
-		c.JSON(http.StatusOK, gin.H{"data": quick})
+		c.JSON(http.StatusOK, gin.H{"data": quick, "total": total})
 		return
 	}
 	var out []Note
