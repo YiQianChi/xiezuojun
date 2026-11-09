@@ -185,9 +185,6 @@
 
         <!-- ═══════════ 灵感页签：点子库 + AI 出走向 ═══════════ -->
         <template v-else-if="tab === 'insp'">
-          <div class="insp-add">
-            <input v-model="inspDraft" placeholder="剧情点子，回车保存" @keydown.enter="addInsp" />
-          </div>
           <div v-if="inspList.length === 0 && !genOut" class="context-empty">
             <div class="ctx-icon">💡</div>
             <div>灵感库还空着<br><span class="hint">想到什么写什么，卡文了让 AI 出走向</span></div>
@@ -248,6 +245,11 @@
             <div>检查 AI 味与敏感词<br><span class="hint">指数越低越像人写的</span></div>
           </div>
         </template>
+      </div>
+
+      <!-- 随手记：右栏底部常驻输入框，三个页签都在（Boss 2026-11：编辑器内就地记，不用悬浮笔/切页签） -->
+      <div class="qn-bar">
+        <input v-model="inspDraft" placeholder="随手记一句，回车存进灵感库…" @keydown.enter="addInsp" />
       </div>
     </div>
   </div>
@@ -533,6 +535,7 @@ async function addInsp() {
     const res = await stickyApi.create({ project_id: props.projectId, type: 'insp', content: v })
     inspList.value.unshift(res.data?.data)
     inspDraft.value = ''
+    toast.success('已记进灵感库')
   } catch { toast.error('保存失败') }
 }
 async function removeInsp(id: number) {
@@ -988,9 +991,11 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   margin-top: 4px;
 }
 /* ─── 灵感页签 ─── */
-.insp-add { padding: 2px 0 8px; }
-.insp-add input {
+/* ─── 随手记常驻条（三个页签共用，原灵感页签输入框迁来） ─── */
+.qn-bar { padding: 8px 12px 10px; border-top: 1px solid rgba(0, 0, 0, 0.05); flex-shrink: 0; }
+.qn-bar input {
   width: 100%;
+  box-sizing: border-box;
   border: 1px dashed var(--accent, #81bb8e);
   border-radius: 8px;
   padding: 7px 10px;
@@ -998,8 +1003,8 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   background: var(--bg-primary, #fff);
   outline: none;
 }
-.insp-add input:focus { border-style: solid; }
-.insp-add input::placeholder { color: var(--text-tertiary, #aeaeb2); }
+.qn-bar input:focus { border-style: solid; }
+.qn-bar input::placeholder { color: var(--text-tertiary, #aeaeb2); }
 .insp-item {
   border-left: 3px solid var(--accent, #81bb8e);
   background: rgba(129, 187, 142, 0.07);

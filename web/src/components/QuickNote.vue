@@ -1,6 +1,6 @@
 <template>
-  <!-- 全局随手记：右下速记笔（编辑器页也有，Boss 2026-11 要求；书内灵感页签管归档后的） -->
-  <div v-if="!open" class="qn-fab" :class="{ 'qn-fab-editor': onEditor }" title="随手记" @click="openCompose">
+  <!-- 全局随手记：非编辑器页右下速记笔（编辑器内用右栏底部常驻速记框，不重复） -->
+  <div v-if="!open" class="qn-fab" title="随手记" @click="openCompose">
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
   </div>
   <Teleport to="body">
@@ -97,13 +97,8 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import { stickyApi, projectApi } from '../core/api'
 import { toast } from '../composables/useToast'
-
-const route = useRoute()
-// 编辑器页 FAB 要抬到状态栏上方（桌面 44px），手机端状态栏为 0 维持原位
-const onEditor = computed(() => route.name === 'Editor')
 
 const DRAFT_KEY = 'xzj-quick-draft'
 const LAST_BOOK_KEY = 'xzj-quick-last-book'
@@ -282,10 +277,6 @@ async function del(it: { id: number }) {
   transition: transform .15s ease;
 }
 .qn-fab:hover { transform: scale(1.06); }
-/* 编辑器页：抬到 44px 状态栏上方，别盖住右下工具钮（仅桌面，手机状态栏为 0 维持原位） */
-@media (min-width: 769px) {
-  .qn-fab.qn-fab-editor { bottom: 64px; }
-}
 .qn-fab::after {
   content: ""; position: absolute; inset: -7px; border-radius: 50%;
   border: 1.5px solid rgba(129, 187, 142, .5);
