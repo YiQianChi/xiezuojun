@@ -1277,8 +1277,10 @@ interface UsedSetting {
   tokens: number
 }
 const usedSettings = ref<UsedSetting[]>([])
-const contextPanelOpen = ref(false) // 右侧参考面板默认收起，AI 操作时自动弹出
+const contextPanelOpen = ref(true) // 右栏工作台常驻展开（Boss 2026-11：桌面不要收起态）；false 仅在分屏占右缘时暂避
 const referencePanelOpen = ref(false) // 分屏（对等第二页）
+// 分屏关掉 → 右栏自动回来（SplitEditor @close 和 toggleReference 两条路都归这里管）
+watch(referencePanelOpen, (v) => { if (!v) contextPanelOpen.value = true })
 const splitW = ref(360) // 左右分屏面板宽（拖动调整，localStorage 记忆）
 const splitH = ref(400) // 上下分屏面板高
 try { splitH.value = Math.round(window.innerHeight * 0.45) } catch {}

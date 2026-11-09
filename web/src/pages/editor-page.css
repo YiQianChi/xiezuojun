@@ -1776,6 +1776,10 @@
    整块以 .editor-page 前缀隔离，回滚 = 删除本段。
    ===================================================================== */
 @media (min-width: 769px) {
+  /* Boss 定：桌面右栏工作台常驻展开，无收起态——收起条/左缘把手直接不渲染（手机抽屉不受影响） */
+  .editor-page .context-panel.collapsed { display: none !important; }
+  .editor-page :deep(.context-panel-toggle) { display: none !important; }
+
   /* 桌面：米宣纸色 + 细噪点（noise 在最底层，面板自带背景自然盖住） */
   .editor-page {
     background-image:
