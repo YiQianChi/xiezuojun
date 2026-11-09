@@ -64,8 +64,8 @@ import { isMiniProgramEnv } from './core/mp'
 
 const route = useRoute()
 
-// 速记笔只在「自己的日常面」出现：编辑器（有书内灵感页签）、登录/注册、阅读页、管理后台不出
-const quickNoteVisible = computed(() => !['Editor', 'Login', 'Register', 'Logout', 'Reader', 'Admin'].includes(String(route.name)))
+// 速记笔在登录/注册/阅读页/管理后台不出现；编辑器页也出现（Boss 2026-11 要求），FAB 抬高避开状态栏
+const quickNoteVisible = computed(() => !['Login', 'Register', 'Logout', 'Reader', 'Admin'].includes(String(route.name)))
 
 // 小程序 web-view：原生导航栏去不掉（官方限制），改为隐藏网页自己的顶栏只留一条栏；
 // --mp-safe-top/--mp-capsule-pad CSS 变量留作日后开放 custom 导航时用（现在恒为 0）
