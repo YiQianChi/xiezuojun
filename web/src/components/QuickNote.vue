@@ -59,16 +59,30 @@
                 <span>{{ fmtTime(it.created_at) }}</span>
                 <span class="qn-acts">
                   <button @click="copy(it.content)">复制</button>
-                  <button v-if="transferId !== it.id" @click="startTransfer(it)">转入某书</button>
-                  <template v-else>
-                    <button v-for="p in projects" :key="p.id" class="qn-bookopt" @click="doTransfer(it, p)">《{{ p.name }}》</button>
-                    <button @click="transferId = null">取消</button>
-                  </template>
+                  <button @click="startTransfer(it)">转入某书</button>
                   <button class="qn-del" @click="del(it)">删除</button>
                 </span>
               </div>
             </div>
           </div>
+          <!-- 选书面板：整行大按钮，避免内联小字难点击 -->
+          <Transition name="qn-sheet-up">
+            <div v-if="transferItem" class="qn-transfer">
+              <div class="qn-transfer-head">
+                <span>转入哪本书的灵感</span>
+                <button class="qn-transfer-x" @click="transferItem = null">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+              </div>
+              <div class="qn-transfer-list">
+                <p v-if="!projects.length" class="qn-picker-empty">还没有书</p>
+                <button v-for="p in projects" :key="p.id" class="qn-transfer-row" @click="doTransfer(transferItem, p)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#81bb8e" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                  {{ p.name }}
+                </button>
+              </div>
+            </div>
+          </Transition>
         </div>
       </div>
     </Transition>
@@ -94,7 +108,7 @@ const showPicker = ref(false)
 
 const items = ref<{ id: number; content: string; created_at: string }[]>([])
 const loadingList = ref(false)
-const transferId = ref<number | null>(null)
+const transferItem = ref<{ id: number } | null>(null)
 const quickCount = computed(() => items.value.length)
 
 function fmtTime(iso: string) {
@@ -139,7 +153,7 @@ function openList() {
 function close() {
   open.value = false
   showPicker.value = false
-  transferId.value = null
+  transferItem.value = null
 }
 
 watch(draft, v => {
@@ -171,7 +185,7 @@ function copy(text: string) {
 }
 
 function startTransfer(it: { id: number }) {
-  transferId.value = it.id
+  transferItem.value = it
   if (!projects.value.length) {
     projectApi.list().then(res => {
       projects.value = (res.data?.data || []).map((p: { id: number; name: string }) => ({ id: Number(p.id), name: p.name }))
@@ -179,11 +193,11 @@ function startTransfer(it: { id: number }) {
   }
 }
 
-async function doTransfer(it: { id: number; content: string }, p: { id: number; name: string }) {
+async function doTransfer(it: { id: number }, p: { id: number; name: string }) {
   try {
     await stickyApi.update(it.id, { project_id: p.id })
     items.value = items.value.filter(x => x.id !== it.id)
-    transferId.value = null
+    transferItem.value = null
     toast.success(`已转入《${p.name}》灵感——编辑器右栏可见`)
   } catch {
     toast.info('转入失败，稍后再试')
@@ -222,6 +236,7 @@ async function del(it: { id: number }) {
 .qn-sheet {
   width: 100%; max-width: 560px; background: #f7f7f5; border-radius: 20px 20px 0 0;
   display: flex; flex-direction: column; max-height: 92vh; padding-bottom: env(safe-area-inset-bottom);
+  position: relative; overflow: hidden;
 }
 @media (min-width: 700px) {
   .qn-overlay { align-items: center; padding: 20px; }
@@ -268,8 +283,31 @@ async function del(it: { id: number }) {
 .qn-acts { margin-left: auto; display: flex; gap: 9px; flex-wrap: wrap; }
 .qn-acts button { background: none; border: none; cursor: pointer; font-size: 10px; color: #86868b; padding: 0; }
 .qn-acts button:hover { color: #3f7a4e; }
-.qn-bookopt { color: #3f7a4e !important; font-weight: 600; }
 .qn-del:hover { color: #d06a5a !important; }
+
+/* 选书底部面板（转入某书）：整行 ≥44px 点击区 */
+.qn-transfer {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: #fff; border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, .14);
+  display: flex; flex-direction: column; max-height: 55%;
+}
+.qn-transfer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px 7px; font-size: 12px; font-weight: 700; color: #86868b;
+}
+.qn-transfer-x { background: none; border: none; color: #aeaeb2; cursor: pointer; padding: 4px; display: flex; }
+.qn-transfer-list { overflow-y: auto; padding: 0 8px calc(10px + env(safe-area-inset-bottom)); }
+.qn-transfer-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; cursor: pointer; text-align: left;
+  font-size: 14px; color: #33302a; padding: 13px 10px; min-height: 44px;
+  border-bottom: 1px solid #f2f2f4;
+}
+.qn-transfer-row:last-child { border-bottom: none; }
+.qn-transfer-row:hover { background: #f5f8f5; }
+.qn-sheet-up-enter-active, .qn-sheet-up-leave-active { transition: transform .2s ease; }
+.qn-sheet-up-enter-from, .qn-sheet-up-leave-to { transform: translateY(100%); }
 
 .qn-fade-enter-active, .qn-fade-leave-active { transition: opacity .16s ease; }
 .qn-fade-enter-from, .qn-fade-leave-to { opacity: 0; }
