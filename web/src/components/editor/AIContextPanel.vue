@@ -249,7 +249,7 @@
 
       <!-- 随手记：右栏底部常驻输入框，三个页签都在（Boss 2026-11：编辑器内就地记，不用悬浮笔/切页签） -->
       <div class="qn-bar">
-        <textarea v-model="inspDraft" rows="6" placeholder="随手记一句…回车存进灵感库，Shift+回车换行" @keydown.enter.exact.prevent="addInsp"></textarea>
+        <textarea v-model="inspDraft" rows="4" placeholder="随手记一句…点我就变大，回车存进灵感库，Shift+回车换行" @keydown.enter.exact.prevent="addInsp"></textarea>
       </div>
     </div>
   </div>
@@ -1005,7 +1005,10 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   outline: none;
   resize: none;
   font-family: inherit;
+  transition: min-height 0.18s ease;
 }
+/* PC 随手点：聚焦即撑到半屏高，写长也不挤；失焦收回底部条 */
+.qn-bar:focus-within textarea { min-height: 42vh; }
 .qn-bar textarea:focus { border-style: solid; }
 .qn-bar textarea::placeholder { color: var(--text-tertiary, #aeaeb2); }
 .insp-item {
