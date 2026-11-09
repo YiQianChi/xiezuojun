@@ -68,6 +68,7 @@
         @select-doc="onSelectDoc"
         @context-menu="openDocContextMenu"
         @drop-node="handleDropNode"
+        @drop-root="handleDropRoot"
         @add-doc-root="createDocAtRoot"
         @add-setting="createSettingAtRoot"
         @add-volume="createVolumeAtRoot"
@@ -267,9 +268,9 @@
       <!-- 审核模式 -->
       <ReviewView v-if="mode === 'review'" :project-id="projectId" @jump-to-source="handleReviewJump" @ai-fix="handleReviewAiFix" />
 
-      <!-- AI 选区工具栏（选择时） -->
+      <!-- AI 选区工具栏（选择时）。AI 全线暂下线（2026-11-09 Boss 指令），恢复=ENABLE_AI 改 true -->
       <div
-        v-if="aiToolbar.visible"
+        v-if="ENABLE_AI && aiToolbar.visible"
         class="ai-toolbar"
         :style="{ left: aiToolbar.x + 'px', top: aiToolbar.y + 'px' }"
       >
@@ -279,8 +280,8 @@
         <button @mousedown.prevent @click="prepareAIAction('expand')">扩写</button>
       </div>
 
-      <!-- AI 底部固定栏（方向输入 / 生成中 / 结果预览） -->
-      <div v-if="aiPhase !== 'idle'" class="ai-bottom-bar" :class="'phase-' + aiPhase">
+      <!-- AI 底部固定栏（方向输入 / 生成中 / 结果预览）。AI 暂下线，同上 -->
+      <div v-if="ENABLE_AI && aiPhase !== 'idle'" class="ai-bottom-bar" :class="'phase-' + aiPhase">
         <!-- 方向输入 -->
         <template v-if="aiPhase === 'inputting'">
           <button class="ai-icon-btn" @click="cancelInputting" aria-label="取消">
@@ -364,6 +365,7 @@
         :style="{ left: docContextMenu.x + 'px', top: docContextMenu.y + 'px' }"
       >
         <template v-if="docContextMenu.doc">
+          <div v-if="ctxNewItem" @click="doCtxNew">{{ ctxNewItem.label }}</div>
           <div @click="renameDoc">重命名</div>
           <div v-if="!isFolderNode(docContextMenu.doc)" class="submenu-trigger">
             标记为 ▸
@@ -379,10 +381,15 @@
           <div @click="deleteDoc" class="danger">删除</div>
         </template>
         <template v-else>
-          <div @click="newDocUnder('chapter')">新建章节</div>
-          <div @click="newDocUnder('volume')">新建卷</div>
-          <div @click="createSpecialChapter('楔子'); closeDocContextMenu()">新建楔子</div>
-          <div @click="createSpecialChapter('番外'); closeDocContextMenu()">新建番外</div>
+          <template v-if="docContextMenu.zone === 'related'">
+            <div @click="newSettingFromMenu">新建设定</div>
+          </template>
+          <template v-else>
+            <div @click="newDocUnder('chapter')">新建章节</div>
+            <div @click="newDocUnder('volume')">新建卷</div>
+            <div @click="createSpecialChapter('楔子'); closeDocContextMenu()">新建楔子</div>
+            <div @click="createSpecialChapter('番外'); closeDocContextMenu()">新建番外</div>
+          </template>
         </template>
       </div>
     </div>
@@ -447,7 +454,8 @@
         </button>
         <div class="toolbox-popup" v-show="toolboxOpen" @click.stop>
           <div class="toolbox-grid">
-            <button class="tool-btn" :class="{ active: memoryOpen }" @click="memoryOpen = !memoryOpen; toolboxOpen = false">
+            <!-- AI 暂下线（2026-11-09）：记忆(AI 记忆)与 AI 对话入口收起，恢复=ENABLE_AI 改 true -->
+            <button v-if="ENABLE_AI" class="tool-btn" :class="{ active: memoryOpen }" @click="memoryOpen = !memoryOpen; toolboxOpen = false">
               <span class="tool-icon">🧠</span>
               <span class="tool-label">记忆</span>
             </button>
@@ -460,7 +468,7 @@
               <span class="tool-icon">Aa</span>
               <span class="tool-label">显示</span>
             </button>
-            <button class="tool-btn" :class="{ active: chatOpen }" @click="chatOpen = !chatOpen; toolboxOpen = false">
+            <button v-if="ENABLE_AI" class="tool-btn" :class="{ active: chatOpen }" @click="chatOpen = !chatOpen; toolboxOpen = false">
               <span class="tool-icon">💬</span>
               <span class="tool-label">AI对话</span>
             </button>
@@ -507,7 +515,7 @@
     />
 
     <!-- 工具箱面板：记忆/伏笔/回收站/统计/AI对话（从状态栏触发，弹窗位置统一） -->
-    <div v-if="memoryOpen" class="panel-popup memory-popup" @click.stop>
+    <div v-if="ENABLE_AI && memoryOpen" class="panel-popup memory-popup" @click.stop>
       <div class="panel-head"><span>🧠 记忆</span><button @click="memoryOpen = false">✕</button></div>
       <MemoryPanel :project-id="String(projectId)" />
     </div>
@@ -519,7 +527,7 @@
       <div class="panel-head"><span>📊 写作统计</span><button @click="statsOpen = false">✕</button></div>
       <WritingStatsPanel :project-id="projectId" />
     </div>
-    <div v-if="chatOpen" class="panel-popup chat-popup" @click.stop>
+    <div v-if="ENABLE_AI && chatOpen" class="panel-popup chat-popup" @click.stop>
       <div class="panel-head"><span>💬 AI 对话</span><button @click="chatOpen = false">✕</button></div>
       <AIChatPanel :project-id="projectId" />
     </div>
@@ -878,10 +886,12 @@ const draftBanner = ref<{ docId: number; text: string } | null>(null)
 
 // E1: 场景导航已下线（Boss 2026-10-23：没啥用，按钮+快捷键+功能全清）
 
+// AI 全线暂下线（2026-11-09 Boss 指令：暂时不接入 AI，润色/改写/续写/自检/AI对话/记忆全藏，代码保留可恢复）
+const ENABLE_AI = false
 const contextMenu = ref({ visible: false, x: 0, y: 0 })
 // ponytail: 右键时编辑器会失焦丢选区，打开菜单前缓存
 let cachedSelection: { text: string; start: number; end: number } | null = null
-const docContextMenu = ref({ visible: false, x: 0, y: 0, doc: null as any })
+const docContextMenu = ref({ visible: false, x: 0, y: 0, doc: null as any, zone: 'chapters' as 'chapters' | 'related' })
 const showCreateDocModal = ref(false)
 const newDocName = ref('')
 const createDocType = ref<string>('chapter')
@@ -889,12 +899,16 @@ const createDocParent = ref<number | null>(null)
 const createDocFolderTypeOptions = computed(() => {
   // 只有「新建设定」弹窗需要选类型；卷/章节的弹窗都是单一用途
   if (createDocType.value !== 'setting') return undefined
+  // 大纲/人物/世界观每书一份（后端幂等），已存在的不再给选项——否则点了「创建」树里不多东西
+  // 章节大纲例外：长篇会拆多个细纲文件，始终可建
+  const existing = new Set(documents.value.filter(d => !d.parent_id).map(d => d.type))
   return [
     { value: 'outline', label: '📋 大纲' },
     { value: 'characters', label: '👥 人物' },
     { value: 'worldbuilding', label: '🌍 世界观' },
     { value: 'chapter_outline', label: '📑 章节大纲' },
-  ]
+    { value: 'note', label: '📄 笔记' },
+  ].filter(o => o.value === 'note' || o.value === 'chapter_outline' || !existing.has(o.value))
 })
 
 // 文件夹属性弹窗
@@ -2301,18 +2315,44 @@ async function createDoc(folderType?: string) {
   }
 }
 
-function openDocContextMenu(e: MouseEvent, doc: any) {
+function openDocContextMenu(e: MouseEvent, doc: any, zone?: 'chapters' | 'related') {
   docContextMenu.value = {
     visible: true,
     x: e.clientX,
     y: e.clientY,
-    doc
+    doc,
+    // 节点右键的区由类型推导（volume/chapter=正文），空白右键由侧栏传当前 tab
+    zone: doc ? (isChapterType(doc.type) ? 'chapters' : 'related') : (zone || 'chapters')
   }
   document.addEventListener('click', closeDocContextMenu, { once: true })
 }
 
 function closeDocContextMenu() {
   docContextMenu.value.visible = false
+}
+
+// 节点右键的「新建」项：卷→卷内章节；章节→同级章节；人物/角色卡→角色；其余设定→同级设定
+const ctxNewItem = computed(() => {
+  const doc = docContextMenu.value.doc
+  if (!doc) return null
+  if (doc.type === 'volume') return { label: '在此卷新建章节', parentId: doc.id as number, type: 'chapter' }
+  if (doc.type === 'chapter') return { label: '新建同级章节', parentId: (doc.parent_id || null) as number | null, type: 'chapter' }
+  if (doc.type === 'characters') return { label: '新建角色', parentId: doc.id as number, type: 'character' }
+  if (doc.type === 'character') return { label: '新建角色', parentId: (doc.parent_id || null) as number | null, type: 'character' }
+  return { label: '新建设定', parentId: null as number | null, type: 'setting' }
+})
+
+function doCtxNew() {
+  const item = ctxNewItem.value
+  if (!item) return
+  closeDocContextMenu()
+  openCreateDocModal(item.parentId, item.type)
+}
+
+// 作品相关空白右键=新建设定
+function newSettingFromMenu() {
+  closeDocContextMenu()
+  openCreateDocModal(null, 'setting')
 }
 
 // ponytail: 底部按钮固定根目录新建
@@ -2537,6 +2577,20 @@ async function handleDropNode(srcId: number, dstId: number, position: 'before' |
       parent_id: newParentId !== null ? String(newParentId) : null,
       sort_order: newSortOrder,
     })
+    await loadDocs()
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '移动失败')
+  }
+}
+
+// 拖到树空白区=移出到根级（出卷/出人物容器的唯一拖拽出口）
+async function handleDropRoot(srcId: number) {
+  const src = documents.value.find(d => d.id === srcId)
+  if (!src || !src.parent_id) return
+  const roots = documents.value.filter(d => !d.parent_id)
+  const sort = roots.reduce((m, d) => Math.max(m, d.sort_order || 0), 0) + 1
+  try {
+    await documentApi.move(srcId, { parent_id: null, sort_order: sort })
     await loadDocs()
   } catch (e: any) {
     toast.error(e.response?.data?.error || '移动失败')

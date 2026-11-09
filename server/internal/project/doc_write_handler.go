@@ -11,8 +11,9 @@ import (
 )
 
 // 设定类容器：每本书只允许一份的类型（前端「初始化默认结构」按这份清单建）
+// chapter_outline 不在此列——长篇会按卷/条线拆多个章纲文件（Boss 2026-11-09）
 var settingSingletonTypes = map[string]bool{
-	"outline": true, "characters": true, "worldbuilding": true, "chapter_outline": true,
+	"outline": true, "characters": true, "worldbuilding": true,
 }
 
 // CreateDocument 创建文档

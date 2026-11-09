@@ -5,7 +5,7 @@
       <div class="welcome-card" @click.stop>
         <div class="welcome-icon">🎓</div>
         <div class="welcome-title">欢迎来到写作菌</div>
-        <div class="welcome-desc">花 1 分钟了解编辑器的核心功能，快速上手 AI 辅助写作。</div>
+        <div class="welcome-desc">花 1 分钟了解编辑器的核心功能，快速上手。</div>
         <div class="welcome-actions">
           <button class="welcome-later" @click="dismissPrompt">以后再说</button>
           <button class="welcome-go" @click="startGuide">开始引导</button>
@@ -119,17 +119,14 @@ interface Step {
   features?: Feature[]; isDemo?: boolean; isLast?: boolean;
 }
 
-// Steps 1-3: highlight real DOM. Step 4: AI demo overlay.（构思模式已删，原第2步撤）
+// Steps 高亮真实 DOM。AI 演示两步已随 AI 下线摘掉（2026-11-09），恢复时从 git 找回
 const allSteps: Step[] = [
-  { badge: '第 1 步 / 共 4 步', title: '左侧栏：设定 + 文章', desc: '左侧分两个区域，所有创作素材和正文章节都在这里管理。',
+  { badge: '第 1 步 / 共 2 步', title: '左侧栏：设定 + 文章', desc: '左侧分两个区域，所有创作素材和正文章节都在这里管理。',
     selector: '.doc-tree', placement: 'right',
     features: [{ icon:'📋', bg:'#f7f4f1', name:'设定区', desc:'放创作素材：大纲、人物设定、世界观' },{ icon:'📖', bg:'#fff', name:'文章区', desc:'按章节组织的正文，点击即写' }] },
-  { badge: '第 2 步 / 共 4 步', title: '顶栏工具：专注 · 更多(⋯)', desc: '绿色按钮进入专注；主题/分屏/版本功能都在 ⋯ 菜单里。',
-    selector: '.header-actions', placement: 'bottom',
+  { badge: '第 2 步 / 共 2 步', title: '顶栏工具：专注 · 更多(⋯)', desc: '绿色按钮进入专注；主题/分屏/版本功能都在 ⋯ 菜单里。',
+    selector: '.header-actions', placement: 'bottom', isLast: true,
     features: [{ icon:'⬜', bg:'#007aff15', name:'专注模式', desc:'隐藏侧栏，全屏写作' },{ icon:'📖', bg:'#007aff15', name:'分屏', desc:'⋯ 菜单里：左边写正文，右边开另一章对照，两边都能编辑' },{ icon:'⏱', bg:'#007aff15', name:'版本历史', desc:'⋯ 菜单里：随时回到任意历史版本' }] },
-  { badge: '第 3 步 / 共 4 步', title: '编辑区：选中文字唤起 AI', desc: '中间是正文编辑区。选中任意文字，上方会弹出 AI 工具栏。接下来演示完整流程：',
-    selector: '.editor-wrapper', placement: 'right', isLast: true },
-  { badge: '第 4 步 / 共 4 步', title: 'AI 写作辅助演示', desc: '选中文字 → 选操作 → 输入方向 → AI 生成 → 采用/丢弃', isDemo: true },
 ]
 
 const currentStepData = computed(() => allSteps[currentStep.value] || {})

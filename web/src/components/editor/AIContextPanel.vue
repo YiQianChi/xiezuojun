@@ -3,12 +3,12 @@
     <div
       class="context-panel-toggle"
       @click="$emit('update:open', !open)"
-      :title="open ? '收起' : '展开设定 / 灵感 / 自检'"
+      :title="open ? '收起' : (ENABLE_AI ? '展开设定 / 灵感 / 自检' : '展开设定 / 灵感')"
     >
       <svg v-if="open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
       <template v-else>
         <!-- 方案一·瘦身：收起态常驻竖排文字，让右栏工作台可被发现（手机端 CSS 隐藏，保留箭头） -->
-        <span class="cpt-label">📖 设定 · 灵感 · 自检</span>
+        <span class="cpt-label">{{ ENABLE_AI ? '📖 设定 · 灵感 · 自检' : '📖 设定 · 灵感' }}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
       </template>
     </div>
@@ -24,7 +24,8 @@
       <div class="panel-tabs">
         <button :class="{ on: tab === 'set' }" @click="switchTab('set')">📖 设定</button>
         <button :class="{ on: tab === 'insp' }" @click="switchTab('insp')">💡 灵感</button>
-        <button :class="{ on: tab === 'chk' }" @click="switchTab('chk')">🛡 自检</button>
+        <!-- AI 全线暂下线（2026-11-09 Boss 指令），自检恢复时删 v-if -->
+        <button v-if="ENABLE_AI" :class="{ on: tab === 'chk' }" @click="switchTab('chk')">🛡 自检</button>
       </div>
 
       <div class="context-body">
@@ -187,7 +188,7 @@
         <template v-else-if="tab === 'insp'">
           <div v-if="inspList.length === 0 && !genOut" class="context-empty">
             <div class="ctx-icon">💡</div>
-            <div>灵感库还空着<br><span class="hint">想到什么写什么，卡文了让 AI 出走向</span></div>
+            <div>灵感库还空着<br><span class="hint">想到什么写什么，底部输入框回车即存</span></div>
           </div>
           <div v-for="n in inspList" :key="n.id" class="insp-item">
             <div class="insp-text">{{ n.content }}</div>
@@ -199,7 +200,7 @@
               </span>
             </div>
           </div>
-          <button class="insp-gen" :disabled="genLoading" @click="genIdeas">
+          <button v-if="ENABLE_AI" class="insp-gen" :disabled="genLoading" @click="genIdeas">
             {{ genLoading ? 'AI 正在想…' : '✦ 卡文了？AI 出 3 个走向' }}
           </button>
           <div v-if="genOut" class="insp-item ai">
@@ -298,10 +299,13 @@ const THREAD_TYPE_LABELS: Record<string, string> = {
 const SEVERITY_LABELS: Record<string, string> = { high: '重', mid: '中', low: '轻' }
 
 /* ─── 页签（localStorage 记忆） ─── */
+// AI 全线暂下线（2026-11-09 Boss 指令：AI 只留代码不接入，恢复=改 true + 删各处 v-if）
+const ENABLE_AI = false
 const tab = ref<'set' | 'insp' | 'chk'>('set')
 try {
   const saved = localStorage.getItem('xzj-wb-tab')
-  if (saved === 'insp' || saved === 'chk' || saved === 'set') tab.value = saved
+  if (saved === 'insp' || saved === 'set') tab.value = saved
+  else if (saved === 'chk' && ENABLE_AI) tab.value = saved
 } catch { /* ignore */ }
 function switchTab(t: 'set' | 'insp' | 'chk') {
   tab.value = t

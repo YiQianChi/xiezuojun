@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    <div class="tree-list" @contextmenu.prevent="$emit('context-menu', $event, null)">
+    <div class="tree-list" @contextmenu.prevent="$emit('context-menu', $event, null, sideTab)" @dragover.prevent @drop.prevent="onBlankDrop">
       <div v-if="loadingDocs" class="tree-loading">加载中...</div>
       <div v-else-if="settingRootNodes.length === 0 && articleRootNodes.length === 0" class="tree-empty">
         还没有文档<br>
@@ -246,11 +246,12 @@ function saveGoal() {
   }
 }
 
-defineEmits<{
+const emit = defineEmits<{
   'init-default': []
   'select-doc': [node: any]
-  'context-menu': [e: MouseEvent, node: any]
+  'context-menu': [e: MouseEvent, node: any, zone?: 'chapters' | 'related']
   'drop-node': [srcId: number, dstId: number, position: 'before' | 'after' | 'inside']
+  'drop-root': [srcId: number]
   'add-doc-root': []
   'add-setting': []
   'add-volume': []
@@ -261,7 +262,14 @@ defineEmits<{
   'cycle-status': [node: any]
   'goal-lock': [remaining: number]
   'open-trash': []
-}>()</script>
+}>()
+
+// 空白区落点=移到根级（行内节点有自己的 drop，落在 .tree-row 里的不拦）
+function onBlankDrop(e: DragEvent) {
+  if ((e.target as HTMLElement).closest('.tree-row')) return
+  const srcId = Number(e.dataTransfer?.getData('text/plain'))
+  if (srcId) emit('drop-root', srcId)
+}</script>
 
 <style scoped>
 /* ===== 方案B：左栏双 Tab ===== */
