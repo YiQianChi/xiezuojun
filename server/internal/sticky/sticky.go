@@ -25,6 +25,13 @@ type Note struct {
 
 var db *gorm.DB
 
+// ownProject 书存在且属于本人（转入/挂书校验，防孤儿速记）
+func ownProject(uid string, pid uint) bool {
+	var cnt int64
+	db.Table("projects").Where("id = ? AND user_id = ? AND status = 1", pid, uid).Count(&cnt)
+	return cnt > 0
+}
+
 // SetDB 注入（main 启动时；AutoMigrate 由 main 统一做）
 func SetDB(d *gorm.DB) { db = d }
 
@@ -85,6 +92,10 @@ func handleCreate(c *gin.Context) {
 	if req.Type == "quick" {
 		req.ProjectID = 0
 	}
+	if req.ProjectID > 0 && !ownProject(uid, req.ProjectID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "project not found"})
+		return
+	}
 	switch req.Color {
 	case "y", "b", "g":
 	default:
@@ -112,6 +123,11 @@ func handleUpdate(c *gin.Context) {
 	_ = c.ShouldBindJSON(&req)
 	updates := map[string]interface{}{}
 	if req.ProjectID != nil && *req.ProjectID > 0 {
+		// 转入某书=变该书灵感；书必须存在且属于本人，防孤儿数据
+		if !ownProject(uid, *req.ProjectID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "project not found"})
+			return
+		}
 		updates["project_id"] = *req.ProjectID
 		updates["type"] = "insp"
 	}
