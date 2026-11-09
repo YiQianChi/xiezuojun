@@ -94,7 +94,8 @@ const children = computed(() => {
 })
 
 // ponytail: 设定区平铺后只有卷是容器；characters（人物）是第二个容器——角色卡（character 类型）挂它下面
-const isFolder = computed(() => props.node.type === 'volume' || props.node.type === 'characters')
+// chapter_outline（章节大纲）是第三个容器——章纲文件（note 类型）挂它下面（2026-11-09）
+const isFolder = computed(() => props.node.type === 'volume' || props.node.type === 'characters' || props.node.type === 'chapter_outline')
 
 const nodeIcon = computed(() => {
   // ponytail: 用户自选图标优先，否则按 type 默认
@@ -149,6 +150,7 @@ const childLabel = computed(() => {
   const t = props.node.type
   if (t === 'volume') return '章节'
   if (t === 'characters') return '角色'
+  if (t === 'chapter_outline') return '章纲'
   return '设定'
 })
 

@@ -78,7 +78,8 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		}
 	}
 
-	// 设定区平铺后只有卷（volume）能当父级；character 例外——只许挂在 characters（人物）节点下
+	// 设定区平铺后只有卷（volume）能当父级；两个例外：
+	// character 只许挂 characters（人物）下；章纲文件（note）只许挂 chapter_outline 容器下（2026-11-09 章纲改文件夹制）
 	if req.ParentID != nil && *req.ParentID > 0 {
 		var parent model.Document
 		if err := h.db.First(&parent, *req.ParentID).Error; err == nil {
@@ -86,7 +87,9 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "角色卡只能建在「人物」下"})
 				return
 			}
-			if req.Type != "character" && parent.Type != "volume" {
+			if req.Type == "note" && parent.Type == "chapter_outline" {
+				// 放行：章纲文件
+			} else if req.Type != "character" && parent.Type != "volume" {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "只有卷下面才能新建内容"})
 				return
 			}

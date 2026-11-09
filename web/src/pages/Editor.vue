@@ -899,8 +899,8 @@ const createDocParent = ref<number | null>(null)
 const createDocFolderTypeOptions = computed(() => {
   // 只有「新建设定」弹窗需要选类型；卷/章节的弹窗都是单一用途
   if (createDocType.value !== 'setting') return undefined
-  // 大纲/人物/世界观每书一份（后端幂等），已存在的不再给选项——否则点了「创建」树里不多东西
-  // 章节大纲例外：长篇会拆多个细纲文件，始终可建
+  // 大纲/人物/世界观/章节大纲(容器)每书一份，已存在的不再给选项——否则点了「创建」树里不多东西
+  // 章纲文件走「章节大纲」文件夹内的 ＋ 新建，不在此弹窗
   const existing = new Set(documents.value.filter(d => !d.parent_id).map(d => d.type))
   return [
     { value: 'outline', label: '📋 大纲' },
@@ -908,7 +908,7 @@ const createDocFolderTypeOptions = computed(() => {
     { value: 'worldbuilding', label: '🌍 世界观' },
     { value: 'chapter_outline', label: '📑 章节大纲' },
     { value: 'note', label: '📄 笔记' },
-  ].filter(o => o.value === 'note' || o.value === 'chapter_outline' || !existing.has(o.value))
+  ].filter(o => o.value === 'note' || !existing.has(o.value))
 })
 
 // 文件夹属性弹窗
@@ -2338,6 +2338,7 @@ const ctxNewItem = computed(() => {
   if (doc.type === 'volume') return { label: '在此卷新建章节', parentId: doc.id as number, type: 'chapter' }
   if (doc.type === 'chapter') return { label: '新建同级章节', parentId: (doc.parent_id || null) as number | null, type: 'chapter' }
   if (doc.type === 'characters') return { label: '新建角色', parentId: doc.id as number, type: 'character' }
+  if (doc.type === 'chapter_outline') return { label: '新建章纲', parentId: doc.id as number, type: 'note' }
   if (doc.type === 'character') return { label: '新建角色', parentId: (doc.parent_id || null) as number | null, type: 'character' }
   return { label: '新建设定', parentId: null as number | null, type: 'setting' }
 })
@@ -2407,6 +2408,11 @@ function createDocInFolder(folder: any) {
     openCreateDocModal(folder.id, 'character')
     return
   }
+  // 章节大纲节点：+ = 新建章纲文件（note 挂容器下，标题自由：卷一细纲/支线纲…）
+  if (folder.type === 'chapter_outline') {
+    openCreateDocModal(folder.id, 'note')
+    return
+  }
   const type = isChapterType(folder.type) ? 'chapter' : 'note'
   openCreateDocModal(folder.id, type)
 }
@@ -2447,8 +2453,9 @@ async function onCharTitleUpdate(title: string) {
 
 // ponytail: 判断是否文件夹容器——folder=设定文件夹, volume=文章文件夹, 其他设定类型也可展开
 // ponytail: 设定区平铺后卷+characters（人物）是容器——角色卡挂人物下（2026-10-27）
+// chapter_outline（章节大纲）2026-11-09 起也是容器——章纲文件（note）挂它下面，长篇按卷/条线拆多份
 function isFolderNode(doc: any): boolean {
-  return doc.type === 'volume' || doc.type === 'characters'
+  return doc.type === 'volume' || doc.type === 'characters' || doc.type === 'chapter_outline'
 }
 
 // 右键文件夹 → 属性
