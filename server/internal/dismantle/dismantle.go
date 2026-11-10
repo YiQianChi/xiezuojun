@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -77,8 +78,14 @@ var (
 	aiClient *ai.Client
 )
 
-func SetDB(d *gorm.DB)     { db = d }
-func SetAI(c *ai.Client)   { aiClient = c }
+func SetDB(d *gorm.DB) {
+	db = d
+	// 启动自愈：上次运行中服务重启会把 goroutine 一起带走，extracting 永远卡住——标 failed 让用户删了重传
+	db.Model(&Book{}).Where("status = ?", "extracting").Updates(map[string]interface{}{
+		"status": "failed", "error": "服务重启中断，请删除后重新上传",
+	})
+}
+func SetAI(c *ai.Client) { aiClient = c }
 
 const (
 	maxBooksPerProject   = 5
@@ -348,9 +355,12 @@ func complete(prompt string) (string, error) {
 	if aiClient == nil {
 		return "", fmt.Errorf("ai client not configured")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
-	return aiClient.Complete(ctx, dismantleModel(), []ai.Message{{Role: "user", Content: prompt}})
+	// thinking=disabled：拆书是摘要活不需要深度思考，出字快数倍（705章实测单线程要3小时+）
+	return aiClient.CompleteExtra(ctx, dismantleModel(), []ai.Message{{Role: "user", Content: prompt}}, map[string]interface{}{
+		"thinking": map[string]string{"type": "disabled"},
+	})
 }
 
 var jsonFenceRe = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)```")
@@ -364,7 +374,8 @@ type chapterExtract struct {
 	} `json:"anno"`
 }
 
-// runExtract 逐章摘要+标注 → 汇总五件套。进度按章推进，失败标记 status=failed（可删可重拆）。
+// runExtract 并发逐章摘要+标注 → 汇总五件套。进度按章推进；单章失败降级为截断摘要不中断。
+// shortcut: 摘要结果只在内存聚合，服务重启即丢——重启自愈会把 extracting 标记为 failed 让用户重传，断点续拆等真需要再做
 func runExtract(book *Book) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -380,15 +391,26 @@ func runExtract(book *Book) {
 	}
 
 	type chSum struct{ idx int; title, summary string }
-	sums := make([]chSum, 0, len(chapters))
+	sums := make([]chSum, len(chapters))
 	annoRows := make([]Annotation, 0)
+	var mu sync.Mutex
+	done := int64(0)
 
-	for i, ch := range chapters {
-		content := ch.Content
-		if len([]rune(content)) > chapterPromptRunes {
-			content = string([]rune(content)[:chapterPromptRunes])
-		}
-		prompt := fmt.Sprintf(`你是资深网文拆书编辑。对下面的小说章节做拆解。
+	// 并发 6 路（单线程 705 章要 3 小时+；seed 模型关思考后单章数秒）
+	const workers = 6
+	idxCh := make(chan int)
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range idxCh {
+				ch := chapters[i]
+				content := ch.Content
+				if len([]rune(content)) > chapterPromptRunes {
+					content = string([]rune(content)[:chapterPromptRunes])
+				}
+				prompt := fmt.Sprintf(`你是资深网文拆书编辑。对下面的小说章节做拆解。
 只输出一个 JSON 对象（不要 markdown 代码块、不要解释），格式：
 {"summary":"100字以内的剧情摘要","anno":[{"kind":"钩子|手法|意象|节奏","title":"8字内小标题","note":"60字内说明，写可复用的写作技法"}]}
 anno 数组 0~3 条，只挑真正值得学的，没有就给空数组。
@@ -396,41 +418,58 @@ anno 数组 0~3 条，只挑真正值得学的，没有就给空数组。
 章节标题：%s
 
 %s`, ch.Title, content)
-		raw, err := complete(prompt)
-		if err != nil {
-			log.Printf("[dismantle] chapter %d failed book=%d: %v", ch.Idx, book.ID, err)
-			// 单章失败不终止：降级为截断摘要
-			sums = append(sums, chSum{ch.Idx, ch.Title, truncateRunes(ch.Content, 80)})
-			db.Model(&Book{}).Where("id = ?", book.ID).Update("progress", (i+1)*100/len(chapters))
-			continue
-		}
-		var ex chapterExtract
-		body := strings.TrimSpace(raw)
-		if m := jsonFenceRe.FindStringSubmatch(body); m != nil {
-			body = strings.TrimSpace(m[1])
-		}
-		if s := strings.Index(body, "{"); s >= 0 {
-			if e := strings.LastIndex(body, "}"); e > s {
-				body = body[s : e+1]
-			}
-		}
-		if err := json.Unmarshal([]byte(body), &ex); err != nil || strings.TrimSpace(ex.Summary) == "" {
-			sums = append(sums, chSum{ch.Idx, ch.Title, truncateRunes(raw, 100)})
-		} else {
-			sums = append(sums, chSum{ch.Idx, ch.Title, ex.Summary})
-			for _, a := range ex.Anno {
-				kind := a.Kind
-				switch kind {
-				case "钩子", "手法", "意象", "节奏":
-				default:
-					kind = "手法"
+				var s chSum
+				raw, err := complete(prompt)
+				if err != nil {
+					log.Printf("[dismantle] chapter %d failed book=%d: %v", ch.Idx, book.ID, err)
+					s = chSum{ch.Idx, ch.Title, truncateRunes(ch.Content, 80)}
+				} else {
+					var ex chapterExtract
+					body := strings.TrimSpace(raw)
+					if m := jsonFenceRe.FindStringSubmatch(body); m != nil {
+						body = strings.TrimSpace(m[1])
+					}
+					if s0 := strings.Index(body, "{"); s0 >= 0 {
+						if e := strings.LastIndex(body, "}"); e > s0 {
+							body = body[s0 : e+1]
+						}
+					}
+					if err := json.Unmarshal([]byte(body), &ex); err != nil || strings.TrimSpace(ex.Summary) == "" {
+						s = chSum{ch.Idx, ch.Title, truncateRunes(raw, 100)}
+					} else {
+						s = chSum{ch.Idx, ch.Title, ex.Summary}
+						localAnnos := make([]Annotation, 0)
+						for _, a := range ex.Anno {
+							kind := a.Kind
+							switch kind {
+							case "钩子", "手法", "意象", "节奏":
+							default:
+								kind = "手法"
+							}
+							localAnnos = append(localAnnos, Annotation{BookID: book.ID, ChapterIdx: ch.Idx,
+								Kind: kind, Title: truncateRunes(a.Title, 40), Note: truncateRunes(a.Note, 300)})
+						}
+						if len(localAnnos) > 0 {
+							mu.Lock()
+							annoRows = append(annoRows, localAnnos...)
+							mu.Unlock()
+						}
+					}
 				}
-				annoRows = append(annoRows, Annotation{BookID: book.ID, ChapterIdx: ch.Idx,
-					Kind: kind, Title: truncateRunes(a.Title, 40), Note: truncateRunes(a.Note, 300)})
+				mu.Lock()
+				sums[i] = s
+				done++
+				cur := int(done)
+				mu.Unlock()
+				db.Model(&Book{}).Where("id = ?", book.ID).Update("progress", cur*100/len(chapters))
 			}
-		}
-		db.Model(&Book{}).Where("id = ?", book.ID).Update("progress", (i+1)*100/len(chapters))
+		}()
 	}
+	for i := range chapters {
+		idxCh <- i
+	}
+	close(idxCh)
+	wg.Wait()
 
 	// 章节摘要拼接文本（五件套的原料）
 	var sb strings.Builder

@@ -104,9 +104,17 @@ func (c *Client) Stream(ctx context.Context, model string, messages []Message) (
 
 // Complete 非流式请求
 func (c *Client) Complete(ctx context.Context, model string, messages []Message) (string, error) {
+	return c.CompleteExtra(ctx, model, messages, nil)
+}
+
+// CompleteExtra 非流式 + 附加请求参数（如 thinking.type=disabled 走快出通道）
+func (c *Client) CompleteExtra(ctx context.Context, model string, messages []Message, extra map[string]interface{}) (string, error) {
 	payload := map[string]interface{}{
 		"model":    model,
 		"messages": toAPIMessages(messages),
+	}
+	for k, v := range extra {
+		payload[k] = v
 	}
 
 	body, _ := json.Marshal(payload)
