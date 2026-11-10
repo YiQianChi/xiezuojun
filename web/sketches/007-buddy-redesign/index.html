@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>搭子浮窗重设计 · 三方案</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:'SF Pro Display','PingFang SC',-apple-system,sans-serif; background:#2b2b2e; min-height:100vh; }
+  .stage { max-width:390px; margin:0 auto; padding:14px 0 40px; }
+  /* ── 方案切换 ── */
+  .tabs { display:flex; gap:8px; padding:10px 12px 14px; position:sticky; top:0; background:#2b2b2e; z-index:99; }
+  .tabs button { flex:1; border:1px solid #4a4a4e; background:#333336; color:#ccc; padding:8px 0; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; }
+  .tabs button.on { background:#6aa877; border-color:#6aa877; color:#fff; }
+  h1 { color:#eee; font-size:15px; padding:0 14px 4px; font-weight:700; }
+  .sub { color:#999; font-size:11.5px; padding:0 14px 14px; line-height:1.7; }
+  /* ── 手机画布：模拟编辑器 ── */
+  .phone { position:relative; width:358px; height:700px; margin:0 auto; background:#f7f3ea; border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,.5); }
+  .paper { padding:20px 22px; color:#3a3a3a; font-size:13px; line-height:2.05; }
+  .paper p { text-indent:2em; margin-bottom:10px; }
+  .paper .cur { border-right:2px solid #6aa877; }
+  .topbar { position:absolute; top:0; left:0; right:0; height:44px; background:rgba(255,255,255,.92); display:flex; align-items:center; padding:0 14px; font-size:14px; font-weight:600; color:#333; box-shadow:0 1px 4px rgba(0,0,0,.05); z-index:5; }
+  .topbar .back { color:#86868b; margin-right:8px; font-size:16px; }
+  .chapnav { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,.95); border-radius:999px; box-shadow:0 3px 14px rgba(0,0,0,.14); display:flex; align-items:center; height:42px; padding:0 4px; z-index:6; }
+  .chapnav button { width:36px; height:36px; border:none; background:transparent; border-radius:50%; font-size:18px; color:#555; cursor:pointer; }
+  .chapnav .cn-name { font-size:12.5px; font-weight:600; color:#333; max-width:150px; }
+  .statusbar { position:absolute; bottom:0; left:0; right:0; height:30px; background:#eee7d8; display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:0 12px; font-size:10px; color:#86868b; z-index:4; }
+  /* 键盘模拟层 */
+  .kbd { position:absolute; bottom:0; left:0; right:0; height:260px; background:#d4d0c8; z-index:50; display:none; padding:8px 6px; }
+  .kbd.show { display:block; }
+  .kbd-row { display:flex; gap:4px; margin-bottom:6px; justify-content:center; }
+  .kbd-row span { width:28px; height:34px; background:#fff; border-radius:5px; box-shadow:0 1px 2px rgba(0,0,0,.2); font-size:11px; display:flex; align-items:center; justify-content:center; color:#555; }
+  .kbd-row.space span { width:140px; }
+  .toggle-kbd { position:absolute; top:52px; right:10px; z-index:98; background:#c9a34e; color:#fff; border:none; border-radius:8px; padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer; }
+  svg { display:block; }
+
+  /* ═══════════ 方案A：右缘贴条 + 侧滑抽屉 ═══════════ */
+  .a-tab { position:absolute; right:0; top:120px; width:24px; padding:12px 0; background:linear-gradient(160deg,#8fc59b,#6aa877); border-radius:10px 0 0 10px; color:#fff; writing-mode:vertical-rl; font-size:10.5px; letter-spacing:2px; text-align:center; cursor:pointer; box-shadow:-2px 2px 10px rgba(0,0,0,.15); z-index:20; display:flex; align-items:center; gap:6px; user-select:none; transition:opacity .2s; }
+  .a-tab .a-live { font-size:10px; background:rgba(255,255,255,.25); border-radius:6px; padding:3px 0; width:16px; letter-spacing:0; }
+  .a-tab.hide { opacity:0; pointer-events:none; }
+  .a-drawer { position:absolute; right:-280px; top:0; bottom:0; width:280px; background:#fff; z-index:40; transition:right .25s ease; box-shadow:-4px 0 24px rgba(0,0,0,.2); display:flex; flex-direction:column; }
+  .a-drawer.open { right:0; }
+  .a-scrim { position:absolute; inset:0; background:rgba(0,0,0,.25); z-index:30; opacity:0; pointer-events:none; transition:opacity .25s; }
+  .a-scrim.open { opacity:1; pointer-events:auto; }
+  .d-head { padding:16px 16px 10px; display:flex; align-items:center; justify-content:space-between; }
+  .d-head b { font-size:14px; color:#222; }
+  .d-head button { border:none; background:#f0f0f0; width:28px; height:28px; border-radius:8px; cursor:pointer; color:#666; font-size:13px; }
+  .d-tabs { display:flex; gap:4px; padding:4px 16px 10px; }
+  .d-tabs button { flex:1; border:none; padding:7px 0; border-radius:8px; font-size:12px; background:#f4f4f4; color:#888; cursor:pointer; }
+  .d-tabs button.on { background:rgba(106,168,119,.14); color:#5a9668; font-weight:700; }
+  .d-body { flex:1; overflow-y:auto; padding:4px 16px; }
+  .peer-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px dashed #eee; }
+  .peer-ava { width:38px; height:38px; border-radius:11px; background:linear-gradient(160deg,#8fc59b,#6aa877); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; }
+  .peer-name { font-size:13px; font-weight:600; color:#333; }
+  .peer-sub { font-size:11px; color:#999; margin-top:2px; }
+  .cheer-btn { margin-left:auto; border:1px solid rgba(106,168,119,.4); background:rgba(106,168,119,.08); color:#5a9668; border-radius:8px; font-size:11px; padding:5px 9px; cursor:pointer; font-weight:600; }
+  .d-section-t { font-size:11px; color:#999; font-weight:700; letter-spacing:1px; padding:12px 0 6px; }
+  .room-row { border:1px solid #eee; border-radius:10px; padding:10px 12px; margin-bottom:8px; display:flex; align-items:center; gap:8px; cursor:pointer; }
+  .room-row:active { background:#fafafa; }
+  .rr-badge { font-size:9px; padding:2px 6px; border-radius:4px; background:#fef3c0; color:#a07816; font-weight:700; }
+  .rr-badge.run { background:rgba(106,168,119,.15); color:#4d8a5c; }
+  .rr-name { font-size:12.5px; font-weight:600; color:#333; }
+  .rr-sub { font-size:10px; color:#aaa; }
+  .rr-join { margin-left:auto; color:#5a9668; font-size:11px; font-weight:700; }
+
+  /* ═══════════ 方案B：底部半屏 sheet ═══════════ */
+  .b-fab { position:absolute; right:14px; bottom:56px; width:44px; height:44px; border-radius:50%; border:none; background:linear-gradient(160deg,#8fc59b,#6aa877); color:#fff; box-shadow:0 4px 14px rgba(106,168,119,.4); cursor:pointer; z-index:20; display:flex; align-items:center; justify-content:center; }
+  .b-fab.has-session { width:auto; border-radius:999px; padding:0 12px; gap:6px; font-size:12px; font-weight:700; }
+  .b-fab.hide { display:none; }
+  .b-sheet { position:absolute; left:0; right:0; bottom:-320px; height:300px; background:#fff; border-radius:18px 18px 0 0; z-index:40; transition:bottom .25s ease; box-shadow:0 -6px 30px rgba(0,0,0,.18); display:flex; flex-direction:column; }
+  .b-sheet.open { bottom:0; }
+  .b-grab { width:36px; height:4px; border-radius:2px; background:#ddd; margin:10px auto 2px; }
+  .b-scrim { position:absolute; inset:0; background:rgba(0,0,0,.25); z-index:30; opacity:0; pointer-events:none; transition:opacity .25s; }
+  .b-scrim.open { opacity:1; pointer-events:auto; }
+
+  /* ═══════════ 方案C：收进工具轨 + 顶部活态条 ═══════════ */
+  .c-rail { position:absolute; left:-26px; top:110px; width:26px; background:rgba(255,255,255,.9); backdrop-filter:blur(10px); border-radius:0 12px 12px 0; box-shadow:2px 0 12px rgba(0,0,0,.1); display:flex; flex-direction:column; align-items:center; padding:8px 0; gap:10px; z-index:20; transition:left .2s; }
+  .c-rail.out { left:0; }
+  .c-rail button { border:none; background:transparent; width:24px; height:24px; cursor:pointer; color:#777; display:flex; align-items:center; justify-content:center; }
+  .c-rail button.on { color:#5a9668; }
+  .c-live { position:absolute; top:50px; left:12px; right:12px; background:rgba(106,168,119,.94); border-radius:12px; padding:8px 12px; color:#fff; display:none; align-items:center; gap:8px; font-size:11.5px; z-index:20; box-shadow:0 3px 12px rgba(106,168,119,.35); }
+  .c-live.show { display:flex; }
+  .c-live b { font-size:14px; font-variant-numeric:tabular-nums; }
+  .c-live .cl-sub { opacity:.85; }
+  .c-live .cl-close { margin-left:auto; border:none; background:rgba(255,255,255,.2); color:#fff; border-radius:6px; width:22px; height:22px; font-size:11px; cursor:pointer; }
+  .c-sheet { position:absolute; left:12px; top:88px; width:230px; background:#fff; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.2); z-index:40; display:none; overflow:hidden; }
+  .c-sheet.open { display:block; }
+
+  .hint { color:#c9a34e; font-size:11px; text-align:center; padding:10px 14px 0; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <h1>搭子浮窗重设计</h1>
+  <div class="sub">痛点：右下 fab 跟翻章条抢地盘、键盘弹起悬空压字、悬浮窗小屏拖拽难。<b style="color:#eee">点右下黄钮模拟键盘弹起</b>，看各方案怎么避让。每案都能点开交互。</div>
+  <div class="tabs">
+    <button class="on" data-v="a" onclick="sw('a')">A 贴边侧滑</button>
+    <button data-v="b" onclick="sw('b')">B 底部半屏</button>
+    <button data-v="c" onclick="sw('c')">C 工具轨+活条</button>
+  </div>
+
+  <div class="phone" id="phone">
+    <div class="topbar"><span class="back">‹</span>测试小说</div>
+    <div class="paper" style="margin-top:44px">
+      <p>夜色像一层薄纱慢慢落下，巷口的灯一盏接一盏亮起来。她攥着口袋里那张纸条，指尖反复摩挲着上面被汗水浸软的字迹。</p>
+      <p>「你到底去不去？」身后的声音催促着。</p>
+      <p>她没有回头。有些决定一旦说出口，就再没有退路了<span class="cur">&nbsp;</span></p>
+      <p>远处传来火车的汽笛声，很长，像是替谁叹了一口气。她数着铁轨的震动，一、二、三——然后迈出了第一步。</p>
+      <p>风把她的衣角吹得很响。这一路她走了很多年，如今终于走到了能看见光的地方。</p>
+    </div>
+
+    <!-- 键盘 -->
+    <button class="toggle-kbd" onclick="kbd()">模拟键盘</button>
+    <div class="kbd" id="kbd">
+      <div class="kbd-row"><span>Q</span><span>W</span><span>E</span><span>R</span><span>T</span><span>Y</span><span>U</span><span>I</span><span>O</span><span>P</span></div>
+      <div class="kbd-row"><span>A</span><span>S</span><span>D</span><span>F</span><span>G</span><span>H</span><span>J</span><span>K</span><span>L</span></div>
+      <div class="kbd-row space"><span>空格</span></div>
+    </div>
+
+    <!-- 方案A -->
+    <div id="va">
+      <div class="a-tab" id="aTab" onclick="aOpen()">
+        <span class="a-live" id="aLive">25:14</span>搭子
+      </div>
+      <div class="a-scrim" id="aScrim" onclick="aClose()"></div>
+      <div class="a-drawer" id="aDrawer">
+        <div class="d-head"><b>搭子</b><button onclick="aClose()">✕</button></div>
+        <div class="d-tabs"><button class="on">陪伴</button><button>拼字</button></div>
+        <div class="d-body">
+          <div class="peer-row">
+            <div class="peer-ava">林</div>
+            <div><div class="peer-name">林间照</div><div class="peer-sub">41:02 · +368 字</div></div>
+            <button class="cheer-btn">👍 加油</button>
+          </div>
+          <div class="d-section-t">拼字房</div>
+          <div class="room-row"><span class="rr-badge run">拼字中</span><div><div class="rr-name">深夜赶稿局</div><div class="rr-sub">4 人 · 1000 字局 · 还剩 12 分</div></div><span class="rr-join">加入 ›</span></div>
+          <div class="room-row"><span class="rr-badge">等待</span><div><div class="rr-name">晨光早鸟房</div><div class="rr-sub">2 人 · 30 分局</div></div><span class="rr-join">加入 ›</span></div>
+          <div class="d-section-t">提示</div>
+          <div style="font-size:11px;color:#aaa;line-height:1.8">抽屉盖在正文上但可随时滑走；贴条只在右缘占 24px，键盘弹起时贴条自动隐藏（点模拟键盘看）。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 方案B -->
+    <div id="vb" style="display:none">
+      <button class="b-fab" id="bFab" onclick="bOpen()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0112 6a5.5 5.5 0 019.5 6c-2.5 4.5-9.5 9-9.5 9z"/><path d="M8.5 12h7"/></svg>
+      </button>
+      <div class="b-scrim" id="bScrim" onclick="bClose()"></div>
+      <div class="b-sheet" id="bSheet">
+        <div class="b-grab" onclick="bClose()"></div>
+        <div class="d-head" style="padding:8px 16px 6px"><b>搭子</b><button onclick="bClose()">✕</button></div>
+        <div class="d-tabs"><button class="on">陪伴</button><button>拼字</button></div>
+        <div class="d-body">
+          <div class="peer-row">
+            <div class="peer-ava">林</div>
+            <div><div class="peer-name">林间照</div><div class="peer-sub">41:02 · +368 字</div></div>
+            <button class="cheer-btn">👍 加油</button>
+          </div>
+          <div class="d-section-t">拼字房</div>
+          <div class="room-row"><span class="rr-badge run">拼字中</span><div><div class="rr-name">深夜赶稿局</div><div class="rr-sub">4 人 · 1000 字局</div></div><span class="rr-join">加入 ›</span></div>
+          <div class="room-row"><span class="rr-badge">等待</span><div><div class="rr-name">晨光早鸟房</div><div class="rr-sub">2 人 · 30 分局</div></div><span class="rr-join">加入 ›</span></div>
+          <div style="font-size:11px;color:#aaa;line-height:1.8;padding-top:8px">半屏 sheet 从底部升起来，双手够得着；键盘弹起时 fab 藏、sheet 收。缺点：开 sheet 会盖住正文下半屏。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 方案C -->
+    <div id="vc" style="display:none">
+      <div class="c-live show" id="cLive">
+        <b id="cTime">25:14</b><span class="cl-sub">林间照 也在写 · 今日 +1200 字</span>
+        <button class="cl-close" onclick="document.getElementById('cLive').classList.remove('show') ">✕</button>
+      </div>
+      <div class="c-rail out" id="cRail">
+        <button title="搭子"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M2.5 19c.8-3 3-4.5 5.5-4.5S12.7 16 13.5 19M15 19c.5-2 1.8-3 3.5-3s3 1 3.5 3"/></svg></button>
+        <button title="工具"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="2.6"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></button>
+        <button title="统计"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></button>
+      </div>
+      <div class="c-sheet" id="cSheet">
+        <div class="d-head" style="padding:12px 14px 6px"><b>搭子</b><button onclick="document.getElementById('cSheet').classList.remove('open')">✕</button></div>
+        <div class="d-body" style="padding:0 14px 14px">
+          <div class="peer-row">
+            <div class="peer-ava">林</div>
+            <div><div class="peer-name">林间照</div><div class="peer-sub">41:02 · +368 字</div></div>
+            <button class="cheer-btn">👍 加油</button>
+          </div>
+          <div class="room-row"><span class="rr-badge run">拼字中</span><div><div class="rr-name">深夜赶稿局</div><div class="rr-sub">4 人 · 还剩 12 分</div></div><span class="rr-join">加入 ›</span></div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:50px;left:14px;font-size:11px;color:#5a9668;font-weight:700;cursor:pointer" onclick="document.getElementById('cSheet').classList.toggle('open')">↖ 点左缘工具钮开搭子卡</div>
+    </div>
+
+    <div class="chapnav"><button>‹</button><span class="cn-name">第七章 雨夜 · 7/12</span><button>›</button></div>
+    <div class="statusbar"><span>2456 字</span><span>已保存</span><span>⋯</span></div>
+  </div>
+  <div class="hint" id="hint">A：贴条只占右缘 24px，键盘弹起自动隐藏</div>
+</div>
+
+<script>
+function sw(v) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  ['a','b','c'].forEach(x => document.getElementById('v'+x).style.display = x === v ? '' : 'none');
+  const hints = {
+    a: 'A 贴边侧滑：贴条只占右缘 24px，抽屉滑出盖右侧；键盘弹起贴条自动隐藏',
+    b: 'B 底部半屏：fab 平时是圆钮、拼字中变胶囊显示倒计时；sheet 从底部升起；键盘弹起 fab 隐藏',
+    c: 'C 工具轨+活条：常驻只剩顶部一条活态条（计时/搭子动态），入口并进左缘工具轨；键盘弹起活条也藏',
+  };
+  document.getElementById('hint').textContent = hints[v];
+  // 复位
+  aClose(); bClose(); document.getElementById('cSheet').classList.remove('open');
+  document.getElementById('aTab').classList.remove('hide');
+  document.getElementById('bFab').classList.remove('hide');
+}
+function kbd() {
+  const k = document.getElementById('kbd'); k.classList.toggle('show');
+  const on = k.classList.contains('show');
+  document.getElementById('aTab').classList.toggle('hide', on);   // A：贴条藏
+  document.getElementById('bFab').classList.toggle('hide', on);   // B：fab 藏
+  document.getElementById('cLive').classList.toggle('show', !on); // C：活条藏
+  if (on) { aClose(); bClose(); }
+}
+function aOpen(){ document.getElementById('aDrawer').classList.add('open'); document.getElementById('aScrim').classList.add('open'); }
+function aClose(){ document.getElementById('aDrawer').classList.remove('open'); document.getElementById('aScrim').classList.remove('open'); }
+function bOpen(){ document.getElementById('bSheet').classList.add('open'); document.getElementById('bScrim').classList.add('open'); }
+function bClose(){ document.getElementById('bSheet').classList.remove('open'); document.getElementById('bScrim').classList.remove('open'); }
+</script>
+</body>
+</html>

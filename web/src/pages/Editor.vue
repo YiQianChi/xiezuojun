@@ -1767,8 +1767,11 @@ onMounted(async () => {
       if (lastId) target = documents.value.find((d: any) => d.id === lastId && d.type === 'chapter')
     } catch {}
     if (!target) {
-      const chapters = documents.value.filter((d: any) => d.type === 'chapter')
-      if (chapters.length === 1) target = chapters[0]
+      // UX 批2：无上次记忆（换设备/清缓存）也不再晾空白编辑器——按序打开第一章直接落笔
+      const chapters = documents.value
+        .filter((d: any) => d.type === 'chapter')
+        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      if (chapters.length) target = chapters[0]
     }
     if (target) openDoc(target)
   }

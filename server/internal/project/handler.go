@@ -134,7 +134,31 @@ func (h *Handler) ListProjects(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": projects})
+	// 书架卡片统计：章节数/总字数现算（documents.word_count 每次保存都有维护），零新表
+	type rowStat struct {
+		ProjectID uint
+		Chapters  int
+		Words     int
+	}
+	var stats []rowStat
+	h.db.Model(&model.Document{}).
+		Select("project_id, COUNT(*) AS chapters, COALESCE(SUM(word_count),0) AS words").
+		Where("status = 1 AND type = 'chapter'").
+		Group("project_id").Find(&stats)
+	statMap := make(map[uint]rowStat, len(stats))
+	for _, s := range stats {
+		statMap[s.ProjectID] = s
+	}
+	type item struct {
+		model.Project
+		ChapterCount int `json:"chapter_count"`
+		WordTotal    int `json:"word_total"`
+	}
+	data := make([]item, len(projects))
+	for i, p := range projects {
+		data[i] = item{Project: p, ChapterCount: statMap[p.ID].Chapters, WordTotal: statMap[p.ID].Words}
+	}
+	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 func (h *Handler) CreateProject(c *gin.Context) {

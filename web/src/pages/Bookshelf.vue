@@ -30,32 +30,39 @@
         class="book-card"
         @click="openBook(project)"
       >
-        <div class="book-cover">
-          <img v-if="project.cover_url" :src="project.cover_url" alt="" class="cover-img" />
-          <div v-else class="book-icon">📖</div>
+        <div class="bc2-cover">
+          <img v-if="project.cover_url" :src="project.cover_url" alt="" class="bc2-img" />
+          <div v-else class="bc2-zi" :style="gradFor(project.name)"><span>{{ (project.name || '书').trim().charAt(0) }}</span></div>
         </div>
         <div class="book-info">
           <h3>{{ project.name }}</h3>
-          <p class="book-meta">{{ project.description || '暂无简介' }}</p>
+          <p v-if="project.description" class="book-meta">{{ project.description }}</p>
+          <p class="bc2-meta">
+            <span>{{ relTime(project.updated_at) }}</span><i></i>
+            <span>{{ fmtWords(project.word_total) }}</span>
+            <template v-if="project.chapter_count"><i></i><span>第 {{ project.chapter_count }} 章</span></template>
+          </p>
         </div>
-        <div class="card-actions">
-          <button class="card-btn" data-label="封面" @click.stop="pickCover(project)" title="上传封面">🖼️</button>
-          <button class="card-btn" data-label="重命名" @click.stop="startRename(project)" title="重命名">✏️</button>
-          <div class="export-dropdown" @click.stop>
-            <button class="card-btn" data-label="导出" @click="toggleExportMenu(project.id || project.project_id)" title="导出">📥</button>
-            <div v-if="exportMenuId === (project.id || project.project_id)" class="export-menu">
-              <button @click="exportBook(project, 'md')">Markdown</button>
-              <button @click="exportBook(project, 'txt')">TXT 纯文本</button>
-              <button @click="exportBook(project, 'epub')">EPUB 电子书</button>
-              <button @click="exportBook(project, 'docx')">DOCX 文档</button>
-            </div>
+        <!-- 卡片操作收进 hover ⋯（触屏常显）；放卡片根节点避免被封面 overflow 裁剪 -->
+        <div class="bc2-ops" @click.stop>
+          <button class="bc2-more" title="封面 / 重命名 / 导出 / 删除" @click="toggleExportMenu(project.id || project.project_id)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/></svg>
+          </button>
+          <div v-if="exportMenuId === (project.id || project.project_id)" class="bc2-menu">
+            <button @click="exportMenuId = null; pickCover(project)">上传封面</button>
+            <button @click="exportMenuId = null; startRename(project)">重命名</button>
+            <button @click="exportBook(project, 'md')">导出 Markdown</button>
+            <button @click="exportBook(project, 'txt')">导出 TXT</button>
+            <button @click="exportBook(project, 'epub')">导出 EPUB</button>
+            <button @click="exportBook(project, 'docx')">导出 DOCX</button>
+            <div class="menu-sep"></div>
+            <button class="danger" @click="exportMenuId = null; deleteBook(project)">删除</button>
           </div>
-          <button class="card-btn delete" data-label="删除" @click.stop="deleteBook(project)" title="删除">×</button>
         </div>
       </div>
 
       <div class="book-card add-card" @click="openCreateModal">
-        <div class="book-cover add">
+        <div class="bc2-cover add">
           <span>+</span>
         </div>
         <div class="book-info">
@@ -202,7 +209,6 @@
       </div>
     </div>
 
-    <!-- 手机端：书卡片操作走底部文字链接行（见样式 card-actions 手机规则），导出用原下拉 -->
     <input ref="coverInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" @change="onCoverPicked" />
   </div>
 </template>
@@ -382,6 +388,41 @@ async function onCoverPicked(e: Event) {
 
 function toggleExportMenu(id: number) {
   exportMenuId.value = exportMenuId.value === id ? null : id
+}
+
+// ===== 卡片信息行 helpers（UX 批2 方案A）=====
+function relTime(t?: string) {
+  if (!t) return ''
+  const d = new Date(t), now = new Date()
+  const ms = now.getTime() - d.getTime()
+  if (ms < 60000) return '刚刚'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString()
+  if (sameDay(d, now)) return `今天 ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  if (sameDay(d, new Date(now.getTime() - 86400000))) return `昨天 ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const day = Math.floor(ms / 86400000)
+  if (day < 30) return `${day} 天前`
+  if (day < 365) return `${Math.floor(day / 30)} 个月前`
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+function fmtWords(n?: number) {
+  if (!n) return '0 字'
+  if (n < 10000) return `${n} 字`
+  return `${(n / 10000).toFixed(1).replace(/\.0$/, '')} 万字`
+}
+
+// 首字封面渐变：按书名 hash 从低饱和暖冷六组里挑，同书恒定（与编辑器侧栏书卡同语言）
+function gradFor(name?: string) {
+  const s = name || '书'
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  const palettes = [
+    ['#8fc59b', '#5f9c6e'], ['#a8c5d8', '#7396ad'], ['#d8c39f', '#b08560'],
+    ['#c5abd0', '#9a7ba8'], ['#e0b1a4', '#c07b66'], ['#a4c9c0', '#6f9f93'],
+  ]
+  const [a, b] = palettes[h % palettes.length]
+  return `background: linear-gradient(135deg, ${a}, ${b})`
 }
 
 // 点击外部关闭导出菜单
@@ -631,51 +672,106 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   transform: translateY(-6px);
 }
 
-.book-card:hover .card-actions {
-  opacity: 1;
+/* 卡片 v2（UX 批2 方案A）：紧凑卡 + 首字渐变封面 + 信息行 + hover ⋯ */
+.bc2-cover {
+  width: 100%;
+  aspect-ratio: 15 / 8;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow var(--transition-normal);
+  background: var(--bg-secondary);
 }
 
-.card-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+.book-card:hover .bc2-cover { box-shadow: var(--shadow-lg); }
+
+.bc2-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.bc2-zi { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+.bc2-zi span {
+  font-family: var(--font-serif);
+  font-size: 44px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.bc2-cover.add {
+  background: transparent;
+  border: 2px dashed var(--border);
+  box-shadow: none;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: var(--text-tertiary);
+}
+
+.book-card.add-card:hover .bc2-cover.add {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.bc2-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.bc2-meta i { width: 3px; height: 3px; border-radius: 50%; background: var(--border); flex: none; }
+
+/* hover ⋯（触屏常显）；挂卡片根节点，弹层不被封面 overflow 裁剪 */
+.bc2-ops {
+  position: absolute;
+  top: 14px;
+  right: 14px;
   opacity: 0;
   transition: opacity var(--transition-fast);
   z-index: 10;
 }
 
-.card-btn {
-  width: 28px;
-  height: 28px;
-  background: rgba(0,0,0,0.6);
+.book-card:hover .bc2-ops { opacity: 1; }
+
+@media (hover: none) { .bc2-ops { opacity: 1; } }
+
+.bc2-more {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
   color: #fff;
   border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
 }
 
-.card-btn.delete:hover { background: #ff3b30; }
+.bc2-more:hover { background: rgba(0, 0, 0, 0.65); }
 
-.export-dropdown { position: relative; display: inline-flex; }
-.export-menu {
+.bc2-menu {
   position: absolute;
-  top: 32px;
+  top: 30px;
   right: 0;
   background: var(--bg-secondary);
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: var(--shadow-md);
   overflow: hidden;
   z-index: 100;
-  min-width: 130px;
+  min-width: 150px;
+  padding: 4px 0;
 }
-.export-menu button {
+
+.bc2-menu button {
   display: block;
   width: 100%;
   text-align: left;
@@ -686,41 +782,12 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   color: var(--text-primary);
   cursor: pointer;
 }
-.export-menu button:hover { background: rgba(0,122,255,0.06); color: var(--accent, #007aff); }
 
-.book-cover {
-  width: 100%;
-  aspect-ratio: 3/4;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 12px;
-  font-size: 48px;
-  box-shadow: var(--shadow-md);
-  transition: box-shadow var(--transition-normal);
-}
+.bc2-menu button:hover { background: rgba(0, 0, 0, 0.05); }
 
-.book-card:hover .book-cover {
-  box-shadow: var(--shadow-lg);
-}
+.bc2-menu button.danger { color: #e5484d; }
 
-.book-cover.add {
-  background: transparent;
-  border: 2px dashed var(--border);
-  box-shadow: none;
-  font-size: 40px;
-  color: var(--text-tertiary);
-}
-
-.cover-img { width: 100%; height: 100%; object-fit: contain; background: var(--bg-tertiary, #f0f0f3); border-radius: inherit; display: block; }
-
-.book-card.add-card:hover .book-cover {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: none;
-}
+.bc2-menu .menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
 
 .book-info h3 {
   font-family: var(--font-serif);
@@ -940,7 +1007,7 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   .bookshelf { max-width: 1600px; padding: 48px 40px; }
   .bookshelf-header h2 { font-size: 32px; }
   .books-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 280px)); gap: 32px; }
-  .book-cover { font-size: 56px; }
+  .bc2-zi span { font-size: 56px; }
   .book-info h3 { font-size: 16px; }
   .book-meta { font-size: 13px; }
   .btn { font-size: 15px; padding: 9px 18px; }
@@ -953,7 +1020,7 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   .bookshelf-header h2 { font-size: 36px; }
   .bookshelf-header .subtitle { font-size: 16px; }
   .books-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 320px)); gap: 36px; }
-  .book-cover { font-size: 64px; }
+  .bc2-zi span { font-size: 64px; }
   .book-info h3 { font-size: 18px; }
   .book-meta { font-size: 14px; }
   .btn { font-size: 16px; padding: 10px 20px; }
@@ -988,25 +1055,8 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
   /* 触屏：卡片给实体卡底（透明卡片+文字行悬浮很怪） */
   .book-card { background: var(--bg-secondary, #fff); border: 1px solid var(--border, #ececf1); }
   .book-card:hover { transform: none; }
-  /* 触屏：卡片操作改为底部文字链接行（重命名|导出|删除），导出用原下拉 */
-  .card-actions {
-    position: static; opacity: 1; gap: 0;
-    border-top: 1px solid var(--border, #f0f0f3);
-    margin-top: 2px;
-  }
-  .card-actions .card-btn {
-    flex: 1; width: auto; height: auto; border-radius: 0;
-    background: none; color: var(--accent, #007aff);
-    font-size: 0; padding: 10px 0;
-  }
-  .card-actions .card-btn::after { content: attr(data-label); font-size: 12px; }
-  .card-actions .export-dropdown { flex: 1; display: flex; }
-  .card-actions .export-dropdown .card-btn { flex: 1; }
-  .card-actions .card-btn + .export-dropdown,
-  .card-actions .export-dropdown + .card-btn { border-left: 1px solid var(--border, #f0f0f3); }
-  .card-actions .card-btn.delete { color: #ff3b30; background: none; }
-  .export-menu { top: auto; bottom: 40px; }
-  .book-cover { font-size: 40px; }
+  .bc2-zi span { font-size: 34px; }
+  .bc2-menu { min-width: 132px; }
   .book-info h3 { font-size: 14px; }
   .book-info { padding: 10px 12px 12px; }
   .book-meta { font-size: 11px; }
@@ -1019,7 +1069,7 @@ watch(showUserCenter, (v) => { if (v) loadUserInfo() })
 /* 小手机 */
 @media (max-width: 380px) {
   .books-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .book-cover { font-size: 32px; }
+  .bc2-zi span { font-size: 28px; }
   .header-actions .btn { font-size: 12px; padding: 7px 10px; }
 }
 </style>

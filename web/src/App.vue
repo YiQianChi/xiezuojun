@@ -8,14 +8,17 @@
     </div>
     <div class="nav-right">
       <button v-if="canInstall && !isMiniProgram" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
-      <button v-if="!isMiniProgram" class="nav-link qq-link" data-label="反馈" @click="showQQModal = true">QQ问题反馈群</button>
+      <button v-if="!isMiniProgram" class="nav-link qq-link" data-label="反馈" @click="showQQModal = true">关于我们</button>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
       <button v-if="isLoggedIn" ref="profileBtnRef" class="nav-link profile-link" title="账号菜单" @click="profileRef?.openMenu($event.currentTarget as HTMLElement)">
         <span class="nav-avatar">{{ profileAvatar || (profileNickname || '我').slice(0, 1) }}</span>
         <span class="nav-nick">{{ profileNickname || '我的' }}</span>
         <span class="nav-caret">▾</span>
       </button>
-      <router-link v-else to="/login" class="nav-link">登录</router-link>
+      <template v-else>
+        <router-link to="/login" class="nav-link">登录</router-link>
+        <router-link to="/register" class="nav-cta">免费开始写作</router-link>
+      </template>
     </div>
   </nav>
   <main class="app-main" :class="{ 'with-nav': showNav, 'editor-mode': route.name === 'Editor' }">
@@ -35,13 +38,14 @@
     <div v-if="showQQModal" class="qq-overlay" @click="showQQModal = false">
       <div class="qq-modal" @click.stop>
         <div class="qq-head">
-          <span>💬 问题反馈群</span>
+          <span>关于写作菌</span>
           <button @click="showQQModal = false" class="qq-close">✕</button>
         </div>
         <div class="qq-body">
           <p class="qq-desc">遇到问题或建议？加入QQ群反馈：</p>
           <div class="qq-number">1091462449</div>
           <button class="qq-copy-btn" @click="copyQQ">复制群号</button>
+          <p class="qq-mail">商务/其他事宜：jlgao@oneon.com.cn</p>
         </div>
       </div>
     </div>
@@ -270,6 +274,22 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
+/* 未登录主 CTA（UX 批2：免费开始写作） */
+.nav-cta {
+  background: linear-gradient(135deg, #8fc59b, #6aa877);
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 99px;
+  padding: 7px 18px;
+  box-shadow: 0 2px 8px rgba(106, 168, 119, 0.35);
+  transition: opacity var(--transition-fast);
+  white-space: nowrap;
+}
+.nav-cta:hover { opacity: .88; color: #fff; }
+@media (max-width: 560px) { .nav-cta { font-size: 13px; padding: 6px 14px; } }
+
 .profile-link { display: inline-flex; align-items: center; gap: 6px; }
 .nav-avatar {
   width: 22px; height: 22px; border-radius: 50%; background: var(--accent, #007aff);
@@ -428,4 +448,5 @@ onMounted(() => {
   transition: opacity .15s ease;
 }
 .qq-copy-btn:hover { opacity: .85; }
+.qq-mail { font-size: 13px; color: var(--text-secondary); margin: 16px 0 0; }
 </style>
