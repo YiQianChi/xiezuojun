@@ -26,6 +26,7 @@
         <button :class="{ on: tab === 'insp' }" @click="switchTab('insp')">💡 灵感</button>
         <!-- AI 全线暂下线（2026-11-09 Boss 指令），自检恢复时删 v-if -->
         <button v-if="ENABLE_AI" :class="{ on: tab === 'chk' }" @click="switchTab('chk')">🛡 自检</button>
+        <button :class="{ on: tab === 'ds' }" @click="switchTab('ds')" title="拆书报告：大纲/人物/关系/节奏/套路"><svg class="tab-ic" viewBox="0 0 19 19"><path d="M3 4c2-1 4.5-1 6.5.5C11.5 3 14 3 16 4v10.5c-2-1-4.5-1-6.5.5-2-1.5-4.5-1.5-6.5-.5z"/><path d="M9.5 4.5v10.5"/></svg> 拆书</button>
       </div>
 
       <div class="context-body">
@@ -246,6 +247,36 @@
             <div>检查 AI 味与敏感词<br><span class="hint">指数越低越像人写的</span></div>
           </div>
         </template>
+
+        <!-- ═══════════ 拆书页签：五件套报告挂右栏随时查（只读参考，不写创作数据） ═══════════ -->
+        <template v-else-if="tab === 'ds'">
+          <div v-if="!dsBooks.length" class="context-empty">
+            <div class="ctx-icon">📖</div>
+            <div>还没拆过书<br><span class="hint">拆一本想学的书，报告挂在这里随时查</span></div>
+            <button class="check-btn" @click="$emit('open-dismantle')">打开拆书库</button>
+          </div>
+          <template v-else>
+            <div class="ds-books">
+              <button v-for="b in dsBooks" :key="b.id" :class="{ on: dsSel === b.id }" :disabled="b.status !== 'done'" @click="pickBook(b.id)">
+                {{ b.title }}{{ b.status === 'extracting' ? ' · ' + b.progress + '%' : b.status === 'failed' ? ' · 失败' : '' }}
+              </button>
+            </div>
+            <template v-if="dsReport">
+              <div class="ds-kinds">
+                <button v-for="k in dsKinds" :key="k.k" :class="{ on: dsKind === k.k }" @click="dsKind = k.k">{{ k.t }}</button>
+              </div>
+              <pre v-if="dsKind !== 'anno'" class="ds-out">{{ dsReport.outputs[dsKind] || '（无内容）' }}</pre>
+              <template v-else>
+                <div v-if="!dsReport.annotations.length" class="context-empty">这一本没有章节标注</div>
+                <div v-for="(a, i) in dsReport.annotations" :key="i" class="ds-anno">
+                  <span class="k" :data-k="a.kind">{{ a.kind }}</span>
+                  <b>第{{ a.chapter_idx }}章 · {{ a.title }}</b>
+                  <span class="n">{{ a.note }}</span>
+                </div>
+              </template>
+            </template>
+          </template>
+        </template>
       </div>
 
       <!-- 随手记：右栏底部常驻输入框，三个页签都在（Boss 2026-11：编辑器内就地记，不用悬浮笔/切页签） -->
@@ -258,7 +289,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { documentApi, threadApi, stickyApi, aiApi, memoryApi, type StoryThread } from '../../core/api'
+import { documentApi, threadApi, stickyApi, aiApi, memoryApi, dismantleApi, type StoryThread } from '../../core/api'
 import { streamChat, friendlyAIError } from '../../core/sse'
 import { toast } from '../../composables/useToast'
 
@@ -289,10 +320,11 @@ const emit = defineEmits<{
   'update:open': [v: boolean]
   jump: [docId: number]
   'open-canvas': []
+  'open-dismantle': []
   'insp-insert': [text: string]
 }>()
 
-const TAB_LABELS: Record<string, string> = { set: '📖 设定', insp: '💡 灵感', chk: '🛡 自检' }
+const TAB_LABELS: Record<string, string> = { set: '📖 设定', insp: '💡 灵感', chk: '🛡 自检', ds: '拆书' }
 const THREAD_TYPE_LABELS: Record<string, string> = {
   foreshadowing: '伏笔', hook: '钩子', promise: '承诺', suspense: '悬念',
 }
@@ -301,15 +333,45 @@ const SEVERITY_LABELS: Record<string, string> = { high: '重', mid: '中', low: 
 /* ─── 页签（localStorage 记忆） ─── */
 // AI 全线暂下线（2026-11-09 Boss 指令：AI 只留代码不接入，恢复=改 true + 删各处 v-if）
 const ENABLE_AI = false
-const tab = ref<'set' | 'insp' | 'chk'>('set')
+const tab = ref<'set' | 'insp' | 'chk' | 'ds'>('set')
 try {
   const saved = localStorage.getItem('xzj-wb-tab')
-  if (saved === 'insp' || saved === 'set') tab.value = saved
+  if (saved === 'insp' || saved === 'set' || saved === 'ds') tab.value = saved
   else if (saved === 'chk' && ENABLE_AI) tab.value = saved
 } catch { /* ignore */ }
-function switchTab(t: 'set' | 'insp' | 'chk') {
+if (tab.value === 'ds') loadDsBooks() // localStorage 记忆恢复时也要拉数据
+function switchTab(t: 'set' | 'insp' | 'chk' | 'ds') {
   tab.value = t
+  if (t === 'ds') loadDsBooks()
   try { localStorage.setItem('xzj-wb-tab', t) } catch { /* ignore */ }
+}
+
+/* ─── 拆书页签：书选一本 → 五件套/标注只读查看 ─── */
+const dsBooks = ref<any[]>([])
+const dsSel = ref(0)
+const dsReport = ref<any>(null)
+const dsKind = ref('outline')
+const dsKinds = [
+  { k: 'outline', t: '大纲' }, { k: 'chars', t: '人物' }, { k: 'net', t: '关系' },
+  { k: 'pulse', t: '节奏' }, { k: 'trick', t: '套路' }, { k: 'anno', t: '标注' },
+]
+async function loadDsBooks() {
+  if (!props.projectId) return
+  try {
+    const res = await dismantleApi.list(props.projectId)
+    dsBooks.value = res.data?.data || []
+    const cur = dsBooks.value.find((b: any) => b.id === dsSel.value)
+    const first = dsBooks.value.find((b: any) => b.status === 'done')
+    if (!cur || cur.status !== 'done') { if (first) pickBook(first.id); else dsReport.value = null }
+  } catch { /* 静默 */ }
+}
+async function pickBook(id: number) {
+  dsSel.value = id
+  dsReport.value = null
+  try {
+    const res = await dismantleApi.get(id)
+    dsReport.value = res.data?.data || null
+  } catch { /* 静默 */ }
 }
 
 /* ─── 设定页签数据（原速查/AI 参考合并） ─── */
@@ -628,6 +690,23 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 </script>
 
 <style scoped>
+/* ── 拆书页签 ── */
+.tab-ic { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px; }
+.ds-books { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.ds-books button { border: 1px solid var(--ed-line, #e2d8c2); background: rgba(255,255,255,.5); color: var(--ed-ink-2, #8a8272); border-radius: 99px; padding: 3.5px 10px; font-size: 11px; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-books button.on { background: rgba(106,168,119,.14); border-color: #6aa877; color: #6aa877; font-weight: 700; }
+.ds-books button:disabled { opacity: .45; cursor: default; }
+.ds-kinds { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.ds-kinds button { border: none; background: rgba(0,0,0,.04); color: var(--ed-ink-2, #8a8272); border-radius: 7px; padding: 4px 11px; font-size: 11px; cursor: pointer; }
+.ds-kinds button.on { background: rgba(106,168,119,.14); color: #6aa877; font-weight: 700; }
+.ds-out { white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 12px; line-height: 1.85; color: var(--ed-ink, #33302a); background: rgba(255,255,255,.5); border: 1px solid var(--ed-line, #e2d8c2); border-radius: 10px; padding: 10px 12px; margin: 0; }
+.ds-anno { padding: 7px 0; border-bottom: 1px solid var(--ed-line-soft, #e8dfc8); font-size: 11.5px; display: flex; gap: 7px; align-items: baseline; flex-wrap: wrap; }
+.ds-anno b { color: var(--ed-ink, #33302a); font-size: 11.5px; }
+.ds-anno .n { color: var(--ed-ink-2, #8a8272); width: 100%; padding-left: 34px; }
+.ds-anno .k { flex: none; font-size: 9.5px; border-radius: 99px; padding: 1.5px 7px; font-weight: 700; background: rgba(106,168,119,.12); color: #6aa877; }
+.ds-anno .k[data-k="钩子"] { background: rgba(201,163,78,.15); color: #a8842e; }
+.ds-anno .k[data-k="意象"] { background: rgba(109,89,122,.14); color: #6d597a; }
+
 .context-panel {
   position: absolute;
   top: 12px;

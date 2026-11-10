@@ -230,7 +230,8 @@
           @jump="jumpToSetting"
           @insp-insert="insertInspToEditor"
           @open-canvas="canvasOpen = true"
-        />
+          @open-dismantle="dismantleLibOpen = true"
+          />
 
         <!-- 分屏：对等第二页（⇄可切左右/上下，侧栏可点/可拖进来） -->
         <SplitEditor
