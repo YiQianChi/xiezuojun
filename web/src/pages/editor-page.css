@@ -2378,6 +2378,8 @@
     border-radius: 16px 16px 0 0 !important;
     box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.12) !important;
   }
+  /* 正文不横向让位：手机档右栏是底部抽屉，桌面基础规则的 ai-panel-open 304px padding-right 会把纸压成 ~46px */
+  .editor-page .editor-main.ai-panel-open .tiptap-container { padding-right: 18px; }
 
   /* 段落行号手机档：原来 -76px 沟槽画到屏外被裁（开关"无效"实为看不见）——收窄沟槽并给正文让出左边距 */
   .editor-wrapper.show-line-numbers .tiptap-container { padding-left: 46px; }
