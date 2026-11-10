@@ -79,12 +79,14 @@ const router = createRouter({
 
 router.beforeEach((to, _from, next) => {
   // 小程序 web-view：已登录直达工作台；未登录留营销首页游客浏览（微信审核要求：先浏览后自主授权登录）
+  // （query 要带走——拼字邀请卡落在 / 时?sprint= 不能被这跳丢掉）
   if (to.path === '/' && /miniProgram/i.test(navigator.userAgent) && localStorage.getItem('access_token')) {
-    next('/home')
+    next({ path: '/home', query: to.query })
     return
   }
   if (to.meta.requiresAuth && !localStorage.getItem('access_token')) {
-    next('/login')
+    // 带 redirect 回跳：未登录点拼字邀请链接落到 /bookshelf?sprint= 时，登录完invite不丢
+    next({ path: '/login', query: to.fullPath === '/login' ? {} : { redirect: to.fullPath } })
   } else {
     next()
   }

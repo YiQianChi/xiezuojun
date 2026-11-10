@@ -197,12 +197,13 @@
                 <div class="bs-inv-row">
                   <span class="bs-code">{{ sprint.room.code }}</span>
                   <button class="bs-mini" @click="copy(sprint.room.code, '已复制房间号 ' + sprint.room.code)">📋 房间号</button>
-                  <button class="bs-mini on" @click="copy(inviteLink, '邀请链接已复制')">🔗 链接</button>
+                  <button v-if="isMiniProgramEnv" class="bs-mini on" @click="mpShareInvite">🤝 微信邀请</button>
+                  <button v-else class="bs-mini on" @click="copy(inviteLink, '邀请链接已复制')">🔗 链接</button>
                 </div>
-                <label v-if="sprint.room.has_password && sprint.roomPassword" class="bs-inv-pw">
+                <label v-if="sprint.room.has_password && sprint.roomPassword && !isMiniProgramEnv" class="bs-inv-pw">
                   <input type="checkbox" v-model="inviteWithPw" />链接带密码（码友点开免输密码）
                 </label>
-                <div class="bs-inv-note">链接发码友（微信 / QQ 群），点开自动进房</div>
+                <div class="bs-inv-note">{{ isMiniProgramEnv ? '转发给微信好友 / 群，点开即进房' : '链接发码友（微信 / QQ 群），点开自动进房' }}</div>
               </div>
               <div class="bs-members">
                 <div v-for="p in sprint.room.players" :key="p.user_id" class="bs-member" :class="{ me: p.user_id === sprint.room.me }">
@@ -267,6 +268,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, reactive, onMounted, onBeforeUnmount, shallowRef } from 'vue'
 import { buddyApi, userApi, sprintApi } from '../../core/api'
+import { isMiniProgramEnv, mpPush } from '../../core/mp'
 import { useSprint } from '../../composables/useSprint'
 import { toast } from '../../composables/useToast'
 
@@ -309,6 +311,13 @@ const inviteLink = computed(() => {
   }
   return u
 })
+// 小程序内不走网页链接（微信里点外链打不开小程序）：拉起壳的原生分享页转发卡片
+function mpShareInvite() {
+  const r = sprint.room
+  if (!r) return
+  const pw = r.has_password && sprint.roomPassword ? `&pw=${encodeURIComponent(sprint.roomPassword)}` : ''
+  mpPush(`/pages/share/share?kind=sprint&code=${r.code}${pw}&title=${encodeURIComponent(r.name || '拼字房')}&label=${encodeURIComponent(r.target_label || '')}`)
+}
 async function copy(text: string, tip: string) {
   try {
     await navigator.clipboard.writeText(text)

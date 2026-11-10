@@ -132,8 +132,13 @@ type LoginMode = 'password' | 'code'
 type AccountType = 'email' | 'phone'
 const router = useRouter()
 
-// 登录后去向：有待消费的拼字邀请 → 直达最近一本书的编辑器（Editor 会自动弹「加入房间」）；否则进书架
+// 登录后去向：?redirect= 回跳（登录墙保住的拼字邀请等深链）→ 有待消费的拼字邀请 → 直达最近一本书的编辑器（Editor 会自动弹「加入房间」）；否则进书架
 async function afterLogin() {
+  const redirect = String(router.currentRoute.value.query.redirect || '')
+  if (redirect && redirect !== '/login' && redirect.startsWith('/')) {
+    router.push(redirect)
+    return
+  }
   try {
     if (localStorage.getItem('xzj-sprint-invite')) {
       const res = await projectApi.list()

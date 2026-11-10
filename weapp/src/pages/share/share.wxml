@@ -1,5 +1,16 @@
 <view class="share-page">
-  <view class="sp-card">
+  <!-- 拼字房邀请 -->
+  <view wx:if="{{kind === 'sprint'}}" class="sp-card">
+    <view class="sp-book">🔥 拼字房邀请</view>
+    <view class="sp-title">{{title}}</view>
+    <view class="sp-code">{{code}}</view>
+    <view class="sp-label" wx:if="{{label}}">{{label}}</view>
+    <view class="sp-tip">点下面按钮，把房间发给好友 / 群</view>
+    <button class="sp-btn" open-type="share">转发邀请</button>
+    <view class="sp-hint">好友点开即进房间一起拼，拼字中也能加入</view>
+  </view>
+  <!-- 章节公开读 -->
+  <view wx:else class="sp-card">
     <image class="sp-cover" src="/images/share-cover.jpg" mode="widthFix" />
     <view class="sp-book">《{{book || '作品'}}》</view>
     <view class="sp-title">{{title}}</view>

@@ -268,6 +268,12 @@ async function loadProjects() {
   try {
     const res = await projectApi.list()
     projects.value = res.data?.data || res.data || []
+    // 拼字邀请落地闭环：已登录收卡/点链接落在书架时，自动进最近一本书——编辑器 init 会弹「加入房间」
+    if (localStorage.getItem('xzj-sprint-invite') && projects.value.length) {
+      const p = projects.value[0]
+      toast.info('🏁 收到拼字邀请，正在带你去加入')
+      router.push(`/editor/${p.public_id || p.id}`)
+    }
   } catch (e: any) {
     if (e.response?.status === 401) {
       router.push('/login')
