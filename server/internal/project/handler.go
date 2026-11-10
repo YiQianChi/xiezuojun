@@ -249,6 +249,13 @@ func newProjectPublicID() string {
 func (h *Handler) resolveProjectParam(s string) (uint, error) {
 	var p model.Project
 	if err := h.db.Where("public_id = ? AND status = 1", s).First(&p).Error; err != nil {
+		// 数字 id 兜底：导入建书后前端带数字 id 跳编辑器、旧书签也是数字——只认 public_id 会 404 成「无权访问」
+		if n, cErr := strconv.ParseUint(s, 10, 64); cErr == nil {
+			var p2 model.Project
+			if err2 := h.db.Where("id = ? AND status = 1", uint(n)).First(&p2).Error; err2 == nil {
+				return p2.ID, nil
+			}
+		}
 		return 0, err
 	}
 	return p.ID, nil
