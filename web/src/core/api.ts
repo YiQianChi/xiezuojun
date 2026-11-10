@@ -470,6 +470,12 @@ export const sprintApi = {
   start() {
     return api.post('/sprint/start')
   },
+  restart() {
+    return api.post('/sprint/restart')
+  },
+  cancelAutostart() {
+    return api.post('/sprint/cancel-autostart')
+  },
   heartbeat(words: number) {
     return api.post('/sprint/heartbeat', { words })
   },

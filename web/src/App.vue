@@ -132,13 +132,17 @@ function refreshLoginState() {
 }
 watch(() => route.fullPath, refreshLoginState)
 
-// 拼字邀请链接落地：/s/8621 重定向成 ?sprint=8621 —— 存本地后进编辑器自动弹「加入房间」
+// 拼字邀请链接落地：/s/8621 重定向成 ?sprint=8621（密码房链接可带 ?pw=）—— 存本地后进编辑器自动弹「加入房间」
 watch(() => route.query.sprint, (code) => {
   const c = String(code || '').trim()
   if (!c) return
-  try { localStorage.setItem('xzj-sprint-invite', c) } catch {}
-  toast.info(`🏁 收到拼字邀请：房间 ${c}——进一本书的编辑器，点底部 🏁 加入`)
-  router.replace({ path: route.path, query: { ...route.query, sprint: undefined } }).catch(() => {})
+  try {
+    localStorage.setItem('xzj-sprint-invite', c)
+    const pw = String(route.query.pw || '').trim()
+    if (pw) localStorage.setItem('xzj-sprint-invite-pw', pw)
+  } catch {}
+  toast.info(`🏁 收到拼字邀请：房间 ${c}——登录/进编辑器后自动弹出加入面板`)
+  router.replace({ path: route.path, query: { ...route.query, sprint: undefined, pw: undefined } }).catch(() => {})
 }, { immediate: true })
 
 const showQQModal = ref(false)

@@ -68,11 +68,11 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      // 拼字房邀请链接：/s/8621 → 首页带 ?sprint=8621，App.vue 落 localStorage，
+      // 拼字房邀请链接：/s/8621（密码房可带 ?pw=）→ 首页带 ?sprint=8621，App.vue 落 localStorage，
       // 进编辑器后 useSprint.init 自动弹「加入房间」面板
       path: '/s/:code',
       name: 'SprintInvite',
-      redirect: to => ({ path: '/', query: { sprint: String(to.params.code) } })
+      redirect: to => ({ path: '/', query: { sprint: String(to.params.code), pw: to.query.pw ? String(to.query.pw) : undefined } })
     },
   ]
 })

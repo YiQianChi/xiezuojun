@@ -125,12 +125,27 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { userApi } from '../core/api'
+import { userApi, projectApi } from '../core/api'
 import { mpNavigate } from '../core/mp'
 
 type LoginMode = 'password' | 'code'
 type AccountType = 'email' | 'phone'
 const router = useRouter()
+
+// 登录后去向：有待消费的拼字邀请 → 直达最近一本书的编辑器（Editor 会自动弹「加入房间」）；否则进书架
+async function afterLogin() {
+  try {
+    if (localStorage.getItem('xzj-sprint-invite')) {
+      const res = await projectApi.list()
+      const p = (res.data?.data || res.data || [])[0]
+      if (p) {
+        router.push(`/editor/${p.public_id || p.id}`)
+        return
+      }
+    }
+  } catch { /* 拉不到就照常进书架 */ }
+  router.push('/bookshelf')
+}
 // 微信审核：协议默认不同意，用户自主勾选后才能登录/发码
 const agreed = ref(false)
 function toggleAgree() { agreed.value = !agreed.value }
@@ -159,7 +174,7 @@ const onWxMsg = (e: MessageEvent) => {
   if (e.data.at) {
     localStorage.setItem('access_token', e.data.at)
     if (e.data.rt) localStorage.setItem('refresh_token', e.data.rt)
-    router.push('/bookshelf')
+    afterLogin()
   } else {
     errorMsg.value = e.data.error || '微信登录失败'
     showQr.value = false
@@ -326,7 +341,7 @@ async function handleLogin() {
     const data = res.data.data || res.data
     if (data.access_token) localStorage.setItem('access_token', data.access_token)
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
-    router.push('/bookshelf')
+    afterLogin()
   } catch (err: any) {
     errorMsg.value = normalizeError(err)
   } finally {

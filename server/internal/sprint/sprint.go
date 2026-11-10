@@ -44,7 +44,11 @@ type Room struct {
 	State      string // waiting | running | finished
 	CreatedAt  time.Time
 	StartedAt  time.Time
-	EndsAt     time.Time // time 模式有值
+	EndsAt     time.Time // 两种模式都有值：time=目标时长；words=60min 上限
+
+	AutoStart     bool      // 快速匹配房：2 人即自动倒计时开局（自建房不自动）
+	AutoStartAt   time.Time // 自动开局时刻（零=未在倒计时）
+	AutoCancelled bool      // 房主取消过自动开局，本轮不再自动武装
 
 	Players map[string]*Player
 	Order   []string // 加入顺序（waiting 态排序用）
@@ -53,10 +57,12 @@ type Room struct {
 }
 
 const (
-	beatTimeout    = 40 * time.Second // 心跳超时判离线
-	roomTTL        = 10 * time.Minute // 结算后房间保留时长（供围观/重连看结果）
-	waitingTTL     = 2 * time.Hour    // 无人开的等待房回收
+	beatTimeout    = 40 * time.Second  // 心跳超时判离线
+	roomTTL        = 10 * time.Minute  // 结算后房间保留时长（供围观/重连看结果）
+	waitingTTL     = 2 * time.Hour     // 无人开的等待房回收
 	defaultMaxRoom = 8
+	autoStartDelay = 10 * time.Second  // 快速匹配房凑齐 2 人后的开局倒计时
+	wordsCap       = 60 * time.Minute  // 拼字数模式时间上限：到时按字数结算，防永远 running
 )
 
 var (
@@ -290,22 +296,30 @@ func Join(uid, nickname, code, password string) (*Room, string) {
 	return r, ""
 }
 
-// QuickMatch 快速匹配：优先并入等待中的公开房，没有就开一间公开默认房
+// QuickMatch 快速匹配：优先并入等待中的公开房；没有再进还有空位、剩余≥3 分钟的 running 房
+// （running 本就支持中途加入——不进池会让两人先后匹配错开各开新房）
 func QuickMatch(uid, nickname string) *Room {
 	mu.Lock()
 	defer mu.Unlock()
 	LeaveLocked(uid)
-	// 找还有空位、开不超过 10 分钟的公开等待房
 	now := time.Now()
-	var codes []string
+	var waiting, running []string
 	for c, r := range rooms {
-		if r.IsPublic && r.State == "waiting" && len(r.Players) < r.MaxPlayers && now.Sub(r.CreatedAt) < 10*time.Minute {
-			codes = append(codes, c)
+		if !r.IsPublic || len(r.Players) >= r.MaxPlayers {
+			continue
+		}
+		if r.State == "waiting" && now.Sub(r.CreatedAt) < 10*time.Minute {
+			waiting = append(waiting, c)
+		} else if r.State == "running" && !r.EndsAt.IsZero() && r.EndsAt.Sub(now) >= 3*time.Minute {
+			running = append(running, c)
 		}
 	}
-	if len(codes) > 0 {
-		sort.Strings(codes)
-		r := rooms[codes[0]]
+	for _, pool := range [][]string{waiting, running} {
+		if len(pool) == 0 {
+			continue
+		}
+		sort.Strings(pool)
+		r := rooms[pool[0]]
 		joinRoom(r, uid, nickname)
 		return r
 	}
@@ -318,6 +332,7 @@ func QuickMatch(uid, nickname string) *Room {
 		MaxPlayers: 4,
 		HostUID:    uid,
 		State:      "waiting",
+		AutoStart:  true, // 凑齐 2 人自动倒计时开局，不干等房主
 		CreatedAt:  now,
 		Players:    map[string]*Player{},
 	}
@@ -339,11 +354,48 @@ func joinRoom(r *Room, uid, nickname string) {
 	}
 	r.Order = append(r.Order, uid)
 	userRoom[uid] = r.Code
+	armAutoStart(r)
 	persistRoom(r)
 	broadcastRoom(r)
 }
 
-// Leave 主动离开（房主离开=解散等待房；拼字中离开=标记退赛，保留成绩到结算）
+// armAutoStart 快速匹配房凑齐 2 人自动进入开局倒计时（房主取消过则不武装）
+func armAutoStart(r *Room) {
+	if r.AutoStart && r.State == "waiting" && !r.AutoCancelled && r.AutoStartAt.IsZero() && len(r.Players) >= 2 {
+		r.AutoStartAt = time.Now().Add(autoStartDelay)
+	}
+}
+
+// checkAutoStart 倒计时到点自动开局；人数掉回 1 则撤倒计时（心跳/清扫双入口调用）
+func checkAutoStart(r *Room) {
+	if r.State != "waiting" || r.AutoStartAt.IsZero() {
+		return
+	}
+	if len(r.Players) < 2 {
+		r.AutoStartAt = time.Time{}
+		return
+	}
+	if !time.Now().Before(r.AutoStartAt) {
+		startLocked(r)
+	}
+}
+
+// migrateHost 房主离开/掉线：传位给加入最早的在线成员（调用方持锁）
+func migrateHost(r *Room) {
+	for _, uid := range r.Order {
+		if p, ok := r.Players[uid]; ok && p.Online {
+			r.HostUID = uid
+			return
+		}
+	}
+	if len(r.Order) > 0 {
+		if _, ok := r.Players[r.Order[0]]; ok {
+			r.HostUID = r.Order[0]
+		}
+	}
+}
+
+// Leave 主动离开（拼字中离开=标记退赛，保留成绩到结算；等待房房主离开=传位不散房）
 func Leave(uid string) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -368,19 +420,17 @@ func LeaveLocked(uid string) {
 		}
 	}
 	if r.State == "waiting" {
-		if len(r.Players) == 0 || r.HostUID == uid {
-			// 房主走人 or 空房：等待房解散，通知残余成员
-			ev := marshalEvent("dissolved", &RoomView{Code: code, State: "waiting"})
-			for u := range r.Players {
-				publish(u, ev)
-				delete(userRoom, u)
-			}
+		if len(r.Players) == 0 {
 			delete(rooms, code)
 			dropPersist(code)
-		} else {
-			persistRoom(r)
-			broadcastRoom(r)
+			return
 		}
+		if r.HostUID == uid {
+			migrateHost(r) // 房主走了传位给最早成员，房不散、邀请链接不变
+		}
+		checkAutoStart(r) // 人掉回 1 撤自动开局倒计时
+		persistRoom(r)
+		broadcastRoom(r)
 	} else {
 		// running/finished：标记离线，成绩保留到房间回收
 		if len(onlinePlayers(r)) == 0 {
@@ -409,14 +459,68 @@ func Start(uid string) (*Room, string) {
 	if len(r.Players) < 1 {
 		return nil, "房间里没人"
 	}
+	startLocked(r)
+	return r, ""
+}
+
+// startLocked 真正开局（房主手点与自动开局共用；调用方持锁）
+func startLocked(r *Room) {
 	r.State = "running"
+	r.AutoStartAt = time.Time{}
 	r.StartedAt = time.Now()
 	if r.Mode == "time" {
 		r.EndsAt = r.StartedAt.Add(time.Duration(r.Target) * time.Minute)
+	} else {
+		r.EndsAt = r.StartedAt.Add(wordsCap) // 拼字数没上限会永远 running，到时按字数结算
 	}
 	for _, p := range r.Players {
 		p.LastBeat = time.Now()
 	}
+	persistRoom(r)
+	broadcastRoom(r)
+}
+
+// Restart 同房再来一局：房主把结算房重置回等待。房间号不变=邀请链接仍有效、成员不散
+func Restart(uid string) (*Room, string) {
+	mu.Lock()
+	defer mu.Unlock()
+	r := roomOf(uid)
+	if r == nil {
+		return nil, "不在房间里"
+	}
+	if r.HostUID != uid {
+		return nil, "只有房主能开下一局"
+	}
+	if r.State != "finished" {
+		return nil, "本局还没结束"
+	}
+	r.State = "waiting"
+	r.StartedAt, r.EndsAt, r.FinishedAt = time.Time{}, time.Time{}, time.Time{}
+	r.AutoCancelled = false
+	for _, p := range r.Players {
+		p.Words = 0
+		p.LastBeat = time.Now()
+		p.Online = true // 宽限：按在线起算，没心跳的下一轮清扫会纠正
+	}
+	armAutoStart(r) // 快速匹配房人还在就接着自动开
+	persistRoom(r)
+	broadcastRoom(r)
+	return r, ""
+}
+
+// CancelAutoStart 房主取消自动开局倒计时（本轮不再自动武装，改为手点开始）
+func CancelAutoStart(uid string) (*Room, string) {
+	mu.Lock()
+	defer mu.Unlock()
+	r := roomOf(uid)
+	if r == nil {
+		return nil, "不在房间里"
+	}
+	if r.HostUID != uid {
+		return nil, "只有房主能取消"
+	}
+	r.AutoStartAt = time.Time{}
+	r.AutoCancelled = true
 	persistRoom(r)
 	broadcastRoom(r)
 	return r, ""
@@ -450,6 +554,7 @@ func Heartbeat(uid string, words int) *RoomView {
 	if r.State == "running" {
 		finishIfDue(r)
 	}
+	checkAutoStart(r) // 自动开局倒计时（心跳 5s 一拍驱动，比清扫更跟手）
 	if r.State == "running" || r.State == "waiting" {
 		persistRoom(r)
 		broadcastRoom(r) // 心跳驱动榜单广播（约 5s 一拍）
@@ -476,7 +581,8 @@ func onlinePlayers(r *Room) []*Player {
 }
 
 func finishIfDue(r *Room) {
-	if r.State == "running" && r.Mode == "time" && !time.Now().Before(r.EndsAt) {
+	// 两种模式 EndsAt 都有值（words=60min 上限），到时按字数结算
+	if r.State == "running" && !r.EndsAt.IsZero() && !time.Now().Before(r.EndsAt) {
 		finishRoom(r)
 	}
 }
@@ -520,6 +626,8 @@ type RoomView struct {
 	StartedAtMs int64        `json:"started_at_ms"`
 	EndsAtMs    int64        `json:"ends_at_ms"`
 	ServerNowMs int64        `json:"server_now_ms"`
+	AutoStartMs int64        `json:"auto_start_at_ms"` // >0=自动开局倒计时截止时刻
+	IsQuick     bool         `json:"is_quick"`         // 快速匹配房
 	Players     []PlayerView `json:"players"`
 	Me          string       `json:"me"`
 }
@@ -547,6 +655,10 @@ func viewOf(r *Room, meUID string) *RoomView {
 	} else {
 		v.TargetLabel = itoa(r.Target) + " 字"
 	}
+	if !r.AutoStartAt.IsZero() {
+		v.AutoStartMs = r.AutoStartAt.UnixMilli()
+	}
+	v.IsQuick = r.AutoStart
 	// waiting=加入顺序；running/finished=字数降序
 	type pe struct {
 		p  *Player
@@ -673,11 +785,20 @@ func init() {
 				for _, p := range r.Players {
 					if p.Online && now.Sub(p.LastBeat) > beatTimeout {
 						p.Online = false
-						if r.State == "running" {
+						broadcastRoom(r) // waiting 也要广播：房主传位/成员离线徽标靠它
+					}
+				}
+				// 房主掉线：等待房传位，别让房卡死没人能开局
+				if r.State == "waiting" && r.HostUID != "" {
+					if h := r.Players[r.HostUID]; h != nil && !h.Online {
+						old := r.HostUID
+						migrateHost(r)
+						if r.HostUID != old {
 							broadcastRoom(r)
 						}
 					}
 				}
+				checkAutoStart(r) // 自动开局倒计时到点（清扫兜底，心跳驱动为主）
 				finishIfDue(r)
 				// 回收：结算房超 TTL / 等待房超时 / 全员离线的 running 房
 				if r.State == "finished" && now.Sub(r.FinishedAt) > roomTTL {

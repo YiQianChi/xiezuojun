@@ -199,6 +199,9 @@
                   <button class="bs-mini" @click="copy(sprint.room.code, '已复制房间号 ' + sprint.room.code)">📋 房间号</button>
                   <button class="bs-mini on" @click="copy(inviteLink, '邀请链接已复制')">🔗 链接</button>
                 </div>
+                <label v-if="sprint.room.has_password && sprint.roomPassword" class="bs-inv-pw">
+                  <input type="checkbox" v-model="inviteWithPw" />链接带密码（码友点开免输密码）
+                </label>
                 <div class="bs-inv-note">链接发码友（微信 / QQ 群），点开自动进房</div>
               </div>
               <div class="bs-members">
@@ -207,11 +210,17 @@
                   <span class="bs-m-name">{{ p.nickname }}{{ p.user_id === sprint.room.me ? '（我）' : '' }}<span v-if="p.is_host" class="bs-m-host">房主</span></span>
                   <span class="bs-m-ready">{{ p.online ? '✓' : '离线' }}</span>
                 </div>
-                <div v-if="sprint.room.players.length < sprint.room.max_players" class="bs-member-empty">＋ 等码友进房（{{ sprint.room.players.length }}/{{ sprint.room.max_players }}）</div>
+                <div v-if="sprint.room.players.length < sprint.room.max_players" class="bs-member-empty">{{ sprint.room.is_quick ? '⚡ 正在找拼友' : '＋ 等码友进房' }}（{{ sprint.room.players.length }}/{{ sprint.room.max_players }}）</div>
               </div>
               <div class="bs-row foot">
-                <button v-if="sprint.amHost" class="bs-btn green slim" :disabled="sprint.busy" @click="sprint.start()">开始拼字</button>
-                <div v-else class="bs-waiting">等房主开始…</div>
+                <template v-if="sprint.autoStartLeft > 0">
+                  <div class="bs-autostart">⏳ {{ sprint.autoStartLeft }}s 后自动开始</div>
+                  <button v-if="sprint.amHost" class="bs-btn line slim" :disabled="sprint.busy" @click="sprint.cancelAutostart()">取消</button>
+                </template>
+                <template v-else>
+                  <button v-if="sprint.amHost" class="bs-btn green slim" :disabled="sprint.busy" @click="sprint.start()">开始拼字</button>
+                  <div v-else class="bs-waiting">等房主开始…</div>
+                </template>
                 <button class="bs-btn line slim" @click="sprint.leave()">退出</button>
               </div>
             </template>
@@ -289,7 +298,17 @@ async function submitJoin() {
   const ok = await sprint.join(sprint.joinCode, sprint.joinPass)
   if (ok) sprint.joinPass = ''
 }
-const inviteLink = computed(() => `${location.origin}/s/${sprint.room?.code || ''}`)
+const inviteWithPw = ref(true)
+const inviteLink = computed(() => {
+  const r = sprint.room
+  if (!r) return ''
+  let u = `${location.origin}/s/${r.code}`
+  // 密码房默认把密码拼进链接（勾选可控）；密码只有建房/输过密码的本端才知道
+  if (r.has_password && inviteWithPw.value && sprint.roomPassword) {
+    u += `?pw=${encodeURIComponent(sprint.roomPassword)}`
+  }
+  return u
+})
 async function copy(text: string, tip: string) {
   try {
     await navigator.clipboard.writeText(text)
@@ -1142,6 +1161,11 @@ onBeforeUnmount(() => {
 }
 .bs-mini.on { background: rgba(129,187,142,0.14); border-color: #81bb8e; color: #5a9668; }
 .bs-inv-note { font-size: 9px; color: var(--text-tertiary, #999); margin-top: 5px; line-height: 1.5; }
+.bs-inv-pw {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; color: var(--text-secondary, #666); margin-top: 6px; cursor: pointer;
+}
+.bs-inv-pw input { margin: 0; accent-color: #81bb8e; }
 .bs-members { display: flex; flex-direction: column; gap: 2px; }
 .bs-member {
   display: flex; align-items: center; gap: 7px; padding: 4px 7px; border-radius: 8px; font-size: 11.5px;
@@ -1162,6 +1186,10 @@ onBeforeUnmount(() => {
 .bs-m-rk { width: 14px; font-size: 10px; font-weight: 800; color: var(--text-tertiary, #999); text-align: center; }
 .bs-m-wc { font-size: 11px; font-weight: 800; color: var(--text-primary, #333); font-variant-numeric: tabular-nums; }
 .bs-waiting { flex: 1; text-align: center; font-size: 11px; color: var(--text-tertiary, #999); align-self: center; }
+.bs-autostart {
+  flex: 1; text-align: center; font-size: 12px; font-weight: 700;
+  color: #5a9668; align-self: center; font-variant-numeric: tabular-nums;
+}
 .bs-live-cd { text-align: center; font-size: 22px; font-weight: 800; color: #d97706; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
 .bs-live-sub { text-align: center; font-size: 10.5px; color: var(--text-secondary, #666); }
 .bs-live-hint { text-align: center; font-size: 9.5px; color: var(--text-tertiary, #999); }

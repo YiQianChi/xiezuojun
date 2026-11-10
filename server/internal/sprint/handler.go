@@ -17,6 +17,8 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/sprint/quickmatch", handleQuickMatch)
 	rg.POST("/sprint/leave", handleLeave)
 	rg.POST("/sprint/start", handleStart)
+	rg.POST("/sprint/restart", handleRestart)           // 同房再来一局（房间号不变）
+	rg.POST("/sprint/cancel-autostart", handleCancelAutoStart) // 房主取消自动开局
 	rg.POST("/sprint/heartbeat", handleHeartbeat)
 	rg.GET("/sprint/room", handleRoom)
 	rg.GET("/sprint/rooms", handleRooms) // 公开房列表
@@ -95,6 +97,26 @@ func handleLeave(c *gin.Context) {
 func handleStart(c *gin.Context) {
 	uid := c.GetString("userID")
 	r, msg := Start(uid)
+	if r == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": viewOf(r, uid)})
+}
+
+func handleRestart(c *gin.Context) {
+	uid := c.GetString("userID")
+	r, msg := Restart(uid)
+	if r == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": viewOf(r, uid)})
+}
+
+func handleCancelAutoStart(c *gin.Context) {
+	uid := c.GetString("userID")
+	r, msg := CancelAutoStart(uid)
 	if r == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
 		return

@@ -29,6 +29,8 @@ export interface SprintRoom {
   started_at_ms: number
   ends_at_ms: number
   server_now_ms: number
+  auto_start_at_ms: number
+  is_quick: boolean
   players: SprintPlayer[]
   me: string
 }
@@ -42,6 +44,7 @@ const joinPass = ref('')
 const busy = ref(false)
 const showResult = ref(false)
 const now = ref(Date.now())
+const roomPassword = ref('') // 本端已知的房间密码（建房/加入时输入过），供邀请链接带密码用
 let clockOffset = 0
 let wordCountRef: Ref<number> | null = null
 let beatTimer: number | null = null
@@ -160,6 +163,11 @@ const leadText = computed(() => {
   return iAmLeader.value ? '我领先！' : `🏅 ${leaderP.value.nickname} ${leaderP.value.words} 字`
 })
 const amHost = computed(() => room.value?.host_uid === room.value?.me)
+const autoStartLeft = computed(() => {
+  const r = room.value
+  if (!r || r.state !== 'waiting' || !r.auto_start_at_ms) return 0
+  return Math.max(0, Math.ceil((r.auto_start_at_ms - now.value) / 1000))
+})
 
 function avatar(name: string): string {
   return (name || '菌').trim().slice(0, 1)
@@ -171,6 +179,7 @@ async function doCreate(form: { name: string; mode: 'time' | 'words'; target: nu
   try {
     const res = await sprintApi.create({ nickname: nickname(), ...form, password: form.is_public ? '' : form.password })
     applyRoom(res.data?.data)
+    roomPassword.value = form.is_public ? '' : form.password
     lastForm = { ...form }
     phase.value = 'lobby'
     openEvents(); startBeat()
@@ -184,6 +193,7 @@ async function doJoin(code: string, password: string) {
   try {
     const res = await sprintApi.join({ nickname: nickname(), code: code.trim(), password })
     applyRoom(res.data?.data)
+    roomPassword.value = password
     phase.value = 'lobby'
     openEvents(); startBeat()
     return true
@@ -208,10 +218,32 @@ async function doQuickmatch() {
 async function doLeave() {
   try { await sprintApi.leave() } catch { /* 房间可能已散 */ }
   room.value = null
+  roomPassword.value = ''
   phase.value = 'entry'
   panelOpen.value = false
   showResult.value = false
   closeEvents(); stopBeat()
+}
+
+// 同房再来一局：房主把结算房重置回等待，房间号不变、成员不散、邀请链接仍有效
+async function doRestart() {
+  busy.value = true
+  try {
+    const res = await sprintApi.restart()
+    applyRoom(res.data?.data)
+    phase.value = 'lobby'
+    showResult.value = false
+    focusSprintWindow()
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || '开下一局失败')
+  } finally { busy.value = false }
+}
+
+async function doCancelAutostart() {
+  try {
+    const res = await sprintApi.cancelAutostart()
+    applyRoom(res.data?.data)
+  } catch { /* 下一拍快照兜底 */ }
 }
 
 async function doStart() {
@@ -227,6 +259,7 @@ async function doStart() {
 
 function again() {
   showResult.value = false
+  if (room.value && amHost.value) { doRestart(); return } // 房主：同房重开，房间号/成员/邀请链接不变
   if (lastForm) { phase.value = 'create'; panelOpen.value = true }
   else { phase.value = 'entry'; panelOpen.value = true }
 }
@@ -238,9 +271,10 @@ function focusSprintWindow() {
 function openPanel() {
   focusSprintWindow()
 }
-function openJoin(code?: string) {
+function openJoin(code?: string, pw?: string) {
   phase.value = 'join'
   if (code) joinCode.value = code
+  if (pw) joinPass.value = pw
   if (room.value) {
     toast.info('你还在拼字房里，先退出再加入新房间')
     phase.value = 'lobby'
@@ -268,21 +302,24 @@ async function init(wc: Ref<number>): Promise<number> {
       openEvents(); startBeat()
     }
   } catch { /* 未登录/网络错都静默 */ }
-  // 邀请链接落地（App.vue 存的 ?sprint=code）
+  // 邀请链接落地（App.vue 存的 ?sprint=code；密码房链接可带 ?pw=）
   const inv = localStorage.getItem('xzj-sprint-invite')
   if (inv) {
+    const pw = localStorage.getItem('xzj-sprint-invite-pw') || ''
     localStorage.removeItem('xzj-sprint-invite')
-    openJoin(inv)
+    localStorage.removeItem('xzj-sprint-invite-pw')
+    openJoin(inv, pw)
   }
   return restored
 }
 
 export function useSprint() {
   return reactive({
-    room, panelOpen, phase, joinCode, joinPass, busy, showResult,
-    inRoom, running, amHost, myRank, myWords, leaderP, iAmLeader,
+    room, panelOpen, phase, joinCode, joinPass, busy, showResult, roomPassword,
+    inRoom, running, amHost, myRank, myWords, leaderP, iAmLeader, autoStartLeft,
     countdownText, leadText, myPlayer: meP,
     avatar, init, openPanel, openJoin,
     create: doCreate, join: doJoin, quickmatch: doQuickmatch, leave: doLeave, start: doStart, again,
+    restart: doRestart, cancelAutostart: doCancelAutostart,
   })
 }
