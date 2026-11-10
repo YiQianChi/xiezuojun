@@ -291,6 +291,34 @@ export const stickyApi = {
   },
 }
 
+// 拆书台（纯参考域：五件套 + 分屏只读原文 + 划词素材，永不写用户创作数据）
+export const dismantleApi = {
+  list(projectId: number) {
+    return api.get('/dismantle', { params: { project_id: projectId } })
+  },
+  get(id: number) {
+    return api.get(`/dismantle/${id}`)
+  },
+  create(data: { project_id: number; title: string; chapters: { title: string; content: string }[] }) {
+    return api.post('/dismantle', data)
+  },
+  chapter(id: number, idx: number) {
+    return api.get(`/dismantle/${id}/chapters/${idx}`)
+  },
+  remove(id: number) {
+    return api.delete(`/dismantle/${id}`)
+  },
+  addClip(id: number, data: { chapter_idx: number; text: string }) {
+    return api.post(`/dismantle/${id}/clips`, data)
+  },
+  listClips(projectId: number) {
+    return api.get('/dismantle/clips', { params: { project_id: projectId } })
+  },
+  removeClip(id: number) {
+    return api.delete(`/dismantle/clips/${id}`)
+  },
+}
+
 // 记忆系统
 export const memoryApi = {
   listCharacters(projectId: string) {

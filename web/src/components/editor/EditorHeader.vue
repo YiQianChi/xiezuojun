@@ -57,6 +57,7 @@
         <div class="more-pop" v-if="moreMenuOpen">
           <button class="mp-item" @click="moreMenuOpen = false; themeMenuOpen = true">🎨 主题（皮肤）</button>
           <button v-if="mode === 'write'" class="mp-item" @click="moreMenuOpen = false; $emit('toggle-reference')">📖 分屏</button>
+          <button v-if="mode === 'write'" class="mp-item" @click="moreMenuOpen = false; $emit('open-dismantle')"><svg class="mp-ic" viewBox="0 0 19 19"><path d="M3 4c2-1 4.5-1 6.5.5C11.5 3 14 3 16 4v10.5c-2-1-4.5-1-6.5.5-2-1.5-4.5-1.5-6.5-.5z"/><path d="M9.5 4.5v10.5"/></svg> 拆书库</button>
           <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId || savingVersion" @click="moreMenuOpen = false; $emit('save-version')">💾 保存版本</button>
           <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId" @click="moreMenuOpen = false; $emit('open-history')">🕒 版本历史</button>
         </div>
@@ -97,6 +98,7 @@ defineEmits<{
   'open-history': []
   'toggle-focus': []
   'toggle-reference': []
+  'open-dismantle': []
   'toggle-sidebar': []
 }>()
 
@@ -297,6 +299,7 @@ if (typeof document !== 'undefined') {
   cursor: pointer;
 }
 .mp-item:hover { background: var(--ed-hover, rgba(150, 130, 100, 0.09)); }
+.mp-ic { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px; margin-right: 2px; }
 .mp-item:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* 专注=顶栏唯一主色按钮 */

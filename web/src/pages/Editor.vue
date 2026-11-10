@@ -17,6 +17,7 @@
       @open-history="openVersionModal"
       @toggle-focus="focusMode = !focusMode"
       @toggle-reference="toggleReference"
+      @open-dismantle="dismantleLibOpen = true"
       @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen"
     />
 
@@ -246,6 +247,16 @@
           @pane-focus="lastPane = 'right'"
           @resize-w="splitW = $event"
           @resize-h="splitH = $event"
+        />
+
+        <!-- 拆书库（⋯ 菜单进）：拆别人的书 → 报告 + 分屏只读对照。
+             v-if 惰性挂载：Editor 的 projectId 是普通 let，常驻挂载会捕获解析前的 0 -->
+        <DismantleLibraryModal
+          v-if="dismantleLibOpen"
+          :model-value="true"
+          :project-id="projectId"
+          @close="dismantleLibOpen = false"
+          @open-split="openDismantleSplit"
         />
       </div>
 
@@ -712,6 +723,7 @@ import { chapterDisplayTitle, stripChapterPrefix, chapterOrdinal, numToChinese }
 import { editorContentFromText, stripContentChapterHeading } from '../core/editorContent'
 import SearchPanel from '../components/SearchPanel.vue'
 import SplitEditor from '../components/editor/SplitEditor.vue'
+import DismantleLibraryModal from '../components/editor/DismantleLibraryModal.vue'
 import PhonePreview from '../components/editor/PhonePreview.vue'
 import ReviewView from '../components/ReviewView.vue'
 import EditorHeader from '../components/editor/EditorHeader.vue'
@@ -1293,6 +1305,13 @@ interface UsedSetting {
 const usedSettings = ref<UsedSetting[]>([])
 const contextPanelOpen = ref(true) // 右栏工作台常驻展开（Boss 2026-11：桌面不要收起态）；false 仅在分屏占右缘时暂避
 const referencePanelOpen = ref(false) // 分屏（对等第二页）
+// 拆书库弹层（⋯ 菜单进；产出纯参考，不写创作数据）
+const dismantleLibOpen = ref(false)
+function openDismantleSplit(book: any) {
+  referencePanelOpen.value = true
+  contextPanelOpen.value = false
+  splitRef.value?.openDismantle?.(book.id)
+}
 // 分屏关掉 → 右栏自动回来（SplitEditor @close 和 toggleReference 两条路都归这里管）
 watch(referencePanelOpen, (v) => { if (!v) contextPanelOpen.value = true })
 const splitW = ref(360) // 左右分屏面板宽（拖动调整，localStorage 记忆）

@@ -28,6 +28,7 @@ import (
 	"xiezuojun-server/internal/model"
 	"xiezuojun-server/internal/project"
 	"xiezuojun-server/internal/sprint"
+	"xiezuojun-server/internal/dismantle"
 	"xiezuojun-server/internal/sticky"
 	"xiezuojun-server/internal/store"
 	"xiezuojun-server/internal/user"
@@ -62,6 +63,11 @@ func main() {
 		&admin.Announcement{},
 		&admin.Feedback{},
 		&sticky.Note{},
+		&dismantle.Book{},
+		&dismantle.Chapter{},
+		&dismantle.Output{},
+		&dismantle.Annotation{},
+		&dismantle.Clipping{},
 	); err != nil {
 		log.Fatal("auto migrate failed: ", err)
 	}
@@ -388,6 +394,11 @@ func main() {
 	sticky.SetDB(db)
 	sticky.RegisterRoutes(authd)
 	ai.RegisterSelfCheck(authd, aiClient, gateway.DefaultModels[0].ModelID)
+
+	// 拆书台：分屏对照读别人的书 + 五件套参考（纯参考域，不写用户创作数据）
+	dismantle.SetDB(db)
+	dismantle.SetAI(aiClient)
+	dismantle.RegisterRoutes(authd)
 
 	// 后台管理路由（用户管理/看板/内容监管/公告/反馈）
 	adminHandler := admin.NewHandler(db)

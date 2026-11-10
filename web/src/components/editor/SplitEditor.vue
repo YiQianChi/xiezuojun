@@ -1,11 +1,13 @@
 <template>
   <div
+    ref="rootEl"
     class="reference-panel split-panel"
     :class="['split-' + dir, { 'drop-target': dragOver }]"
     :style="dir === 'h' ? { width: width + 'px' } : { height: heightV + 'px' }"
     @dragover.prevent="onDragOver"
     @dragleave="onDragLeave"
     @drop.prevent="onDrop"
+    @mouseup="onSelUp"
   >
     <!-- 左缘拖宽（左右分屏·桌面） -->
     <div class="split-resize" title="拖动调整宽度 · 点击互换两页" @pointerdown="startResize"></div>
@@ -16,9 +18,10 @@
     <div v-if="dragOver" class="drop-hint">📄 松开：在这页打开{{ dragTitle ? '「' + dragTitle + '」' : '' }}</div>
 
     <div class="panehead" :class="{ 'is-active': activePane }">
-      <button class="split-nav" :disabled="!prevChapter" title="上一章" @click="selectDoc(prevChapter?.id)">‹</button>
+      <button class="split-nav" :disabled="!canPrev" title="上一章" @click="navPrev">‹</button>
       <span class="ph-title" :title="paneTitle">{{ paneTitle }}</span>
-      <button class="split-nav" :disabled="!nextChapter" title="下一章" @click="selectDoc(nextChapter?.id)">›</button>
+      <button class="split-nav" :disabled="!canNext" title="下一章" @click="navNext">›</button>
+      <span v-if="dBook" class="ro-pill">拆书 · 只读</span>
       <span class="split-status" :class="{ warn: conflict }">{{ statusText }}</span>
       <button class="ph-btn dir-btn" :title="dir === 'h' ? '切成上下分屏' : '切成左右分屏'" @click="$emit('toggle-dir')">{{ dir === 'h' ? '⇅' : '⇉' }}</button>
       <button class="ph-btn" title="收起分屏" @click="$emit('close')">✕</button>
@@ -26,7 +29,7 @@
 
     <div class="split-body">
       <div v-if="loading" class="ref-loading">加载中...</div>
-      <template v-else-if="selectedId && splitEditor">
+      <template v-else-if="(selectedId && splitEditor) || dBook">
         <!-- 章名头与左页 chapter-virtual-heading 同款：同级负 margin 压进纸顶 -->
         <div v-if="headingParts" class="split-heading">
           <span class="vh-dash"></span>
@@ -43,6 +46,8 @@
         <div class="se-sub">或点上方标题选择 · 这页也能直接写</div>
       </div>
     </div>
+    <!-- 拆书原文划词收藏（fixed 视口坐标，与 sr-swap 同思路不受裁剪） -->
+    <button ref="clipBtn" class="clip-btn" @mousedown.prevent @click="saveClip">收藏到素材</button>
   </div>
 </template>
 
@@ -58,9 +63,11 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { documentApi } from '../../core/api'
+import { dismantleApi } from '../../core/api'
 import { chapterDisplayTitle, flattenChapterOrder } from '../../core/chapterTitle'
 import { editorContentFromText, stripContentChapterHeading } from '../../core/editorContent'
 import { AIMark, AIStrikethrough } from '../../composables/useAIToolbar'
+import { useToast } from '../../composables/useToast'
 
 const props = defineProps<{
   documents: any[]
@@ -88,6 +95,12 @@ const width = ref(0)
 const heightV = ref(0)
 const dragOver = ref(false)
 const dragTitle = ref('')
+const rootEl = ref<HTMLElement | null>(null)
+const clipBtn = ref<HTMLElement | null>(null)
+const toast = useToast()
+
+/* ── 拆书只读源：dBook 非空时本页是拆书库里的别人的书，selectedId 恒 null ── */
+const dBook = ref<{ id: number; title: string; chapters: { idx: number; title: string }[]; idx: number } | null>(null)
 // 编辑区可用宽（粗略扣侧栏 240；手机走上下分屏不受影响）
 const areaW = () => Math.max(420, window.innerWidth - 240)
 // 两页同权：默认对半分；拖过的记忆值优先
@@ -98,6 +111,7 @@ try {
 } catch { width.value = 480; heightV.value = 400 }
 
 const statusText = computed(() =>
+  dBook.value ? `拆书 ${dBook.value.idx}/${dBook.value.chapters.length} · ${wordCount.value} 字` :
   conflict.value ? '只读 · 本章在左侧' : (wordCount.value ? `${saveStatus.value} · ${wordCount.value} 字` : saveStatus.value)
 )
 
@@ -107,14 +121,22 @@ const conflict = computed(() => selectedId.value !== null && selectedId.value ==
 // 容器/角色卡不进分屏：卷和设定容器没有正文，character 在左侧是特殊卡片视图
 const SKIP_TYPES = ['volume', 'outline', 'characters', 'worldbuilding', 'storyline', 'chapter_outline', 'character']
 const chapterOptions = computed(() => flattenChapterOrder(props.documents).filter((d: any) => d.type === 'chapter'))
-// 页头标题（无下拉：选章靠侧栏点/拖 + ‹› 翻章）
+// 页头标题（拆书模式带书名；文档模式无下拉：选章靠侧栏点/拖 + ‹› 翻章）
 const paneTitle = computed(() => {
+  if (dBook.value) {
+    const ch = dBook.value.chapters.find(c => c.idx === dBook.value!.idx)
+    return `《${dBook.value.title}》${ch ? ' · ' + ch.title : ''}`
+  }
   const p = headingParts.value
   if (!p) return '拖章节到这里'
   return p.num ? `${p.num} ${p.name}` : p.name
 })
-// 纸面文件名头（与左页同款拆分）：章节=章号(绿)+章名，设定/笔记=文档名
+// 纸面文件名头：拆书=书名+章名；章节=章号(绿)+章名，设定/笔记=文档名
 const headingParts = computed(() => {
+  if (dBook.value) {
+    const ch = dBook.value.chapters.find(c => c.idx === dBook.value!.idx)
+    return { num: '', name: `${dBook.value.title} · ${ch?.title || ''}` }
+  }
   const d = props.documents.find((x: any) => x.id === selectedId.value)
   if (!d) return null
   if (d.type === 'chapter') {
@@ -131,6 +153,17 @@ const prevChapter = computed(() => (chapterIdx.value > 0 ? chapterOptions.value[
 const nextChapter = computed(() =>
   chapterIdx.value >= 0 && chapterIdx.value < chapterOptions.value.length - 1 ? chapterOptions.value[chapterIdx.value + 1] : null
 )
+// ‹› 导航：拆书模式在拆书章节间翻，文档模式在本项目章节间翻
+const canPrev = computed(() => dBook.value ? dBook.value.idx > 1 : !!prevChapter.value)
+const canNext = computed(() => dBook.value ? dBook.value.idx < dBook.value.chapters.length : !!nextChapter.value)
+function navPrev() {
+  if (dBook.value) { if (dBook.value.idx > 1) loadDChapter(dBook.value.idx - 1) }
+  else if (prevChapter.value) selectDoc(prevChapter.value.id)
+}
+function navNext() {
+  if (dBook.value) { if (dBook.value.idx < dBook.value.chapters.length) loadDChapter(dBook.value.idx + 1) }
+  else if (nextChapter.value) selectDoc(nextChapter.value.id)
+}
 
 let saveTimer: any = null
 const isSettingContent = ref(false)
@@ -208,8 +241,78 @@ async function selectDoc(id: number | null | undefined) {
   hasPicked = true
   // 换文档前先冲刷旧文档的待保存编辑（同主编辑器 openDoc 的教训：只清 timer 会丢 1.5s 的字）
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; await autoSave() }
+  dBook.value = null // 离开拆书模式
+  hideClip()
   selectedId.value = id
   await loadDoc(id)
+}
+
+/* ── 拆书只读源 ── */
+async function openDismantle(bookId: number, idx = 1) {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; await autoSave() }
+  loading.value = true
+  try {
+    const res: any = await dismantleApi.get(bookId)
+    const d = res.data?.data
+    if (!d?.book) return
+    selectedId.value = null
+    dBook.value = { id: bookId, title: String(d.book.title || ''), chapters: d.toc || [], idx }
+    await loadDChapter(idx)
+  } catch {
+    toast.error('拆书加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+async function loadDChapter(idx: number) {
+  const b = dBook.value
+  if (!b || !splitEditor.value) return
+  loading.value = true
+  hideClip()
+  let content = ''
+  try {
+    const res: any = await dismantleApi.chapter(b.id, idx)
+    content = String(res.data?.data?.content || '')
+    try { localStorage.setItem(`xzj-dismantle-${b.id}-${idx}`, content) } catch {}
+  } catch {
+    try { content = localStorage.getItem(`xzj-dismantle-${b.id}-${idx}`) || '' } catch {}
+  }
+  isSettingContent.value = true
+  splitEditor.value.setEditable(false)
+  splitEditor.value.commands.setContent(editorContentFromText(content), { emitUpdate: false })
+  b.idx = idx
+  wordCount.value = countWords(getText())
+  saveStatus.value = '只读'
+  setTimeout(() => { isSettingContent.value = false }, 100)
+  loading.value = false
+}
+
+/* ── 划词收藏（仅拆书模式）── */
+function onSelUp() {
+  if (!dBook.value) return
+  const sel = window.getSelection()
+  const txt = sel ? sel.toString().trim() : ''
+  if (!sel || !sel.rangeCount || txt.length < 4 || !rootEl.value?.contains(sel.anchorNode)) { hideClip(); return }
+  const r = sel.getRangeAt(0).getBoundingClientRect()
+  const btn = clipBtn.value
+  if (!btn) return
+  btn.style.display = 'block'
+  btn.style.left = Math.min(window.innerWidth - 120, Math.max(8, r.left + r.width / 2 - 55)) + 'px'
+  btn.style.top = Math.max(8, r.top - 40) + 'px'
+}
+function hideClip() { if (clipBtn.value) clipBtn.value.style.display = 'none' }
+async function saveClip() {
+  const b = dBook.value
+  const sel = window.getSelection()?.toString().trim() || ''
+  if (!b || !sel) return
+  try {
+    await dismantleApi.addClip(b.id, { chapter_idx: b.idx, text: sel })
+    toast.success('已收藏到拆书素材')
+  } catch {
+    toast.error('收藏失败，请重试')
+  }
+  hideClip()
+  window.getSelection()?.removeAllRanges()
 }
 
 async function loadDoc(id: number) {
@@ -335,7 +438,7 @@ watch(() => props.defaultDocId, (id) => {
   }
 }, { immediate: true })
 
-defineExpose({ openDoc: selectDoc, getSelected: () => selectedId.value })
+defineExpose({ openDoc: selectDoc, getSelected: () => selectedId.value, openDismantle })
 </script>
 
 <style scoped>
@@ -392,6 +495,20 @@ defineExpose({ openDoc: selectDoc, getSelected: () => selectedId.value })
   flex: 0 0 auto;
 }
 .ph-btn:hover { background: rgba(129,187,142,.15); color: #6aa877; }
+/* 拆书只读标（金字 pill，与 demo 定稿一致） */
+.ro-pill {
+  font-size: 10px; font-weight: 700; color: #a8842e;
+  background: rgba(201,163,78,.14); border-radius: 99px; padding: 1.5px 8px;
+  flex: 0 0 auto; white-space: nowrap;
+}
+/* 划词收藏浮钮（fixed 视口坐标） */
+.clip-btn {
+  position: fixed; z-index: 340; display: none;
+  background: var(--ed-ink, #33302a); color: #fff; border: none; border-radius: 8px;
+  padding: 6px 12px; font-size: 12px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(60,45,20,.3);
+}
+.clip-btn:hover { background: #6aa877; }
 
 /* 拖放目标高亮 + 提示 */
 .drop-target { box-shadow: inset 0 0 0 2px #6aa877; }
