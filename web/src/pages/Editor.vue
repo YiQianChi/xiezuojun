@@ -1310,7 +1310,8 @@ const referencePanelOpen = ref(false) // 分屏（对等第二页）
 const dismantleLibOpen = ref(false)
 function openDismantleSplit(book: any) {
   referencePanelOpen.value = true
-  contextPanelOpen.value = false
+  // 拆书工作流要右栏（报告页签）跟分屏共存：宽屏保留，窄屏让位给分屏
+  if (window.innerWidth < 1280) contextPanelOpen.value = false
   splitRef.value?.openDismantle?.(book.id)
 }
 // 分屏关掉 → 右栏自动回来（SplitEditor @close 和 toggleReference 两条路都归这里管）
@@ -1372,8 +1373,8 @@ function onDropLeft(e: DragEvent) {
 function toggleReference() {
   referencePanelOpen.value = !referencePanelOpen.value
   if (referencePanelOpen.value) {
-    // 分屏和右栏 AI 面板同贴右缘，同开互相盖——开分屏先收 AI 面板
-    contextPanelOpen.value = false
+    // 分屏和右栏同贴右缘：宽屏允许并存（CSS 让右栏挪到分屏左侧），窄屏维持旧互斥
+    if (window.innerWidth < 1280) contextPanelOpen.value = false
     // 默认章：上一章（对照续写）；当前就是第一章时取下一章——只认 chapter，chapterList 里混着卷容器
     const others = chapterList.value.filter((d: any) => d.type === 'chapter' && d.id !== activeDocId.value)
     splitDefaultId.value = prevChapterId.value ?? others[0]?.id ?? null

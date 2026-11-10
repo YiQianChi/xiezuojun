@@ -1854,6 +1854,21 @@
   .editor-page .editor-main.split-h .left-pane-head {
     margin-right: var(--split-w, 0px);
   }
+  /* 分屏 + 右栏并存（拆书工作流：分屏读原文、右栏查报告/设定）——右栏卡片让到分屏面板左侧，
+     纸张再叠加让位（Editor 只在 ≥1280 宽屏才允许两者同开，窄屏维持旧的互斥行为） */
+  .editor-page .editor-main.split-h.ai-panel-open .context-panel {
+    right: calc(var(--split-w, 360px) + 24px);
+  }
+  .editor-page .editor-main.split-h.ai-panel-open .tiptap-container {
+    padding-right: calc(var(--split-w, 360px) + 324px);
+  }
+  .editor-page .editor-main.split-h.ai-panel-open .left-pane-head {
+    margin-right: calc(var(--split-w, 360px) + 300px);
+  }
+  /* 上下分屏 + 右栏并存：右栏卡片底边上抬，不与底部第二页重叠 */
+  .editor-page .editor-main.split-v.ai-panel-open .context-panel {
+    bottom: calc(var(--split-mh, 45dvh) + 24px);
+  }
   /* 左页页头（分屏时）：活动页指示 + 章名，与右页 panehead 同款 */
   .editor-page .left-pane-head {
     display: flex; align-items: center; gap: 8px;
