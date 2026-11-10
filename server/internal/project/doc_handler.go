@@ -1,6 +1,7 @@
 package project
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -140,9 +141,12 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 			if h.db.First(&d, did).Error != nil {
 				continue
 			}
-			_ = h.ds.trashMove(proj.UserID, proj.ID, proj.Name, d.ID, d.ParentID, map[string]interface{}{
+			// 文件没搬进 .trash 必须留痕——吞错会让清空回收站后文件变孤儿（2026-11-10 查到 21 个）
+			if err := h.ds.trashMove(proj.UserID, proj.ID, proj.Name, d.ID, d.ParentID, map[string]interface{}{
 				"id": d.ID, "title": d.Title, "type": d.Type, "trash_group": trashGroup,
-			})
+			}); err != nil {
+				log.Printf("[trash] doc %d move to trash failed: %v", did, err)
+			}
 		}
 		if isFolder {
 			_ = h.ds.removeFolderDir(proj.UserID, proj.ID, proj.Name, doc.ID)

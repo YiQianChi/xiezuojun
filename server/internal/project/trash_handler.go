@@ -107,6 +107,18 @@ func (h *Handler) emptyProjectTrash(c *gin.Context, userID string, projectID uin
 		return
 	}
 	// ponytail: 硬删 DB 中 status=0 的文档
+	// 硬删前补扫没进 .trash 的残留文件（trashMove 失败/迁移错位），别留磁盘孤儿
+	var deadDocs []model.Document
+	h.db.Where("project_id = ? AND status = 0", projectID).Find(&deadDocs)
+	if proj, err := h.getProject(projectID); err == nil && proj != nil {
+		for _, d := range deadDocs {
+			p := h.ds.docPath(userID, projectID, proj.Name, d.ID)
+			if d.ParentID != nil && *d.ParentID > 0 {
+				p = h.ds.docPath(userID, projectID, proj.Name, d.ID, *d.ParentID)
+			}
+			_ = os.Remove(p)
+		}
+	}
 	h.db.Where("project_id = ? AND status = 0", projectID).Delete(&model.Document{})
 	c.JSON(http.StatusOK, gin.H{"message": "emptied"})
 }

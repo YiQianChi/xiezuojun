@@ -3,7 +3,9 @@ package project
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"xiezuojun-server/internal/store"
@@ -36,11 +38,39 @@ func (ds *DocStore) saveDocContent(userID string, projectID uint, projectName st
 
 // loadDocContent 读取文档正文（支持文件夹层级）
 func (ds *DocStore) loadDocContent(userID string, projectID uint, projectName string, docID uint, parentID ...uint) (string, error) {
-	data, err := os.ReadFile(ds.docPath(userID, projectID, projectName, docID, parentID...))
-	if err != nil {
+	path := ds.docPath(userID, projectID, projectName, docID, parentID...)
+	data, err := os.ReadFile(path)
+	if err == nil {
+		return string(data), nil
+	}
+	// 自愈：文件不在 DB 期望位置（迁移/移动漏搬过文件）时，搜旧 folder 残留，
+	// 找到就搬回正确位置——宁可慢一次，不让用户看到假空白（2026-11-10 生产事故的保险）
+	root := ds.paths.ProjectDir(userID, projectID, projectName)
+	matches, _ := filepath.Glob(filepath.Join(root, "folder-*", strconv.Itoa(int(docID))+".md"))
+	best := ""
+	var bestSize int64 = -1
+	for _, m := range matches {
+		if fi, e := os.Stat(m); e == nil && fi.Size() > bestSize {
+			best, bestSize = m, fi.Size()
+		}
+	}
+	if best == "" {
 		return "", err
 	}
-	return string(data), nil
+	if e := os.MkdirAll(filepath.Dir(path), 0755); e == nil {
+		if e := os.Rename(best, path); e == nil {
+			log.Printf("[self-heal] doc %d: %s -> %s", docID, best, path)
+			data, err = os.ReadFile(path)
+			return string(data), err
+		}
+	}
+	// 搬不动（跨盘/权限）也先读出来给用户
+	data2, err2 := os.ReadFile(best)
+	if err2 == nil {
+		log.Printf("[self-heal] doc %d: read from stray %s (rename failed)", docID, best)
+		return string(data2), nil
+	}
+	return "", err
 }
 
 // LoadDocContent 导出接口（兼容 gateway 调用，从旧路径读取）
