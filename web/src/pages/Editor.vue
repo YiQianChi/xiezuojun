@@ -19,6 +19,7 @@
       @toggle-reference="toggleReference"
       @open-dismantle="dismantleLibOpen = true"
       @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen"
+      @rename-doc="openRenameActive"
     />
 
     <!-- 手机档 H 方案（Boss 定稿）：字数/保存胶囊 + 贴边把手 + 玻璃工具轨；底栏退役（CSS 控制仅 ≤768px 显示） -->
@@ -2532,6 +2533,14 @@ async function handleDocStatusChange(doc: any, newStatus: string) {
   } catch (e: any) {
     toast.error(e.response?.data?.error || '更新状态失败')
   }
+}
+
+// 顶栏章节名点击重命名（复用左栏重命名弹窗）
+function openRenameActive() {
+  const doc = activeDoc.value
+  if (!doc) return
+  renameModal.value = { docId: doc.id, title: doc.title }
+  nextTick(() => { renameInputRef.value?.focus(); renameInputRef.value?.select() })
 }
 
 async function renameDoc() {

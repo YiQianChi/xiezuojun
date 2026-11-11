@@ -10,7 +10,7 @@
       <span class="proj-name">{{ projectName || '未命名项目' }}</span>
       <template v-if="currentDocName && mode === 'write'">
         <span class="doc-sep">·</span>
-        <span class="chapter-name">{{ currentDocName }}</span>
+        <span class="chapter-name editable" :title="'点击重命名'" @click="$emit('rename-doc')">{{ currentDocName }}</span>
       </template>
     </div>
 
@@ -55,11 +55,11 @@
           title="更多"
         >⋯</button>
         <div class="more-pop" v-if="moreMenuOpen">
-          <button class="mp-item" @click="moreMenuOpen = false; themeMenuOpen = true">🎨 主题（皮肤）</button>
-          <button v-if="mode === 'write'" class="mp-item" @click="moreMenuOpen = false; $emit('toggle-reference')">📖 分屏</button>
+          <button class="mp-item" @click="moreMenuOpen = false; themeMenuOpen = true"><Palette :size="15"/> 主题（皮肤）</button>
+          <button v-if="mode === 'write'" class="mp-item" @click="moreMenuOpen = false; $emit('toggle-reference')"><BookOpen :size="15"/> 分屏</button>
           <button v-if="mode === 'write'" class="mp-item" @click="moreMenuOpen = false; $emit('open-dismantle')"><svg class="mp-ic" viewBox="0 0 19 19"><path d="M3 4c2-1 4.5-1 6.5.5C11.5 3 14 3 16 4v10.5c-2-1-4.5-1-6.5.5-2-1.5-4.5-1.5-6.5-.5z"/><path d="M9.5 4.5v10.5"/></svg> 拆书库</button>
-          <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId || savingVersion" @click="moreMenuOpen = false; $emit('save-version')">💾 保存版本</button>
-          <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId" @click="moreMenuOpen = false; $emit('open-history')">🕒 版本历史</button>
+          <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId || savingVersion" @click="moreMenuOpen = false; $emit('save-version')"><Save :size="15"/> 保存版本</button>
+          <button v-if="mode === 'write'" class="mp-item" :disabled="!activeDocId" @click="moreMenuOpen = false; $emit('open-history')"><History :size="15"/> 版本历史</button>
         </div>
       </div>
       <button
@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Palette, BookOpen, Save, History } from 'lucide-vue-next'
 
 type EditorMode = 'write' | 'review' // 构思已删（2026-11-01）；审核隐藏保留
 
@@ -100,6 +101,7 @@ defineEmits<{
   'toggle-reference': []
   'open-dismantle': []
   'toggle-sidebar': []
+  'rename-doc': []
 }>()
 
 const THEMES = [
@@ -205,6 +207,8 @@ if (typeof document !== 'undefined') {
   text-overflow: ellipsis;
   min-width: 0;
 }
+.chapter-name.editable { cursor: pointer; }
+.chapter-name.editable:hover { color: var(--accent, #6aa877); text-decoration: underline dotted; }
 
 /* iOS 分段控件 */
 .mode-switcher {
