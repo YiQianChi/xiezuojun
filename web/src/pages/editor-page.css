@@ -2386,3 +2386,18 @@
     top: calc((var(--ds-line-height, 1.95) * var(--ds-font-size, 16px) - 10px) / 2);
   }
 }
+
+/* 虚拟章名头就地改名（章名部分点击编辑；桌面/移动通用） */
+.editor-page .chapter-virtual-heading .vh-name.editable { cursor: pointer; }
+.editor-page .chapter-virtual-heading .vh-name.editable:hover { text-decoration: underline dotted #6aa877; }
+.editor-page .chapter-virtual-heading .vh-name-input {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed #6aa877;
+  outline: none;
+  padding: 0;
+  min-width: 0;
+}

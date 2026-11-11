@@ -192,7 +192,20 @@
                    放在滚动容器内、负 margin 压进纸张顶部：像正文第一行印在纸上、随内容一起滚动 -->
               <div v-if="activeDoc && activeDoc.type === 'chapter' && currentDocDisplayName" class="chapter-virtual-heading">
                 <span class="vh-dash"></span>
-                <span class="vh-title"><span v-if="chapterHeadingParts?.num" class="vh-num">{{ chapterHeadingParts.num }} </span>{{ chapterHeadingParts?.name }}</span>
+                <span class="vh-title">
+                  <span v-if="chapterHeadingParts?.num" class="vh-num">{{ chapterHeadingParts.num }} </span>
+                  <input
+                    v-if="headingRenaming"
+                    ref="headingRenameEl"
+                    v-model="headingDraft"
+                    class="vh-name-input"
+                    :style="{ width: Math.max(4, Math.min(30, headingDraft.length + 1)) + 'ch' }"
+                    @keydown.enter.prevent="commitHeadingRename"
+                    @keydown.escape.prevent="headingRenaming = false"
+                    @blur="commitHeadingRename"
+                  />
+                  <span v-else class="vh-name" :class="{ editable: !headingRenaming }" title="点击修改章名" @click="startHeadingRename">{{ chapterHeadingParts?.name || '＋起个章名' }}</span>
+                </span>
                 <span class="vh-dash vh-dash-r"></span>
               </div>
               <editor-content v-if="editor" :editor="editor" />
@@ -2550,6 +2563,21 @@ async function onHeaderRename(title: string) {
   } catch (e: any) {
     toast.error(e.response?.data?.error || '重命名失败')
   }
+}
+
+// 虚拟章名头就地改名：点章名原地变输入框（只改名部分，章号不动）
+const headingRenaming = ref(false)
+const headingDraft = ref('')
+const headingRenameEl = ref<HTMLInputElement | null>(null)
+function startHeadingRename() {
+  headingDraft.value = chapterHeadingParts.value?.name || ''
+  headingRenaming.value = true
+  nextTick(() => { headingRenameEl.value?.focus(); headingRenameEl.value?.select() })
+}
+function commitHeadingRename() {
+  if (!headingRenaming.value) return
+  headingRenaming.value = false
+  if (headingDraft.value.trim() !== (chapterHeadingParts.value?.name || '').trim()) onHeaderRename(headingDraft.value)
 }
 
 async function renameDoc() {
