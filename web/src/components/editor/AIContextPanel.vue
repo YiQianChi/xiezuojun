@@ -465,7 +465,7 @@ async function ensureContent(id: number) {
   try {
     const res = await documentApi.get(id)
     const raw: string = res.data?.data?.content || res.data?.data?.search_text || ''
-    const text = raw
+    const text = docToText(raw)
       .split('\n')
       .map(l => l.replace(/^#{1,6}\s*/, '').trim())
       .filter(Boolean)
@@ -478,13 +478,17 @@ async function ensureContent(id: number) {
 }
 
 /* 上一章结尾：切章时拉上一章正文尾部 300 字 */
+// content 可能是 Tiptap HTML，先剥标签再取文本，否则 <p></p> 原样露出
+function docToText(raw: string): string {
+  return raw.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
+}
 async function loadPrevTail() {
   const id = props.prevChapterId
   if (!id) { prevTail.value = ''; return }
   try {
     const res = await documentApi.get(id)
     const raw: string = res.data?.data?.content || res.data?.data?.search_text || ''
-    const text = raw.split('\n').map(l => l.replace(/^#{1,6}\s*/, '').trim()).filter(Boolean).join('\n')
+    const text = docToText(raw).split('\n').map(l => l.replace(/^#{1,6}\s*/, '').trim()).filter(Boolean).join('\n')
     const tail = text.slice(-300)
     prevTail.value = tail ? '……' + tail : '（上一章为空）'
   } catch {
