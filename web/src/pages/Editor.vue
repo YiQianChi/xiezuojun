@@ -221,7 +221,6 @@
         <AIContextPanel
           :open="contextPanelOpen"
           :project-id="projectId"
-          :used-settings="usedSettings"
           :prev-chapter-id="prevChapterId"
           :current-chapter="currentChapterIndex"
           :get-text="getPlainTextForCheck"

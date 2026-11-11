@@ -1552,14 +1552,6 @@
 .context-empty .ctx-icon { font-size: 24px; margin-bottom: 8px; opacity: 0.6; }
 .context-empty .hint { color: var(--text-tertiary, #aeaeb2); opacity: 0.8; font-size: 11px; }
 
-.context-stats {
-  font-size: 11px;
-  color: var(--text-tertiary, #aeaeb2);
-  padding: 4px 4px 8px;
-  border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
-  margin-bottom: 6px;
-}
-
 /* 通用确认弹窗 */
 .confirm-overlay {
   position: fixed;

@@ -42,7 +42,7 @@
             <div>加载中...</div>
           </div>
 
-          <div v-else-if="characters.length === 0 && settingDocs.length === 0 && openThreads.length === 0" class="context-empty">
+          <div v-else-if="characters.length === 0 && openThreads.length === 0" class="context-empty">
             <div class="ctx-icon"><Lightbulb :size="28"/></div>
             <div>还没有可翻的设定<br><span class="hint">在左栏「作品相关」里建角色卡和设定文档</span></div>
           </div>
@@ -79,22 +79,6 @@
                   <div v-if="c.tags && c.tags.length" class="qc-tags"><span v-for="t in c.tags.slice(0, 4)" :key="t" class="qc-tag">{{ t }}</span></div>
                   <div v-if="isExpanded(c.id)" class="qc-bio">{{ excerptOf(c.id) }}</div>
                 </div>
-              </div>
-            </div>
-
-            <!-- 设定文档（原「AI 参考」并入此处） -->
-            <div v-if="filteredSettingDocs.length" class="quick-section">
-              <div class="quick-cap">设定<span class="cap-sub">{{ filteredSettingDocs.length }}</span></div>
-              <div v-for="d in filteredSettingDocs" :key="d.id" class="qc-doc">
-                <div class="qc-drow">
-                  <span class="qc-dicon"><FileText :size="15"/></span>
-                  <span class="qc-dtitle" @click="toggleExpand(d.id)">{{ d.title }}</span>
-                  <span class="qc-dtype">{{ d.type }}</span>
-                </div>
-                <div v-if="isExpanded(d.id)" class="qc-bio">{{ excerptOf(d.id) }}</div>
-              </div>
-              <div v-if="usedSettings.length > 0" class="context-stats">
-                本次参考 {{ usedCount }}/{{ usedSettings.length }} 张 · {{ totalTokens }} tokens
               </div>
             </div>
 
@@ -178,7 +162,7 @@
               </template>
             </div>
 
-            <div v-if="quickQuery && !filteredCharacters.length && !filteredSettingDocs.length && !filteredThreads.length" class="context-empty">
+            <div v-if="quickQuery && !filteredCharacters.length && !filteredThreads.length" class="context-empty">
               <div>没有匹配「{{ quickQuery }}」的内容</div>
             </div>
           </template>
@@ -291,16 +275,8 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { documentApi, threadApi, stickyApi, aiApi, memoryApi, dismantleApi, type StoryThread } from '../../core/api'
 import { streamChat, friendlyAIError } from '../../core/sse'
 import { toast } from '../../composables/useToast'
-import { BookOpen, Lightbulb, ShieldCheck, LayoutDashboard, Hourglass, Pin, FileText, Check, GitBranch, ArrowRightToLine, X, Sparkles, Pencil, CircleCheckBig } from 'lucide-vue-next'
+import { BookOpen, Lightbulb, ShieldCheck, LayoutDashboard, Hourglass, Pin, Check, GitBranch, ArrowRightToLine, X, Sparkles, Pencil, CircleCheckBig } from 'lucide-vue-next'
 
-export interface UsedSetting {
-  id: number
-  title: string
-  tokens?: number
-  used?: boolean
-}
-
-interface SettingDocItem { id: number; title: string; type: string }
 interface CharCard { id: number; title: string; avatar: string; roleKey: string; roleLabel: string; desc: string; tags: string[] }
 interface InspNote { id: number; content: string; created_at: string }
 interface CheckItem { type: string; severity: string; sentence: string; suggestion: string }
@@ -309,7 +285,6 @@ interface CheckResult { score: number; level: string; summary: string; items: Ch
 const props = defineProps<{
   open: boolean
   projectId: number
-  usedSettings: UsedSetting[]
   prevChapterId?: number | null
   currentChapter?: number
   getText?: () => string
@@ -376,7 +351,6 @@ async function pickBook(id: number) {
 
 /* ─── 设定页签数据（原速查/AI 参考合并） ─── */
 const loading = ref(false)
-const settingDocs = ref<SettingDocItem[]>([])
 const characters = ref<CharCard[]>([])
 const threads = ref<StoryThread[]>([])
 const quickQuery = ref('')
@@ -384,21 +358,12 @@ const expanded = ref<Set<number>>(new Set())
 const contentCache = ref<Record<number, string>>({})
 const prevTail = ref('')
 
-const TYPE_LABELS: Record<string, string> = {
-  outline: '大纲', characters: '人物', worldbuilding: '世界观',
-  chapter_outline: '章节大纲', note: '笔记', setting: '设定',
-}
 const ROLE_LABELS: Record<string, string> = { main: '主角', support: '配角', villain: '反派', extra: '群演' }
 
 const filteredCharacters = computed(() => {
   const q = quickQuery.value.trim()
   if (!q) return characters.value
   return characters.value.filter(c => c.title.includes(q) || c.desc.includes(q) || c.tags.some(t => t.includes(q)))
-})
-const filteredSettingDocs = computed(() => {
-  const q = quickQuery.value.trim()
-  if (!q) return settingDocs.value
-  return settingDocs.value.filter(d => d.title.includes(q))
 })
 const openThreads = computed(() => threads.value.filter(t => t.status === 'open'))
 const doneThreads = computed(() => threads.value.filter(t => t.status !== 'open').slice(0, 20))
@@ -440,9 +405,6 @@ const filteredThreads = computed(() => {
   if (!q) return openThreads.value.slice(0, 5)
   return openThreads.value.filter(t => (t.title || '').includes(q) || (t.description || '').includes(q)).slice(0, 8)
 })
-const usedCount = computed(() => props.usedSettings.filter(s => s.used).length)
-const totalTokens = computed(() => props.usedSettings.reduce((sum, s) => sum + (s.tokens || 0), 0))
-
 async function loadSettings() {
   if (!props.projectId) return
   loading.value = true
@@ -450,10 +412,6 @@ async function loadSettings() {
     const res = await documentApi.list(String(props.projectId))
     const data = res.data?.data
     const allDocs = Array.isArray(data) ? data : []
-    const SETTING_TYPES = Object.keys(TYPE_LABELS)
-    settingDocs.value = allDocs
-      .filter((d: any) => SETTING_TYPES.includes(d.type))
-      .map((d: any) => ({ id: d.id, title: d.title, type: TYPE_LABELS[d.type] || '其他' }))
     // 角色卡：type=character，meta 里取 role/desc/tags/avatar
     characters.value = allDocs
       .filter((d: any) => d.type === 'character')
@@ -918,24 +876,6 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   white-space: pre-wrap;
   word-break: break-word;
 }
-.qc-doc { padding: 2px; }
-.qc-drow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 4px;
-  border-radius: 8px;
-  font-size: 12.5px;
-}
-.qc-drow:hover { background: rgba(0, 0, 0, 0.04); }
-.qc-dicon { font-size: 13px; flex-shrink: 0; }
-.qc-dtitle {
-  flex: 1; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--text-primary, #1d1d1f);
-  cursor: pointer;
-}
-.qc-dtype { font-size: 10px; color: var(--text-tertiary, #aeaeb2); flex-shrink: 0; }
 .qc-thread {
   display: flex;
   align-items: center;
@@ -1030,13 +970,6 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   line-height: 1.7;
 }
 .th-empty b { color: #4d8a5c; font-weight: 600; }
-.context-stats {
-  font-size: 11px;
-  color: var(--text-tertiary, #aeaeb2);
-  padding: 8px 4px 4px;
-  border-top: 1px dashed rgba(0, 0, 0, 0.05);
-  margin-top: 4px;
-}
 /* ─── 灵感页签 ─── */
 /* ─── 随手记常驻条（三个页签共用，原灵感页签输入框迁来） ─── */
 .qn-bar { padding: 12px 14px 14px; border-top: 1px solid rgba(0, 0, 0, 0.05); flex-shrink: 0; }
