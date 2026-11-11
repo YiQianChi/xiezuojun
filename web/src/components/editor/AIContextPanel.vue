@@ -22,7 +22,7 @@
 
       <!-- 页签：设定 / 灵感 / 自检（右栏工作台 C 方案；旧「速查/AI 参考」已拆并） -->
       <div class="panel-tabs">
-        <button :class="{ on: tab === 'set' }" @click="switchTab('set')"><BookOpen :size="15"/> 设定</button>
+        <button :class="{ on: tab === 'set' }" @click="switchTab('set')"><BookOpen :size="15"/> 速查</button>
         <button :class="{ on: tab === 'insp' }" @click="switchTab('insp')"><Lightbulb :size="15"/> 灵感</button>
         <!-- AI 全线暂下线（2026-11-09 Boss 指令），自检恢复时删 v-if -->
         <button v-if="ENABLE_AI" :class="{ on: tab === 'chk' }" @click="switchTab('chk')"><ShieldCheck :size="15"/> 自检</button>
@@ -299,7 +299,7 @@ const emit = defineEmits<{
   'insp-insert': [text: string]
 }>()
 
-const TAB_LABELS: Record<string, string> = { set: '设定', insp: '灵感', chk: '自检', ds: '拆书' }
+const TAB_LABELS: Record<string, string> = { set: '速查', insp: '灵感', chk: '自检', ds: '拆书' }
 const THREAD_TYPE_LABELS: Record<string, string> = {
   foreshadowing: '伏笔', hook: '钩子', promise: '承诺', suspense: '悬念',
 }
