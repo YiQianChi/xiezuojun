@@ -8,7 +8,7 @@
       <svg v-if="open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
       <template v-else>
         <!-- 方案一·瘦身：收起态常驻竖排文字，让右栏工作台可被发现（手机端 CSS 隐藏，保留箭头） -->
-        <span class="cpt-label">{{ ENABLE_AI ? '📖 设定 · 灵感 · 自检' : '📖 设定 · 灵感' }}</span>
+        <span class="cpt-label"><BookOpen :size="15"/> {{ ENABLE_AI ? '设定 · 灵感 · 自检' : '设定 · 灵感' }}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
       </template>
     </div>
@@ -17,15 +17,15 @@
       <div class="context-header">
         <div class="sheet-grabber" @click="$emit('update:open', false)" title="收起面板"></div>
         <h4>{{ TAB_LABELS[tab] }}</h4>
-        <button class="sheet-close" @click="$emit('update:open', false)" title="关闭">✕</button>
+        <button class="sheet-close" @click="$emit('update:open', false)" title="关闭"><X :size="15"/></button>
       </div>
 
       <!-- 页签：设定 / 灵感 / 自检（右栏工作台 C 方案；旧「速查/AI 参考」已拆并） -->
       <div class="panel-tabs">
-        <button :class="{ on: tab === 'set' }" @click="switchTab('set')">📖 设定</button>
-        <button :class="{ on: tab === 'insp' }" @click="switchTab('insp')">💡 灵感</button>
+        <button :class="{ on: tab === 'set' }" @click="switchTab('set')"><BookOpen :size="15"/> 设定</button>
+        <button :class="{ on: tab === 'insp' }" @click="switchTab('insp')"><Lightbulb :size="15"/> 灵感</button>
         <!-- AI 全线暂下线（2026-11-09 Boss 指令），自检恢复时删 v-if -->
-        <button v-if="ENABLE_AI" :class="{ on: tab === 'chk' }" @click="switchTab('chk')">🛡 自检</button>
+        <button v-if="ENABLE_AI" :class="{ on: tab === 'chk' }" @click="switchTab('chk')"><ShieldCheck :size="15"/> 自检</button>
         <button :class="{ on: tab === 'ds' }" @click="switchTab('ds')" title="拆书报告：大纲/人物/关系/节奏/套路"><svg class="tab-ic" viewBox="0 0 19 19"><path d="M3 4c2-1 4.5-1 6.5.5C11.5 3 14 3 16 4v10.5c-2-1-4.5-1-6.5.5-2-1.5-4.5-1.5-6.5-.5z"/><path d="M9.5 4.5v10.5"/></svg> 拆书</button>
       </div>
 
@@ -34,23 +34,23 @@
         <template v-if="tab === 'set'">
           <div class="quick-search">
             <input v-model="quickQuery" placeholder="搜索角色 / 设定 / 伏笔…" />
-            <button class="canvas-entry" title="打开设定画布：卡片自由摆放整理" @click="$emit('open-canvas')">📐 画布</button>
+            <button class="canvas-entry" title="打开设定画布：卡片自由摆放整理" @click="$emit('open-canvas')"><LayoutDashboard :size="15"/> 画布</button>
           </div>
 
           <div v-if="loading" class="context-empty">
-            <div class="ctx-icon">⏳</div>
+            <div class="ctx-icon"><Hourglass :size="28"/></div>
             <div>加载中...</div>
           </div>
 
           <div v-else-if="characters.length === 0 && settingDocs.length === 0 && openThreads.length === 0" class="context-empty">
-            <div class="ctx-icon">💡</div>
+            <div class="ctx-icon"><Lightbulb :size="28"/></div>
             <div>还没有可翻的设定<br><span class="hint">在左栏「作品相关」里建角色卡和设定文档</span></div>
           </div>
 
           <template v-else>
             <!-- 画布钉选的卡片（置顶对照） -->
             <div v-if="!quickQuery && pinnedCards.length" class="quick-section">
-              <div class="quick-cap">📌 画布钉选<span class="cap-sub">画布里钉的卡，写这章对照</span></div>
+              <div class="quick-cap"><Pin :size="15"/> 画布钉选<span class="cap-sub">画布里钉的卡，写这章对照</span></div>
               <div v-for="p in pinnedCards" :key="'pin' + p.id" class="qc-char">
                 <div class="qc-ava pin">{{ p.kind === 'quote' ? '❝' : (p.title || '📌')[0] }}</div>
                 <div class="qc-main">
@@ -82,13 +82,12 @@
               </div>
             </div>
 
-            <!-- 设定文档（喂 AI 勾选；原「AI 参考」并入此处） -->
+            <!-- 设定文档（原「AI 参考」并入此处） -->
             <div v-if="filteredSettingDocs.length" class="quick-section">
-              <div class="quick-cap">设定<span class="cap-sub">点亮 = 喂给 AI 续写</span></div>
+              <div class="quick-cap">设定<span class="cap-sub">{{ filteredSettingDocs.length }}</span></div>
               <div v-for="d in filteredSettingDocs" :key="d.id" class="qc-doc">
                 <div class="qc-drow">
-                  <div class="row-toggle" :class="{ on: d.ai_include !== false }" :title="d.ai_include !== false ? '喂给 AI（点击关闭）' : '不喂 AI（点击开启）'" @click.stop="toggleDoc(d)"><span class="toggle-dot"></span></div>
-                  <span class="qc-dicon">📄</span>
+                  <span class="qc-dicon"><FileText :size="15"/></span>
                   <span class="qc-dtitle" @click="toggleExpand(d.id)">{{ d.title }}</span>
                   <span class="qc-dtype">{{ d.type }}</span>
                 </div>
@@ -108,7 +107,7 @@
                     <span class="th-type" :class="t.type">{{ THREAD_TYPE_LABELS[t.type] || t.type }}</span>
                     <span class="th-title">{{ t.title }}</span>
                     <span v-if="t.planted_chapter" class="th-ch">第{{ t.planted_chapter }}章埋</span>
-                    <button class="th-resolve" title="在当前章回收这条伏笔" @click.stop="resolveThread(t)">✓ 回收</button>
+                    <button class="th-resolve" title="在当前章回收这条伏笔" @click.stop="resolveThread(t)"><Check :size="15"/> 回收</button>
                   </div>
                   <div v-if="threadEditingId === t.id" class="th-edit">
                     <select v-model="threadForm.type" class="th-edit-select">
@@ -136,7 +135,7 @@
                 </div>
               </template>
               <div v-else-if="!quickQuery" class="th-empty">
-                🧵 还没有埋设中的伏笔<br><b>选中正文 → 右键「记伏笔」</b>随手埋一条
+                <GitBranch :size="15"/> 还没有埋设中的伏笔<br><b>选中正文 → 右键「记伏笔」</b>随手埋一条
               </div>
               <!-- 已回收/已放弃（默认收起） -->
               <template v-if="!quickQuery && doneThreads.length">
@@ -188,7 +187,7 @@
         <!-- ═══════════ 灵感页签：点子库 + AI 出走向 ═══════════ -->
         <template v-else-if="tab === 'insp'">
           <div v-if="inspList.length === 0 && !genOut" class="context-empty">
-            <div class="ctx-icon">💡</div>
+            <div class="ctx-icon"><Lightbulb :size="28"/></div>
             <div>灵感库还空着<br><span class="hint">想到什么写什么，底部输入框回车即存</span></div>
           </div>
           <div v-for="n in inspList" :key="n.id" class="insp-item">
@@ -196,13 +195,13 @@
             <div class="insp-meta">
               <span>{{ fmtTime(n.created_at) }}</span>
               <span class="insp-acts">
-                <button title="插入到正文光标处" @click="emit('insp-insert', n.content)">➜ 写进本章</button>
-                <button title="删除" @click="removeInsp(n.id)">✕</button>
+                <button title="插入到正文光标处" @click="emit('insp-insert', n.content)"><ArrowRightToLine :size="15"/> 写进本章</button>
+                <button title="删除" @click="removeInsp(n.id)"><X :size="15"/></button>
               </span>
             </div>
           </div>
           <button v-if="ENABLE_AI" class="insp-gen" :disabled="genLoading" @click="genIdeas">
-            {{ genLoading ? 'AI 正在想…' : '✦ 卡文了？AI 出 3 个走向' }}
+            <Sparkles v-if="!genLoading" :size="15"/> {{ genLoading ? 'AI 正在想…' : '卡文了？AI 出 3 个走向' }}
           </button>
           <div v-if="genOut" class="insp-item ai">
             <div class="insp-text">{{ genOut }}</div>
@@ -210,7 +209,7 @@
               <span>AI 生成</span>
               <span class="insp-acts">
                 <button @click="saveGenAsInsp">存进灵感库</button>
-                <button @click="genOut = ''">✕ 不要</button>
+                <button @click="genOut = ''"><X :size="15"/> 不要</button>
               </span>
             </div>
           </div>
@@ -219,7 +218,7 @@
         <!-- ═══════════ 自检页签：AI 味指数 + 证据 + 改写建议 + 敏感词 ═══════════ -->
         <template v-else-if="tab === 'chk'">
           <button class="check-btn" :disabled="checking" @click="runCheck">
-            {{ checking ? '🛡 检查中…（约 1-2 分钟）' : '🛡 检查本章（AI 味 + 敏感词）' }}
+            <ShieldCheck :size="15"/> {{ checking ? '检查中…（约 1-2 分钟）' : '检查本章（AI 味 + 敏感词）' }}
           </button>
 
           <template v-if="result">
@@ -232,18 +231,18 @@
               </div>
             </div>
             <div v-if="result.items.length === 0" class="context-empty">
-              <div class="ctx-icon">✅</div>
+              <div class="ctx-icon"><CircleCheckBig :size="28"/></div>
               <div>没查出明显的 AI 味问题</div>
             </div>
             <div v-for="(it, i) in result.items" :key="i" class="evi">
               <div class="et">{{ it.type }}<span class="lv" :class="it.severity">{{ SEVERITY_LABELS[it.severity] || it.severity }}</span></div>
               <div class="sent">{{ it.sentence }}</div>
-              <button class="fix" @click="toggleFix(i)">{{ fixOpen[i] ? '▲ 收起建议' : '✎ 看改写建议' }}</button>
+              <button class="fix" @click="toggleFix(i)"><Pencil v-if="!fixOpen[i]" :size="15"/> {{ fixOpen[i] ? '▲ 收起建议' : '看改写建议' }}</button>
               <div v-if="fixOpen[i]" class="fixbox">{{ it.suggestion }}</div>
             </div>
           </template>
           <div v-else-if="!checking" class="context-empty">
-            <div class="ctx-icon">🛡</div>
+            <div class="ctx-icon"><ShieldCheck :size="28"/></div>
             <div>检查 AI 味与敏感词<br><span class="hint">指数越低越像人写的</span></div>
           </div>
         </template>
@@ -251,7 +250,7 @@
         <!-- ═══════════ 拆书页签：五件套报告挂右栏随时查（只读参考，不写创作数据） ═══════════ -->
         <template v-else-if="tab === 'ds'">
           <div v-if="!dsBooks.length" class="context-empty">
-            <div class="ctx-icon">📖</div>
+            <div class="ctx-icon"><BookOpen :size="28"/></div>
             <div>还没拆过书<br><span class="hint">拆一本想学的书，报告挂在这里随时查</span></div>
             <button class="check-btn" @click="$emit('open-dismantle')">打开拆书库</button>
           </div>
@@ -292,6 +291,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { documentApi, threadApi, stickyApi, aiApi, memoryApi, dismantleApi, type StoryThread } from '../../core/api'
 import { streamChat, friendlyAIError } from '../../core/sse'
 import { toast } from '../../composables/useToast'
+import { BookOpen, Lightbulb, ShieldCheck, LayoutDashboard, Hourglass, Pin, FileText, Check, GitBranch, ArrowRightToLine, X, Sparkles, Pencil, CircleCheckBig } from 'lucide-vue-next'
 
 export interface UsedSetting {
   id: number
@@ -300,7 +300,7 @@ export interface UsedSetting {
   used?: boolean
 }
 
-interface SettingDocItem { id: number; title: string; type: string; ai_include: boolean | null }
+interface SettingDocItem { id: number; title: string; type: string }
 interface CharCard { id: number; title: string; avatar: string; roleKey: string; roleLabel: string; desc: string; tags: string[] }
 interface InspNote { id: number; content: string; created_at: string }
 interface CheckItem { type: string; severity: string; sentence: string; suggestion: string }
@@ -324,7 +324,7 @@ const emit = defineEmits<{
   'insp-insert': [text: string]
 }>()
 
-const TAB_LABELS: Record<string, string> = { set: '📖 设定', insp: '💡 灵感', chk: '🛡 自检', ds: '拆书' }
+const TAB_LABELS: Record<string, string> = { set: '设定', insp: '灵感', chk: '自检', ds: '拆书' }
 const THREAD_TYPE_LABELS: Record<string, string> = {
   foreshadowing: '伏笔', hook: '钩子', promise: '承诺', suspense: '悬念',
 }
@@ -453,7 +453,7 @@ async function loadSettings() {
     const SETTING_TYPES = Object.keys(TYPE_LABELS)
     settingDocs.value = allDocs
       .filter((d: any) => SETTING_TYPES.includes(d.type))
-      .map((d: any) => ({ id: d.id, title: d.title, type: TYPE_LABELS[d.type] || '其他', ai_include: d.ai_include }))
+      .map((d: any) => ({ id: d.id, title: d.title, type: TYPE_LABELS[d.type] || '其他' }))
     // 角色卡：type=character，meta 里取 role/desc/tags/avatar
     characters.value = allDocs
       .filter((d: any) => d.type === 'character')
@@ -534,17 +534,6 @@ async function loadPrevTail() {
   }
 }
 watch(() => props.prevChapterId, () => { loadPrevTail(); expanded.value = new Set() }, { immediate: true })
-
-async function toggleDoc(doc: SettingDocItem) {
-  const newVal = doc.ai_include === false ? true : false
-  doc.ai_include = newVal
-  try {
-    await documentApi.update(doc.id, { ai_include: newVal })
-  } catch {
-    doc.ai_include = !newVal
-    toast.error('更新失败')
-  }
-}
 
 async function resolveThread(t: StoryThread) {
   if (!t.id) return
@@ -947,31 +936,6 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   cursor: pointer;
 }
 .qc-dtype { font-size: 10px; color: var(--text-tertiary, #aeaeb2); flex-shrink: 0; }
-.row-toggle {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1.5px solid var(--text-tertiary, #c7c7cc);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s;
-  cursor: pointer;
-}
-.row-toggle.on {
-  border-color: var(--accent, #6aa877);
-  background: var(--accent, #6aa877);
-}
-.toggle-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: white;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.row-toggle.on .toggle-dot { opacity: 1; }
 .qc-thread {
   display: flex;
   align-items: center;

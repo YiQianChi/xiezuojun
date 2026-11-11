@@ -91,14 +91,14 @@ type SettingDocDTO struct {
 	Content string
 }
 
-// LoadSettingDocs 加载指定项目参与 AI 上下文的设定文档（大纲/人物/世界观）
+// LoadSettingDocs 加载指定项目的设定文档（大纲/人物/世界观，全部参与 AI 上下文）
 // 优先读 documents.search_text；空则回退读文件系统。
 func (h *Handler) LoadSettingDocs(projectID uint) ([]SettingDocDTO, error) {
 	var docs []model.Document
 	settingTypes := []string{"outline", "characters", "worldbuilding", "chapter_outline"}
 	err := h.db.
 		Select("id", "title", "type", "search_text", "sort_order").
-		Where("project_id = ? AND status = 1 AND type IN (?) AND (ai_include IS NULL OR ai_include = ?)", projectID, settingTypes, true).
+		Where("project_id = ? AND status = 1 AND type IN (?)", projectID, settingTypes).
 		Order("type, sort_order, id").
 		Find(&docs).Error
 	if err != nil {

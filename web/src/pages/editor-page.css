@@ -2208,7 +2208,6 @@
     background: var(--ed-input, #fdfaf1);
     border-color: var(--ed-line, #e2d8c2);
   }
-  .editor-page :deep(.context-panel .row-toggle) { border-color: var(--ed-dash, #c9bfa6); }
 }
 
 /* =====================================================================

@@ -73,7 +73,7 @@ func (g *DefaultGateway) Generate(ctx context.Context, req GenerateRequest) (*Ge
 	if len(req.Context) > 0 {
 		ctxReq.MemoryBlocks = req.Context
 	}
-	// 加载项目设定文档（大纲/人物/世界观），由 documents.ai_include 控制
+	// 加载项目设定文档（大纲/人物/世界观，全部参与）
 	if g.settingLoader != nil && req.ProjectID != "" {
 		if pid, err := parseProjectID(req.ProjectID); err == nil && pid > 0 {
 			if docs, err := g.settingLoader(pid); err == nil {
