@@ -15,7 +15,7 @@
     <div class="sr-swap" :style="dir === 'h' ? { right: width - 11 + 'px' } : undefined">⇄</div>
     <!-- 顶部抓手（上下分屏 / 手机端上下抽屉） -->
     <div class="split-grabber" title="拖动调节两屏比例" @pointerdown="startGrab"><span></span></div>
-    <div v-if="dragOver" class="drop-hint">📄 松开：在这页打开{{ dragTitle ? '「' + dragTitle + '」' : '' }}</div>
+    <div v-if="dragOver" class="drop-hint"><FileText :size="15"/> 松开：在这页打开{{ dragTitle ? '「' + dragTitle + '」' : '' }}</div>
 
     <div class="panehead" :class="{ 'is-active': activePane }">
       <button class="split-nav" :disabled="!canPrev" title="上一章" @click="navPrev">‹</button>
@@ -24,7 +24,7 @@
       <span v-if="dBook" class="ro-pill">拆书 · 只读</span>
       <span class="split-status" :class="{ warn: conflict }">{{ statusText }}</span>
       <button class="ph-btn dir-btn" :title="dir === 'h' ? '切成上下分屏' : '切成左右分屏'" @click="$emit('toggle-dir')">{{ dir === 'h' ? '⇅' : '⇉' }}</button>
-      <button class="ph-btn" title="收起分屏" @click="$emit('close')">✕</button>
+      <button class="ph-btn" title="收起分屏" @click="$emit('close')"><X :size="16"/></button>
     </div>
 
     <div class="split-body">
@@ -41,7 +41,7 @@
         </div>
       </template>
       <div v-else class="split-empty">
-        <div class="se-icon">📄</div>
+        <div class="se-icon"><FileText :size="28"/></div>
         <div class="se-main">从左侧章节树拖一章过来</div>
         <div class="se-sub">或点上方标题选择 · 这页也能直接写</div>
       </div>
@@ -67,6 +67,7 @@ import { dismantleApi } from '../../core/api'
 import { chapterDisplayTitle, flattenChapterOrder } from '../../core/chapterTitle'
 import { editorContentFromText, stripContentChapterHeading } from '../../core/editorContent'
 import { AIMark, AIStrikethrough } from '../../composables/useAIToolbar'
+import { FileText, X } from 'lucide-vue-next'
 import { useToast } from '../../composables/useToast'
 
 const props = defineProps<{
@@ -196,6 +197,12 @@ onMounted(() => {
     ],
     // 同主编辑器：粘贴强制纯文本+按行成段（防 VS Code 复制来的硬换行被吃成空格）
     editorProps: {
+      // 同主编辑器：复制 text/plain 段落间单 \n（默认 \n\n 会让自家编辑器互粘多空行）
+      clipboardTextSerializer: (slice: Slice) => {
+        const blocks: string[] = []
+        slice.content.forEach((n: any) => blocks.push(n.textContent))
+        return blocks.join('\n')
+      },
       handlePaste: (view: any, event: ClipboardEvent) => {
         const text = event.clipboardData?.getData('text/plain')
         if (!text) return false
@@ -353,7 +360,7 @@ async function autoSave() {
   if (!id || !splitEditor.value) return
   if (conflict.value) return // 只读态不可能有编辑
   if (isOffline()) {
-    saveStatus.value = '📡 离线中，已存本地'
+    saveStatus.value = '离线中，已存本地'
     return
   }
   try {
@@ -368,7 +375,7 @@ async function autoSave() {
       saveStatus.value = `保存失败，重试(${retryCount}/3)...`
       setTimeout(() => autoSave(), 2000 * retryCount)
     } else {
-      saveStatus.value = '⚠️ 保存失败，已存本地'
+      saveStatus.value = '保存失败，已存本地'
       retryCount = 0
     }
   }

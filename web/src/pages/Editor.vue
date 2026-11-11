@@ -25,9 +25,9 @@
     <div class="mp-chip">{{ wordCount }} 字{{ mpSaveChip }}<template v-if="isOffline"> · 离线</template></div>
     <div class="mp-handle" @click.stop="mpRailOpen = !mpRailOpen"></div>
     <div class="mp-rail" :class="{ open: mpRailOpen }" @click.stop>
-      <button :class="{ on: !!wordLock }" @click="mpRailOpen = false; wordLockOpen = !wordLockOpen" title="码字锁">🔒</button>
-      <button v-if="enableDictation" :class="{ on: dictating }" @click="toggleDictation" title="听写">{{ dictating ? '⏹' : '🎙' }}</button>
-      <button :class="{ on: contextPanelOpen }" @click="mpRailOpen = false; contextPanelOpen = true" title="设定 / 灵感 / 自检">📖</button>
+      <button :class="{ on: !!wordLock }" @click="mpRailOpen = false; wordLockOpen = !wordLockOpen" title="码字锁"><Lock :size="18"/></button>
+      <button v-if="enableDictation" :class="{ on: dictating }" @click="toggleDictation" title="听写"><component :is="dictating ? Square : Mic" :size="18"/></button>
+      <button :class="{ on: contextPanelOpen }" @click="mpRailOpen = false; contextPanelOpen = true" title="设定 / 灵感 / 自检"><BookOpen :size="18"/></button>
       <button :class="{ on: sensitiveOpen }" @click="mpRailOpen = false; sensitiveOpen = !sensitiveOpen" title="敏感词">◉<span v-if="sensitiveTotal > 0" class="mp-dot">{{ sensitiveTotal > 99 ? '99+' : sensitiveTotal }}</span></button>
       <button @click="mpRailOpen = false; toolboxOpen = !toolboxOpen" title="工具箱">⋯</button>
       <!-- mp-full（编辑器全屏）时顶栏隐藏，目录/模式切换挪进工具轨 -->
@@ -38,7 +38,7 @@
         <svg v-if="mode === 'write'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
         <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
       </button>
-      <button class="mp-close" @click="mpRailOpen = false">✕</button>
+      <button class="mp-close" @click="mpRailOpen = false"><X :size="18"/></button>
     </div>
 
     <!-- 手机档翻章条：一体居中胶囊（2026-11-06 拍 demo A）——相邻章顺写；点中间章名开目录（长目录在抽屉里） -->
@@ -114,7 +114,7 @@
         <!-- 便签贴纸（C 方案）：贴在正文纸张右缘，实时量纸张对齐 -->
         <StickyNotes :project-id="projectId" />
         <div v-if="draftBanner && draftBanner.docId === activeDocId" class="draft-banner" style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#fef3cd;border-bottom:1px solid #f0d57a;font-size:14px;color:#856404;">
-          <span>📝 检测到未保存的本地草稿，是否恢复？</span>
+          <span><FilePen :size="15"/> 检测到未保存的本地草稿，是否恢复？</span>
           <div class="draft-actions" style="display:flex;gap:8px;">
             <button class="btn primary" @click="restoreDraft">恢复</button>
             <button class="btn" @click="discardDraft">丢弃</button>
@@ -159,20 +159,20 @@
         <div v-else-if="!activeDocId" class="editor-empty">
           <!-- C 方案（2026-11-05 Boss 拍板）：空书不再让用户找目录，一键建第一章开写 -->
           <template v-if="chapterList.length === 0">
-            <div class="ee-icon">✍️</div>
+            <div class="ee-icon"><PenLine :size="28"/></div>
             <div class="ee-title">开始你的第一章</div>
             <div class="ee-sub">不用先研究目录——一键建好「第一章」直接开写</div>
-            <button class="ee-go" :disabled="startingFirst" @click="startFirstChapter">{{ startingFirst ? '创建中…' : '✍️ 直接开写' }}</button>
+            <button class="ee-go" :disabled="startingFirst" @click="startFirstChapter"><PenLine v-if="!startingFirst" :size="15"/>{{ startingFirst ? '创建中…' : ' 直接开写' }}</button>
             <button class="ee-ghost" @click="mobileSidebarOpen = true">先看看目录结构</button>
           </template>
           <template v-else>
-            <p>👈 请选择或新建一个章节</p>
+            <p><MousePointerClick :size="15"/> 请选择或新建一个章节</p>
             <button class="ee-ghost" @click="mobileSidebarOpen = true">打开目录</button>
           </template>
         </div>
         <div v-else class="editor-wrapper" :class="{ 'show-line-numbers': lineNumbers, 'drop-target': leftDragOver }" @contextmenu.prevent="openContextMenu"
           @dragover.prevent="onLeftDragOver" @dragleave="onLeftDragLeave" @drop.prevent="onDropLeft">
-          <div v-if="leftDragOver" class="drop-hint-left">📄 松开：在这页打开</div>
+          <div v-if="leftDragOver" class="drop-hint-left"><FileText :size="15"/> 松开：在这页打开</div>
           <CharacterCardView
             v-if="activeDoc && activeDoc.type === 'character'"
             :doc="activeDoc"
@@ -268,7 +268,7 @@
             <svg v-if="!graphMaximized" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
             <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
           </button>
-          <button class="graph-close-btn" @click="graphOpen = false" title="收起图谱">✕</button>
+          <button class="graph-close-btn" @click="graphOpen = false" title="收起图谱"><X :size="16"/></button>
           <RelationshipGraph
             :project-id="String(projectId)"
             :chapters="chapterList"
@@ -366,8 +366,8 @@
           </span>
         </div>
         <div class="ctx-sep"></div>
-        <div @click="contextAction('oneClickFormat')">🧹 一键排版</div>
-        <div v-if="ctxHasSelection" @click="contextAction('thread')">🧵 记伏笔</div>
+        <div @click="contextAction('oneClickFormat')"><WandSparkles :size="15"/> 一键排版</div>
+        <div v-if="ctxHasSelection" @click="contextAction('thread')"><GitBranch :size="15"/> 记伏笔</div>
       </div>
 
       <!-- 文档树右键菜单 -->
@@ -409,7 +409,7 @@
     <!-- 底部状态栏 -->
     <div class="status-bar">
       <span class="status-item">{{ wordCount }} 字</span>
-      <span v-if="isOffline" class="status-item offline-indicator" title="当前离线，内容已自动存在本机，恢复网络后会自动上传">📡 离线</span>
+      <span v-if="isOffline" class="status-item offline-indicator" title="当前离线，内容已自动存在本机，恢复网络后会自动上传"><WifiOff :size="15"/> 离线</span>
       <span class="status-item">{{ saveStatus }}</span>
       <!-- 敏感词检测：实时扫描，点开看命中清单，点词定位 -->
       <div class="toolbox-trigger" :class="{ open: sensitiveOpen }">
@@ -418,7 +418,7 @@
         </button>
         <div class="toolbox-popup sens-popup" v-show="sensitiveOpen" @click.stop>
           <div class="sens-head">风险词命中 · {{ sensitiveTotal }} 处</div>
-          <div v-if="sensitiveHits.length === 0" class="sens-empty">✅ 未命中风险词</div>
+          <div v-if="sensitiveHits.length === 0" class="sens-empty"><CircleCheckBig :size="15"/> 未命中风险词</div>
           <div v-for="h in sensitiveHits" :key="h.word" class="sens-row" @click="jumpToSensitiveWord(h.word)">
             <span class="sens-word">{{ h.word }}</span>
             <span class="sens-count">×{{ h.count }}</span>
@@ -433,7 +433,7 @@
       <!-- 码字锁：目标字数内拦切章/离开 -->
       <div class="toolbox-trigger" :class="{ open: wordLockOpen }">
         <button class="status-item speech-btn lock-btn" :class="{ on: !!wordLock }" @click.stop="wordLockOpen = !wordLockOpen" :title="wordLock ? `码字锁进行中 · 还差 ${lockRemaining} 字` : '码字锁：设个目标字数，写完才解锁'">
-          {{ wordLock ? `🔒 差${lockRemaining}字` : '🔒 码字锁' }}
+          <Lock :size="15"/> {{ wordLock ? `差${lockRemaining}字` : '码字锁' }}
         </button>
         <div class="toolbox-popup lock-popup" v-show="wordLockOpen" @click.stop>
           <div class="sens-head">{{ wordLock ? '换目标 / 解锁' : '写满多少字解锁？' }}</div>
@@ -446,12 +446,12 @@
 
       <!-- 听写：语音转文字（Chrome） -->
       <!-- 听写：2026-11-03 Boss 暂时下线（小程序 webview 不支持 Web Speech API，等火山 ASR 版再上） -->
-      <button v-if="enableDictation" class="status-item speech-btn" :class="{ speaking: dictating }" @click="toggleDictation" :title="dictating ? '停止听写' : '🎙 听写（语音转文字）'">
-        {{ dictating ? '⏹' : '🎙' }}
+      <button v-if="enableDictation" class="status-item speech-btn" :class="{ speaking: dictating }" @click="toggleDictation" :title="dictating ? '停止听写' : '听写（语音转文字）'">
+        <component :is="dictating ? Square : Mic" :size="16"/>
       </button>
 
       <!-- 手机排版预览（读者视角，正文实时同步） -->
-      <button class="status-item speech-btn" @click="phonePreviewOpen = true" title="📱 手机排版预览（读者视角）">📱</button>
+      <button class="status-item speech-btn" @click="phonePreviewOpen = true" title="手机排版预览（读者视角）"><Smartphone :size="16"/></button>
 
       <!-- 拼字房入口已深度融合进搭子悬浮窗「拼字」页签（状态栏不再单列） -->
 
@@ -462,17 +462,17 @@
       <div class="toolbox-trigger" :class="{ open: toolboxOpen }">
         <button class="memory-btn" @click.stop="toolboxOpen = !toolboxOpen" title="工具箱">
           <span v-if="!toolboxOpen">⋯</span>
-          <span v-else>✕</span>
+          <span v-else><X :size="16"/></span>
         </button>
         <div class="toolbox-popup" v-show="toolboxOpen" @click.stop>
           <div class="toolbox-grid">
             <!-- AI 暂下线（2026-11-09）：记忆(AI 记忆)与 AI 对话入口收起，恢复=ENABLE_AI 改 true -->
             <button v-if="ENABLE_AI" class="tool-btn" :class="{ active: memoryOpen }" @click="memoryOpen = !memoryOpen; toolboxOpen = false">
-              <span class="tool-icon">🧠</span>
+              <span class="tool-icon"><Brain :size="18"/></span>
               <span class="tool-label">记忆</span>
             </button>
             <button class="tool-btn" :class="{ active: statsOpen }" @click="statsOpen = !statsOpen; toolboxOpen = false">
-              <span class="tool-icon">📊</span>
+              <span class="tool-icon"><ChartNoAxesColumn :size="18"/></span>
               <span class="tool-label">统计</span>
             </button>
             <!-- 显示设置：仅手机档入口（桌面用底栏 ⚙️，勿重复） -->
@@ -481,23 +481,23 @@
               <span class="tool-label">显示</span>
             </button>
             <button v-if="ENABLE_AI" class="tool-btn" :class="{ active: chatOpen }" @click="chatOpen = !chatOpen; toolboxOpen = false">
-              <span class="tool-icon">💬</span>
+              <span class="tool-icon"><MessageCircle :size="18"/></span>
               <span class="tool-label">AI对话</span>
             </button>
             <button class="tool-btn" :class="{ active: graphOpen }" @click="graphOpen = !graphOpen; toolboxOpen = false">
-              <span class="tool-icon">🔗</span>
+              <span class="tool-icon"><Link2 :size="18"/></span>
               <span class="tool-label">关系图</span>
             </button>
             <button class="tool-btn" @click="oneClickFormat(); toolboxOpen = false">
-              <span class="tool-icon">🧹</span>
+              <span class="tool-icon"><WandSparkles :size="18"/></span>
               <span class="tool-label">一键排版</span>
             </button>
             <button class="tool-btn" @click="helpOpen = true; toolboxOpen = false">
-              <span class="tool-icon">⌨️</span>
+              <span class="tool-icon"><Keyboard :size="18"/></span>
               <span class="tool-label">快捷键</span>
             </button>
             <button class="tool-btn" @click="replayOnboarding">
-              <span class="tool-icon">🎓</span>
+              <span class="tool-icon"><GraduationCap :size="18"/></span>
               <span class="tool-label">新手引导</span>
             </button>
           </div>
@@ -511,7 +511,7 @@
     <SprintPanel />
 
     <!-- 拼字房专注模式降级：右上倒计时胶囊（贴退出胶囊）+ 底部一行淡字 -->
-    <div v-if="sprint.running && focusMode" class="sprint-focus-pill" @click="sprint.openPanel()">🔥 {{ sprint.countdownText }} · 第{{ sprint.myRank }}名</div>
+    <div v-if="sprint.running && focusMode" class="sprint-focus-pill" @click="sprint.openPanel()"><Flame :size="15"/> {{ sprint.countdownText }} · 第{{ sprint.myRank }}名</div>
     <div v-if="sprint.running && focusMode" class="sprint-focus-line">{{ sprint.countdownText }} · 我第 {{ sprint.myRank }} 名 · 本局 +{{ sprint.myWords }} 字 · {{ sprint.leadText }}</div>
 
     <!-- 手机排版预览（读者视角） -->
@@ -528,19 +528,19 @@
 
     <!-- 工具箱面板：记忆/伏笔/回收站/统计/AI对话（从状态栏触发，弹窗位置统一） -->
     <div v-if="ENABLE_AI && memoryOpen" class="panel-popup memory-popup" @click.stop>
-      <div class="panel-head"><span>🧠 记忆</span><button @click="memoryOpen = false">✕</button></div>
+      <div class="panel-head"><span><Brain :size="15"/> 记忆</span><button @click="memoryOpen = false"><X :size="16"/></button></div>
       <MemoryPanel :project-id="String(projectId)" />
     </div>
     <div v-if="trashOpen" class="panel-popup trash-popup" @click.stop>
-      <div class="panel-head"><span>🗑 回收站</span><button @click="trashOpen = false">✕</button></div>
+      <div class="panel-head"><span><Trash2 :size="15"/> 回收站</span><button @click="trashOpen = false"><X :size="16"/></button></div>
       <TrashPanel ref="trashPanelRef" :project-id="String(projectId)" @restored="onTrashRestored" />
     </div>
     <div v-if="statsOpen" class="panel-popup stats-popup" @click.stop>
-      <div class="panel-head"><span>📊 写作统计</span><button @click="statsOpen = false">✕</button></div>
+      <div class="panel-head"><span><ChartNoAxesColumn :size="15"/> 写作统计</span><button @click="statsOpen = false"><X :size="16"/></button></div>
       <WritingStatsPanel :project-id="projectId" />
     </div>
     <div v-if="ENABLE_AI && chatOpen" class="panel-popup chat-popup" @click.stop>
-      <div class="panel-head"><span>💬 AI 对话</span><button @click="chatOpen = false">✕</button></div>
+      <div class="panel-head"><span><MessageCircle :size="15"/> AI 对话</span><button @click="chatOpen = false"><X :size="16"/></button></div>
       <AIChatPanel :project-id="projectId" />
     </div>
 
@@ -549,8 +549,8 @@
       <div v-if="helpOpen" class="help-overlay" @click="helpOpen = false">
         <div class="help-modal" @click.stop>
           <div class="help-head">
-            <span>⌨️ 快捷键</span>
-            <button @click="helpOpen = false" class="help-close">✕</button>
+            <span><Keyboard :size="15"/> 快捷键</span>
+            <button @click="helpOpen = false" class="help-close"><X :size="16"/></button>
           </div>
           <div class="help-body">
             <div class="help-row"><kbd>Ctrl+S</kbd><span>保存</span></div>
@@ -609,7 +609,7 @@
     <!-- 记伏笔弹窗（选中正文右键触发，埋设章自动=当前章） -->
     <div v-if="threadModal.visible" class="modal-overlay" @click="threadModal.visible = false">
       <div class="settings-init-modal" @click.stop>
-        <h3>🧵 记一条伏笔</h3>
+        <h3><GitBranch :size="15"/> 记一条伏笔</h3>
         <p class="si-desc">埋设点自动关联当前章节（第 {{ currentChapterIndex }} 章），写到回收章时在右栏速查一键收</p>
         <label class="si-steps">标题</label>
         <input class="si-input" v-model="threadModal.title" placeholder="一句话说清这条伏笔" @keyup.enter="saveThreadFromSelection" />
@@ -678,7 +678,7 @@
     <!-- 通用确认弹窗 -->
     <div v-if="confirmModal" class="confirm-overlay" @click="confirmModal = null">
       <div class="confirm-modal-box" @click.stop>
-        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-icon"><TriangleAlert :size="28"/></div>
         <h3>{{ confirmModal.title }}</h3>
         <p class="confirm-desc">{{ confirmModal.desc }}</p>
         <div class="confirm-buttons">
@@ -705,6 +705,7 @@
 
 <script setup lang="ts">
 import { ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { Lock, Mic, Square, BookOpen, X, FilePen, PenLine, MousePointerClick, FileText, WandSparkles, GitBranch, WifiOff, CircleCheckBig, Smartphone, Brain, ChartNoAxesColumn, MessageCircle, Link2, Keyboard, GraduationCap, Flame, Trash2, TriangleAlert } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { EditorContent } from '@tiptap/vue-3'
 import { Editor } from '@tiptap/core'
@@ -882,7 +883,7 @@ const saveStatus = ref('')
 // Boss 2026-11-05：小程序胶囊只报异常（保存失败/离线）——「编辑中/已保存」常态是噪音，清除
 const mpSaveChip = computed(() => {
   const s = saveStatus.value
-  if (!s || /^(编辑中|保存中|已保存|就绪|📡 离线读取)/.test(s)) return ''
+  if (!s || /^(编辑中|保存中|已保存|就绪|离线读取)/.test(s)) return ''
   return ' · ' + s
 })
 // 手机档 H 方案：贴边把手 + 玻璃工具轨 + 显示设置远程开关
@@ -916,11 +917,11 @@ const createDocFolderTypeOptions = computed(() => {
   // 章纲文件走「章节大纲」文件夹内的 ＋ 新建，不在此弹窗
   const existing = new Set(documents.value.filter(d => !d.parent_id).map(d => d.type))
   return [
-    { value: 'outline', label: '📋 大纲' },
-    { value: 'characters', label: '👥 人物' },
-    { value: 'worldbuilding', label: '🌍 世界观' },
-    { value: 'chapter_outline', label: '📑 章节大纲' },
-    { value: 'note', label: '📄 笔记' },
+    { value: 'outline', label: '大纲' },
+    { value: 'characters', label: '人物' },
+    { value: 'worldbuilding', label: '世界观' },
+    { value: 'chapter_outline', label: '章节大纲' },
+    { value: 'note', label: '笔记' },
   ].filter(o => o.value === 'note' || !existing.has(o.value))
 })
 
@@ -1078,7 +1079,7 @@ async function saveThreadFromSelection() {
     })
     threadModal.value.visible = false
     window.dispatchEvent(new CustomEvent('xzj-threads-changed'))
-    toast.success(`🧵 已记下：「${title}」· 埋设于第 ${currentChapterIndex.value} 章`)
+    toast.success(`已记下：「${title}」· 埋设于第 ${currentChapterIndex.value} 章`)
   } catch {
     toast.error('记伏笔失败，请重试')
   }
@@ -1114,7 +1115,7 @@ const lockRemaining = computed(() =>
 function setWordLock(target: number) {
   wordLock.value = { target, start: wordCount.value }
   wordLockOpen.value = false
-  toast.success(`🔒 码字锁已上：写满 ${target} 字前不换章（当前章 ${wordCount.value} 字起算）`)
+  toast.success(`码字锁已上：写满 ${target} 字前不换章（当前章 ${wordCount.value} 字起算）`)
 }
 
 function clearWordLock() {
@@ -1132,7 +1133,7 @@ watch(wordCount, () => {
   if (wordLock.value && lockRemaining.value <= 0) {
     const t = wordLock.value.target
     wordLock.value = null
-    toast.success(`🎉 码字锁达成：+${t} 字！已自动解锁`)
+    toast.success(`码字锁达成：+${t} 字！已自动解锁`)
   }
 })
 
@@ -1194,7 +1195,7 @@ function toggleDictation() {
   try {
     recog.start()
     dictating.value = true
-    toast.info('🎙 听写已开启，说话即入文（再点一次停止）')
+    toast.info('听写已开启，说话即入文（再点一次停止）')
   } catch {
     dictating.value = false
     toast.error('听写启动失败')
@@ -1446,10 +1447,10 @@ const settingsInitCreating = ref(false)
 const settingsInitStep = ref(1)
 const firstChapterNameInput = ref('')
 const settingsInitOptions = ref([
-  { value: 'outline', label: '📋 大纲', checked: true },
-  { value: 'characters', label: '👥 人物设定', checked: true },
-  { value: 'worldbuilding', label: '🌍 世界观', checked: true },
-  { value: 'chapter_outline', label: '📑 章节大纲', checked: true },
+  { value: 'outline', label: '大纲', checked: true },
+  { value: 'characters', label: '人物设定', checked: true },
+  { value: 'worldbuilding', label: '世界观', checked: true },
+  { value: 'chapter_outline', label: '章节大纲', checked: true },
 ])
 const SETTING_INIT_TYPES = ['outline', 'characters', 'worldbuilding', 'chapter_outline']
 
@@ -1833,6 +1834,12 @@ function initEditor() {
     // 多行文本按行成段（此前 insertText 整段塞进当前段落，VS Code 复制来的换行全被吃成空格，
     // 行号/段落全部失效）——首行接在光标处，其余行各成一段，行间空行保留。
     editorProps: {
+      // PM 默认 text/plain 段落间拼 \n\n，自家编辑器互粘每段会多一空行——复制侧改单 \n（2026-11-11）
+      clipboardTextSerializer: (slice: Slice) => {
+        const blocks: string[] = []
+        slice.content.forEach((n: any) => blocks.push(n.textContent))
+        return blocks.join('\n')
+      },
       handlePaste: (view, event) => {
         const text = event.clipboardData?.getData('text/plain')
         if (!text) return false
@@ -2202,7 +2209,7 @@ async function openDoc(doc: any, opts?: { keepSearch?: boolean }) {
       openBaselineWords.value = wordCount.value // 撤销地板：本章打开时的字数，撤到此为止
       rescanSensitive()
       syncPhonePreview()
-      saveStatus.value = fromCache ? '📡 离线读取' : '已保存'
+      saveStatus.value = fromCache ? '离线读取' : '已保存'
       setTimeout(() => { isSettingContent.value = false }, 100)
 
       // 续写就位（Boss：码字时视线应在屏幕中段，不在底部）——
@@ -2247,7 +2254,7 @@ function onOnlineStatusChange() {
 async function autoSave() {
   if (!activeDocId.value || !editor.value) return
   if (isOffline.value) {
-    saveStatus.value = '📡 离线中，已存本地'
+    saveStatus.value = '离线中，已存本地'
     return
   }
   try {
@@ -2267,7 +2274,7 @@ async function autoSave() {
       saveStatus.value = `保存失败，重试中(${saveRetryCount}/3)...`
       setTimeout(() => autoSave(), 2000 * saveRetryCount)
     } else {
-      saveStatus.value = isOffline.value ? '📡 离线中，已存本地' : '⚠️ 保存失败，已存本地，恢复网络自动上传'
+      saveStatus.value = isOffline.value ? '离线中，已存本地' : '保存失败，已存本地，恢复网络自动上传'
       saveRetryCount = 0
     }
   }
@@ -2491,12 +2498,13 @@ function openFolderProps() {
   closeDocContextMenu()
 }
 
-async function onFolderPropsSave(data: { icon?: string; doc_status?: string; word_goal?: number }) {
+async function onFolderPropsSave(data: { icon?: string; title?: string; doc_status?: string; word_goal?: number }) {
   const doc = folderPropsDoc.value
   if (!doc) return
   try {
     const update: any = {}
     if (data.icon !== undefined) update.icon = data.icon
+    if (data.title !== undefined) update.title = data.title
     if (data.doc_status !== undefined) update.doc_status = data.doc_status
     if (data.word_goal !== undefined) update.word_goal = data.word_goal
     await documentApi.update(doc.id, update)
