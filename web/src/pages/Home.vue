@@ -21,7 +21,7 @@
           </div>
         </div>
         <footer v-if="i === screens.length - 1" class="hs-icp">
-          <a href="https://beian.mps.gov.cn/#/query/webSearch" target="_blank" rel="noopener">苏ICP备2026036211号-4</a>
+          <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">苏ICP备2026036211号-4</a>
         </footer>
       </section>
     </div>
