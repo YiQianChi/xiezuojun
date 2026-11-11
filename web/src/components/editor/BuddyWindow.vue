@@ -16,27 +16,27 @@
           <span class="bw-title">
             <span class="pulse-dot" v-if="state === 'running'"></span>
             {{ displayTime }}
-            <span v-if="state !== 'idle' || peer" class="me-chip" :class="{ negative: wordsDelta < 0, zero: wordsDelta === 0 }">✍ {{ wordsDelta >= 0 ? '+' : '' }}{{ wordsDelta }}</span>
+            <span v-if="state !== 'idle' || peer" :class="{ negative: wordsDelta < 0, zero: wordsDelta === 0 }"><PenLine :size="15"/> {{ wordsDeltaShow >= 0 ? '+' : '' }}{{ wordsDeltaShow }}</span>
           </span>
           <span class="bw-actions">
-            <button v-if="state === 'idle'" class="bw-btn play" @click="start" title="开始计时">▶</button>
-            <button v-else-if="state === 'running'" class="bw-btn" @click="pause" title="暂停">⏸</button>
-            <button v-else class="bw-btn play" @click="start" :title="state === 'summary' ? '开始新一场' : '继续'">▶</button>
-            <button v-if="state !== 'idle'" class="bw-btn" @click="stop" title="结束">⏹</button>
+            <button v-if="state === 'idle'" class="bw-btn play" @click="start"><Play :size="16"/></button>
+            <button v-else-if="state === 'running'" class="bw-btn" @click="pause" title="暂停"><Pause :size="16"/></button>
+            <button v-else class="bw-btn play" @click="start" :title="state === 'summary' ? '开始新一场' : '继续'"><Play :size="16"/></button>
+            <button v-if="state !== 'idle'" class="bw-btn" @click="stop" title="结束"><Square :size="16"/></button>
             <button class="bw-btn close" @click="visible = false" title="收起">—</button>
           </span>
         </template>
         <template v-else>
           <!-- 拼字头部：进行中=大倒计时+我的名次；等待/结束=房间名；不在房=标题 -->
-          <span v-if="!sprint.room" class="bw-title">🔥 拼字</span>
+          <span v-if="!sprint.room" class="bw-title"><Flame :size="15"/> 拼字</span>
           <span v-else-if="sprint.room.state === 'running'" class="bw-title sprint-cd">
             <span class="pulse-dot"></span>
             {{ sprint.countdownText }}
             <span class="sprint-head-sub">我第{{ sprint.myRank }}名 · {{ sprint.myWords }} 字</span>
           </span>
-          <span v-else class="bw-title">🔥 {{ sprint.room.name }}<span class="sprint-head-sub">{{ sprint.room.state === 'waiting' ? '等待开拼' : '本局结束' }}</span></span>
+          <span v-else class="bw-title"><Flame :size="15"/> {{ sprint.room.name }}<span class="sprint-head-sub">{{ sprint.room.state === 'waiting' ? '等待开拼' : '本局结束' }}</span></span>
           <span class="bw-actions">
-            <button v-if="sprint.running" class="bw-btn play" @click="visible = false" title="收起去写（榜单看顶部横幅）">✍ 去写</button>
+            <button v-if="sprint.running" class="bw-btn play" @click="visible = false" title="收起去写（榜单看顶部横幅）"><PenLine :size="15"/> 去写</button>
             <button class="bw-btn close" @click="visible = false" title="收起">—</button>
           </span>
         </template>
@@ -44,8 +44,8 @@
 
       <!-- 深度融合页签：陪伴（1v1 搭子）/ 拼字（房间） -->
       <div class="bw-tabs">
-        <button class="bw-tab" :class="{ on: tab === 'buddy' }" @click="tab = 'buddy'">🤝 陪伴</button>
-        <button class="bw-tab" :class="{ on: tab === 'sprint' }" @click="tab = 'sprint'">🔥 拼字<span v-if="sprint.inRoom" class="bw-tab-dot"></span></button>
+        <button class="bw-tab" :class="{ on: tab === 'buddy' }" @click="tab = 'buddy'"><Handshake :size="15"/> 陪伴</button>
+        <button class="bw-tab" :class="{ on: tab === 'sprint' }" @click="tab = 'sprint'"><Flame :size="15"/> 拼字<span v-if="sprint.inRoom" class="bw-tab-dot"></span></button>
       </div>
 
       <div class="bw-body">
@@ -53,7 +53,7 @@
         <!-- 未开始且没有搭子：直接能找（陪伴不依赖计时） -->
         <div v-if="state === 'idle' && !peer && !waiting && rematchCountdown <= 0" class="bw-idle">
           <p class="bw-hint">找一个同样在写的搭子互相陪伴<br>计不计时随你，开计时另有场次统计</p>
-          <button class="bw-match-btn" @click="match">🔍 找个搭子</button>
+          <button class="bw-match-btn" @click="match"><Search :size="15"/> 找个搭子</button>
         </div>
 
         <!-- 陪伴中（计时中或纯陪伴都算）：搭子区 -->
@@ -64,22 +64,22 @@
               <div class="bw-peer-info">
                 <div class="bw-peer-name"><span class="who ta">TA</span>{{ peer.nickname || '写作搭子' }}</div>
                 <div class="bw-peer-stat">
-                  <span class="bw-peer-time">{{ peerTime }}<span v-if="peerPaused" class="peer-paused-tag">⏸ 已暂停</span></span>
-                  <span class="bw-peer-words" v-if="peer.words_delta > 0">+{{ peer.words_delta }} 字</span>
-                  <span class="bw-peer-words revise" v-else-if="peer.words_delta < 0">{{ peer.words_delta }} 字 · 改稿中</span>
+                  <span class="bw-peer-time">{{ peerTime }}<span v-if="peerPaused" class="peer-paused-tag"><Pause :size="15"/> 已暂停</span></span>
+                  <span class="bw-peer-words" v-if="peer.words_delta > 0">+{{ peerWordsShow }} 字</span>
+                  <span class="bw-peer-words revise" v-else-if="peer.words_delta < 0">{{ peerWordsShow }} 字 · 改稿中</span>
                 </div>
               </div>
-              <button class="bw-cheer" @click="cheer" :class="{ sent: cheerJustSent }">👏 加油</button>
+              <button class="bw-cheer" @click="cheer" :class="{ sent: cheerJustSent }"><HeartHandshake :size="15"/> 加油</button>
             </div>
-            <div v-if="peerCheerFlash" class="bw-cheer-flash">💛 搭子给你加了油！</div>
-            <div v-if="peerMilestoneFlash" class="bw-ms-flash peer">✦ {{ peerMilestoneFlash }}</div>
+            <div v-if="peerCheerFlash" class="bw-cheer-flash"><Heart :size="15"/> 搭子给你加了油！</div>
+            <div v-if="peerMilestoneFlash" class="bw-ms-flash peer"><Sparkles :size="15"/> {{ peerMilestoneFlash }}</div>
             <div v-if="peerNudgeFlash" class="bw-nudge-flash">{{ peerNudgeFlash }}</div>
             <div class="bw-nudge-row">
               <button
                 v-for="n in NUDGES" :key="n.id"
                 class="bw-nudge-chip" :class="{ cd: nudgeCdLeft(n.id) > 0 }"
                 @click="sendNudge(n)"
-              >{{ n.icon }} {{ nudgeCdLeft(n.id) > 0 ? nudgeCdLeft(n.id) + 's' : n.label }}</button>
+              ><component :is="n.icon" :size="15"/> {{ nudgeCdLeft(n.id) > 0 ? nudgeCdLeft(n.id) + 's' : n.label }}</button>
             </div>
             <button v-if="state === 'idle'" class="bw-btn cancel bw-leave-line" @click="leaveMatch">不陪了</button>
           </template>
@@ -96,7 +96,7 @@
             </div>
           </template>
           <template v-else>
-            <button class="bw-match-btn" @click="match">🔍 找个搭子</button>
+            <button class="bw-match-btn" @click="match"><Search :size="15"/> 找个搭子</button>
           </template>
         </div>
 
@@ -104,8 +104,8 @@
         <div v-else-if="state === 'summary'" class="bw-summary" @click="reset" title="点击收工，重新开始">
           <span class="sum-time">{{ formatTime(summaryMs) }}</span>
           <span class="sum-sep">·</span>
-          <span class="sum-words" :class="{ negative: summaryWords < 0 }">{{ summaryWords >= 0 ? '+' : '' }}{{ summaryWords }} 字</span>
-          <span class="sum-close">✕</span>
+          <span class="sum-words" :class="{ negative: summaryWords < 0 }">{{ summaryWordsShow >= 0 ? '+' : '' }}{{ summaryWordsShow }} 字</span>
+          <span class="sum-close"><X :size="15"/></span>
         </div>
         <div v-if="state === 'summary' && todayStat.words + todayStat.ms > 0" class="bw-today-line">
           今日累计 {{ formatTime(todayStat.ms) }} · {{ todayStat.words >= 0 ? '+' : '' }}{{ todayStat.words }} 字
@@ -127,16 +127,16 @@
           <div v-if="!sprint.room" class="bs-wrap">
             <template v-if="sprint.phase === 'entry'">
               <p class="bw-hint">约码友拼一局，或匹配陌生菌<br>限时比字数，对抗拖延</p>
-              <button class="bs-btn green" @click="sprint.phase = 'create'">🔥 创建房间</button>
-              <button class="bs-btn ghost" @click="sprint.phase = 'join'">🚪 房间号加入</button>
-              <button class="bs-btn line" :disabled="sprint.busy" @click="sprint.quickmatch()">⚡ 快速匹配</button>
+              <button class="bs-btn green" @click="sprint.phase = 'create'"><Flame :size="15"/> 创建房间</button>
+              <button class="bs-btn ghost" @click="sprint.phase = 'join'"><DoorOpen :size="15"/> 房间号加入</button>
+              <button class="bs-btn line" :disabled="sprint.busy" @click="sprint.quickmatch()"><Zap :size="15"/> 快速匹配</button>
 
               <!-- 公开房列表（在拼的排前面；中途可进） -->
               <div class="bs-cap">公开房</div>
-              <div v-if="publicRooms.length === 0" class="bs-roomlist-empty">暂无公开房——创建时选 🌍 公开，或 ⚡ 快速匹配</div>
+              <div v-if="publicRooms.length === 0" class="bs-roomlist-empty">暂无公开房——创建时选 <Globe2 :size="15"/> 公开，或 <Zap :size="15"/> 快速匹配</div>
               <div v-else class="bs-roomlist">
                 <button v-for="r in publicRooms" :key="r.code" class="bs-roomrow" :disabled="sprint.busy || r.players >= r.max_players" @click="joinPublic(r)">
-                  <span class="bs-rr-name">🔥 {{ r.name }}</span>
+                  <span class="bs-rr-name"><Flame :size="15"/> {{ r.name }}</span>
                   <span class="bs-rr-meta">
                     <span class="bs-rr-badge" :class="r.state">{{ r.state === 'running' ? '拼字中' : '等待' }}</span>
                     <span class="bs-rr-count">{{ r.players }}/{{ r.max_players }}人</span>
@@ -149,16 +149,16 @@
             <template v-else-if="sprint.phase === 'create'">
               <div class="bs-cap">模式</div>
               <div class="bs-row">
-                <button class="bs-opt" :class="{ on: form.mode === 'time' }" @click="pickMode('time')">⏱ 拼时间</button>
-                <button class="bs-opt" :class="{ on: form.mode === 'words' }" @click="pickMode('words')">🎯 拼字数</button>
+                <button class="bs-opt" :class="{ on: form.mode === 'time' }" @click="pickMode('time')"><Timer :size="15"/> 拼时间</button>
+                <button class="bs-opt" :class="{ on: form.mode === 'words' }" @click="pickMode('words')"><Target :size="15"/> 拼字数</button>
               </div>
               <div class="bs-chips">
                 <button v-for="t in targetOptions" :key="t" class="bs-chip" :class="{ on: form.target === t }" @click="form.target = t">{{ t }}{{ form.mode === 'time' ? ' 分' : ' 字' }}</button>
               </div>
               <div class="bs-cap">性质</div>
               <div class="bs-row">
-                <button class="bs-opt" :class="{ on: !form.is_public }" @click="form.is_public = false">🔒 仅邀请</button>
-                <button class="bs-opt" :class="{ on: form.is_public }" @click="form.is_public = true">🌍 公开</button>
+                <button class="bs-opt" :class="{ on: !form.is_public }" @click="form.is_public = false"><Lock :size="15"/> 仅邀请</button>
+                <button class="bs-opt" :class="{ on: form.is_public }" @click="form.is_public = true"><Globe2 :size="15"/> 公开</button>
               </div>
               <div class="bs-note">{{ form.is_public ? '公开房可被「快速匹配」找到' : '只有房间号 / 邀请链接能进' }}</div>
               <input v-model="form.name" class="bs-input" placeholder="房间名" />
@@ -187,8 +187,8 @@
           <!-- 在房 -->
           <div v-else class="bs-wrap">
             <div class="bs-room-head">
-              <span class="bs-room-name">🔥 {{ sprint.room.name }}</span>
-              <span class="bs-room-tag">{{ sprint.room.is_public ? '🌍 公开' : '🔒 仅邀请' }}</span>
+              <span class="bs-room-name"><Flame :size="15"/> {{ sprint.room.name }}</span>
+              <span class="bs-room-tag"><component :is="sprint.room.is_public ? Globe2 : Lock" :size="15"/> {{ sprint.room.is_public ? '公开' : '仅邀请' }}</span>
             </div>
 
             <!-- 等待：大厅（邀请卡+成员） -->
@@ -196,9 +196,9 @@
               <div class="bs-invite">
                 <div class="bs-inv-row">
                   <span class="bs-code">{{ sprint.room.code }}</span>
-                  <button class="bs-mini" @click="copy(sprint.room.code, '已复制房间号 ' + sprint.room.code)">📋 房间号</button>
-                  <button v-if="isMiniProgramEnv" class="bs-mini on" @click="mpShareInvite">🤝 微信邀请</button>
-                  <button v-else class="bs-mini on" @click="copy(inviteLink, '邀请链接已复制')">🔗 链接</button>
+                  <button class="bs-mini" @click="copy(sprint.room.code, '已复制房间号 ' + sprint.room.code)"><ListTree :size="15"/> 房间号</button>
+                  <button v-if="isMiniProgramEnv" class="bs-mini on" @click="mpShareInvite()"><Handshake :size="15"/> 微信邀请</button>
+                  <button v-else class="bs-mini on" @click="copy(inviteLink, '邀请链接已复制')"><Link2 :size="15"/> 链接</button>
                 </div>
                 <label v-if="sprint.room.has_password && sprint.roomPassword && !isMiniProgramEnv" class="bs-inv-pw">
                   <input type="checkbox" v-model="inviteWithPw" />链接带密码（码友点开免输密码）
@@ -209,13 +209,13 @@
                 <div v-for="p in sprint.room.players" :key="p.user_id" class="bs-member" :class="{ me: p.user_id === sprint.room.me }">
                   <span class="bs-m-av">{{ sprint.avatar(p.nickname) }}</span>
                   <span class="bs-m-name">{{ p.nickname }}{{ p.user_id === sprint.room.me ? '（我）' : '' }}<span v-if="p.is_host" class="bs-m-host">房主</span></span>
-                  <span class="bs-m-ready">{{ p.online ? '✓' : '离线' }}</span>
+                  <span class="bs-m-ready"><Check v-if="p.online" :size="15"/><template v-else>离线</template></span>
                 </div>
-                <div v-if="sprint.room.players.length < sprint.room.max_players" class="bs-member-empty">{{ sprint.room.is_quick ? '⚡ 正在找拼友' : '＋ 等码友进房' }}（{{ sprint.room.players.length }}/{{ sprint.room.max_players }}）</div>
+                <div v-if="sprint.room.players.length < sprint.room.max_players" class="bs-member-empty"><Zap v-if="sprint.room.is_quick" :size="15"/><Plus v-else :size="15"/> {{ sprint.room.is_quick ? '正在找拼友' : '等码友进房' }}（{{ sprint.room.players.length }}/{{ sprint.room.max_players }}）</div>
               </div>
               <div class="bs-row foot">
                 <template v-if="sprint.autoStartLeft > 0">
-                  <div class="bs-autostart">⏳ {{ sprint.autoStartLeft }}s 后自动开始</div>
+                  <div class="bs-autostart"><Hourglass :size="15"/> {{ sprint.autoStartLeft }}s 后自动开始</div>
                   <button v-if="sprint.amHost" class="bs-btn line slim" :disabled="sprint.busy" @click="sprint.cancelAutostart()">取消</button>
                 </template>
                 <template v-else>
@@ -245,7 +245,7 @@
 
             <!-- 结束：结算浮层负责，窗内给入口 -->
             <template v-else>
-              <div class="bs-live-cd">🏁 本局结束</div>
+              <div class="bs-live-cd"><Flag :size="18"/> 本局结束</div>
               <div class="bs-row foot">
                 <button class="bs-btn green slim" @click="sprint.showResult = true">看结算</button>
                 <button class="bs-btn ghost slim" @click="sprint.leave()">退出房间</button>
@@ -258,7 +258,7 @@
 
     <!-- 自己的里程碑弹花（不打断输入，3 秒淡出） -->
     <div v-if="myMilestoneFlash" class="bw-ms-pop">
-      <span class="ms-emoji">✦</span>
+      <span class="ms-emoji"><Sparkles :size="18"/></span>
       <span class="ms-title">{{ myMilestoneFlash.title }}</span>
       <span class="ms-sub">{{ myMilestoneFlash.sub }}</span>
     </div>
@@ -266,11 +266,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, reactive, onMounted, onBeforeUnmount, shallowRef } from 'vue'
+import { ref, computed, watch, reactive, onMounted, onBeforeUnmount, shallowRef, markRaw } from 'vue'
 import { buddyApi, userApi, sprintApi } from '../../core/api'
 import { isMiniProgramEnv, mpPush } from '../../core/mp'
 import { useSprint } from '../../composables/useSprint'
 import { toast } from '../../composables/useToast'
+import { Play, Pause, Square, PenLine, Flame, Handshake, Search, Heart, HeartHandshake, Sparkles, X, DoorOpen, Zap, Globe2, Timer, Target, Lock, ListTree, Check, Plus, Hourglass, Flag, GlassWater, Coffee } from 'lucide-vue-next'
 
 const props = defineProps<{ currentWordCount: number; activeDocId?: string | number | null }>()
 
@@ -471,12 +472,11 @@ function applyPeer(p: PeerSession | null) {
 
 // ---- 快捷互动（方案A）：预设 4 种，60s 冷却，只在对方窗内闪一条 4s 提示 ----
 const NUDGES = [
-  { id: 'water', icon: '💧', label: '喝杯水', recv: '让你喝杯水' },
-  { id: 'rest', icon: '☕', label: '歇一会', recv: '让你歇一会' },
-  { id: 'fire', icon: '🔥', label: '加把劲', recv: '给你加了把劲' },
-  { id: 'together', icon: '🤝', label: '一起冲', recv: '邀你一起冲' },
+  { id: 'water', icon: markRaw(GlassWater), label: '喝杯水', recv: '让你喝杯水' },
+  { id: 'rest', icon: markRaw(Coffee), label: '歇一会', recv: '让你歇一会' },
+  { id: 'fire', icon: markRaw(Flame), label: '加把劲', recv: '给你加了把劲' },
+  { id: 'together', icon: markRaw(Handshake), label: '一起冲', recv: '邀你一起冲' },
 ] as const
-const NUDGE_ICONS: Record<string, string> = { water: '💧', rest: '☕', fire: '🔥', together: '🤝' }
 const NUDGE_RECV: Record<string, string> = { water: '让你喝杯水', rest: '让你歇一会', fire: '给你加了把劲', together: '邀你一起冲' }
 const peerNudgeFlash = ref('')
 const nudgeCooldown = ref<Record<string, number>>({}) // id → 冷却到期时间戳
@@ -554,6 +554,28 @@ const displayTime = computed(() => formatTime(elapsedMs.value))
 const settledWords = ref(0)
 const curBaseline = ref(0)
 const wordsDelta = computed(() => settledWords.value + (lastWordCount.value - curBaseline.value))
+
+// ---- 字数滚动缓动：变更时从旧值逐级滚到新值（Boss 2026-11-11：直接跳变生硬） ----
+function tweenNum(src: () => number, ms = 600) {
+  const out = ref(src())
+  let raf = 0
+  watch(src, (from, to) => {
+    cancelAnimationFrame(raf)
+    if (to === 0) { out.value = 0; return } // 归零/换搭子直接复位，不倒滚
+    const t0 = performance.now()
+    const step = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms)
+      out.value = Math.round(from + (to - from) * (1 - (1 - p) ** 3))
+      if (p < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+  })
+  onBeforeUnmount(() => cancelAnimationFrame(raf))
+  return out
+}
+const wordsDeltaShow = tweenNum(() => wordsDelta.value)
+const peerWordsShow = tweenNum(() => peer.value?.words_delta ?? 0)
+const summaryWordsShow = tweenNum(() => summaryWords.value)
 
 // 字数跟随编辑器实时更新（没有它 words_delta 永远上报 0）
 watch(() => props.currentWordCount, (n) => {
@@ -717,8 +739,7 @@ function handleEvent(ev: any) {
     if (ev.peer) applyPeer({ ...peer.value!, ...ev.peer })
     flashPeerMilestone(`${ev.peer?.nickname || '搭子'} 今日破 ${ev.milestone} 字了！`)
   } else if (ev.type === 'peer_nudge') {
-    const icon = NUDGE_ICONS[ev.nudge] || '✦'
-    peerNudgeFlash.value = `${icon} ${ev.from || '搭子'} ${NUDGE_RECV[ev.nudge] || '戳了戳你'}`
+    peerNudgeFlash.value = `${ev.from || '搭子'} ${NUDGE_RECV[ev.nudge] || '戳了戳你'}`
     if (peerNudgeTimer) clearTimeout(peerNudgeTimer)
     peerNudgeTimer = setTimeout(() => { peerNudgeFlash.value = '' }, 4000)
   }
