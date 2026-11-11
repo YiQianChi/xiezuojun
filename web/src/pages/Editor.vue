@@ -6,6 +6,7 @@
     <EditorHeader
       :project-name="projectName"
       :current-doc-name="currentDocDisplayName"
+      :editable-title="activeDoc?.title ?? ''"
       :mode="mode"
       :active-doc-id="activeDocId"
       :saving-version="savingVersion"
@@ -19,7 +20,7 @@
       @toggle-reference="toggleReference"
       @open-dismantle="dismantleLibOpen = true"
       @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen"
-      @rename-doc="openRenameActive"
+      @rename-doc="onHeaderRename"
     />
 
     <!-- 手机档 H 方案（Boss 定稿）：字数/保存胶囊 + 贴边把手 + 玻璃工具轨；底栏退役（CSS 控制仅 ≤768px 显示） -->
@@ -2535,12 +2536,20 @@ async function handleDocStatusChange(doc: any, newStatus: string) {
   }
 }
 
-// 顶栏章节名点击重命名（复用左栏重命名弹窗）
-function openRenameActive() {
+// 顶栏章节名就地改名（点名字原地变输入框，回车保存）
+async function onHeaderRename(title: string) {
   const doc = activeDoc.value
   if (!doc) return
-  renameModal.value = { docId: doc.id, title: doc.title }
-  nextTick(() => { renameInputRef.value?.focus(); renameInputRef.value?.select() })
+  const trimmed = title.trim()
+  // 章节允许清空=回到自动编号「第N章」；卷/设定必须有名
+  if (!trimmed && doc.type !== 'chapter') { toast.error('名称不能为空'); return }
+  try {
+    await documentApi.update(doc.id, { title: trimmed })
+    await loadDocs()
+    if (activeDocId.value === doc.id) currentDocName.value = trimmed
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '重命名失败')
+  }
 }
 
 async function renameDoc() {

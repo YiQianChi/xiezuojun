@@ -10,7 +10,17 @@
       <span class="proj-name">{{ projectName || '未命名项目' }}</span>
       <template v-if="currentDocName && mode === 'write'">
         <span class="doc-sep">·</span>
-        <span class="chapter-name editable" :title="'点击重命名'" @click="$emit('rename-doc')">{{ currentDocName }}</span>
+        <input
+          v-if="renaming"
+          ref="renameInputEl"
+          v-model="draft"
+          class="chapter-name-input"
+          :style="{ width: Math.max(4, Math.min(24, draft.length + 1)) + 'ch' }"
+          @keydown.enter.prevent="commitRename"
+          @keydown.escape.prevent="renaming = false"
+          @blur="commitRename"
+        />
+        <span v-else class="chapter-name editable" title="点击修改章节名" @click="startRename">{{ currentDocName }}</span>
       </template>
     </div>
 
@@ -77,14 +87,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { Palette, BookOpen, Save, History } from 'lucide-vue-next'
 
 type EditorMode = 'write' | 'review' // 构思已删（2026-11-01）；审核隐藏保留
 
-defineProps<{
+const props = defineProps<{
   projectName: string
   currentDocName: string
+  editableTitle?: string
   mode: EditorMode
   activeDocId: number | null
   savingVersion: boolean
@@ -92,7 +103,7 @@ defineProps<{
   referenceOpen: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   back: []
   'switch-mode': [mode: EditorMode]
   'save-version': []
@@ -101,8 +112,23 @@ defineEmits<{
   'toggle-reference': []
   'open-dismantle': []
   'toggle-sidebar': []
-  'rename-doc': []
+  'rename-doc': [title: string]
 }>()
+
+// 顶栏章节名就地编辑：点名字→原地变输入框，回车/失焦保存，Esc 取消
+const renaming = ref(false)
+const draft = ref('')
+const renameInputEl = ref<HTMLInputElement | null>(null)
+function startRename() {
+  draft.value = props.editableTitle ?? ''
+  renaming.value = true
+  nextTick(() => { renameInputEl.value?.focus(); renameInputEl.value?.select() })
+}
+function commitRename() {
+  if (!renaming.value) return // enter 已提交后引发的 blur 直接忽略
+  renaming.value = false
+  if (draft.value.trim() !== (props.editableTitle ?? '').trim()) emit('rename-doc', draft.value)
+}
 
 const THEMES = [
   { id: 'xuan', name: '米宣', desc: '默认 · 暖宣纸', sw: '#f8f3e8', sw2: '#fbf7ee' },
@@ -209,6 +235,16 @@ if (typeof document !== 'undefined') {
 }
 .chapter-name.editable { cursor: pointer; }
 .chapter-name.editable:hover { color: var(--accent, #6aa877); text-decoration: underline dotted; }
+.chapter-name-input {
+  font: inherit;
+  color: var(--text-primary, #1d1d1f);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed var(--accent, #6aa877);
+  outline: none;
+  padding: 0;
+  min-width: 0;
+}
 
 /* iOS 分段控件 */
 .mode-switcher {
