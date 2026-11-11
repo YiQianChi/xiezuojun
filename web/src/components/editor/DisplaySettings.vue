@@ -1,13 +1,13 @@
 <template>
   <div class="ds-trigger" :class="{ open }">
     <button class="memory-btn" @click.stop="open = !open" title="显示设置（字号/行距/字距/视线位置）">
-      <span v-if="!open">⚙️</span>
-      <span v-else>✕</span>
+      <span v-if="!open"><Settings2 :size="16"/></span>
+      <span v-else><X :size="16"/></span>
     </button>
     <div class="ds-popup" v-show="open" @click.stop>
       <div class="ds-title-row">
         <div class="ds-title">显示设置</div>
-        <button class="ds-close" @click="open = false" title="关闭">✕</button>
+        <button class="ds-close" @click="open = false" title="关闭"><X :size="16"/></button>
       </div>
 
       <div class="ds-row">
@@ -55,6 +55,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { Settings2, X } from 'lucide-vue-next'
 
 // 只把「用户改过的项」透传给编辑器（CSS 变量），没改的不下发——
 // 这样专注模式/移动端的默认排版行为完全不受影响
@@ -113,7 +114,8 @@ function reset() {
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(0,0,0,.15);
   padding: 14px 16px;
-  z-index: 150;
+  /* 400：盖过右栏 context-panel 的 z-index:300，同 toolbox-popup 层级 */
+  z-index: 400;
 }
 .ds-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .ds-title {
