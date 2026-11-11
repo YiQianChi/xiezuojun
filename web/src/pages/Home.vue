@@ -92,17 +92,31 @@ function mountDriver(home: HTMLElement) {
       const hs = w.querySelector<HTMLElement>('.hs')
       if (!inn || !hs) return
       const top = hs.getBoundingClientRect().top - homeTop // 滑入中 H→0；钉住 = 0；解钉后 <0
-      if (top >= 0) {
-        // 滑入阶段：进入后 70% 行程内淡入，盖满（top=0.3H 提前）时已完全不透明
-        const enter = eased(clamp01((H - top) / (H * 0.7)))
-        inn.style.opacity = String(enter)
-        inn.style.transform = `translateY(${(1 - enter) * 26}px) scale(${0.97 + 0.03 * enter})`
+      const rel = w.getBoundingClientRect().top - homeTop
+      const range = w.offsetHeight - H
+      const pinP = range > 0 ? clamp01(-rel / range) : 0 // 钉住期进度 0→1
+      let op: number, ty: number, sc: number
+      if (top > 0) {
+        // ① 上浮浮现：随屏从底部升起，进入视野后再淡入，钉住位（top=0）前完全显形
+        const e = 1 - top / H
+        const k = eased(clamp01((e - 0.1) / 0.55))
+        op = k
+        ty = (1 - k) * 84
+        sc = 0.96 + 0.04 * k
+      } else if (top > -2) {
+        // ② 钉住停留：文字缓慢放大（呼吸感，不留死时间）
+        op = 1
+        ty = 0
+        sc = 1 + 0.16 * pinP
       } else {
-        // 钉住/滑出阶段：恒不透明，被后屏盖住前轻微推近
-        const zoom = clamp01(-top / H)
-        inn.style.opacity = '1'
-        inn.style.transform = `scale(${1 + 0.06 * zoom})`
+        // ③ 向前消失：只放大+淡出（朝镜头穿过），不带向上位移
+        const x = clamp01(-top / (H * 0.8))
+        op = 1 - eased(x)
+        ty = 0
+        sc = 1.16 * (1 + 0.35 * x)
       }
+      inn.style.opacity = op.toFixed(3)
+      inn.style.transform = `translateY(${ty.toFixed(1)}px) scale(${sc.toFixed(4)})`
     })
     // 数字墙：该屏钉住后开始滚动递增（一次性）
     if (!counted) {
