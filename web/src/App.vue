@@ -16,8 +16,8 @@
         <span class="nav-caret">▾</span>
       </button>
       <template v-else>
-        <router-link to="/login" class="nav-link">登录</router-link>
-        <router-link to="/register" class="nav-cta">免费开始写作</router-link>
+        <!-- 未登录只留一个主 CTA（登录入口在首页末屏/注册页），避免「登录+注册」双按钮重复 -->
+        <router-link to="/register" class="nav-cta">开始写作</router-link>
       </template>
     </div>
   </nav>

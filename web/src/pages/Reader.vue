@@ -15,7 +15,7 @@
       <div class="rd-end">— 完 —</div>
       <div class="rd-card">
         <p>也想安安静静写小说？</p>
-        <router-link to="/" class="btn primary">免费使用写作菌</router-link>
+        <router-link to="/" class="btn primary">使用写作菌写作</router-link>
       </div>
     </main>
 

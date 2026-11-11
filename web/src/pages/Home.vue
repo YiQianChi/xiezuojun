@@ -1,268 +1,327 @@
 <template>
-  <div class="home">
-    <div class="home-hero">
-      <h1 class="hero-title">写作菌</h1>
-      <p class="hero-tagline">专注小说创作的写作工具</p>
-      <p class="hero-desc">让灵感不被打扰，让创作更加纯粹</p>
-      <div class="home-actions">
-        <!-- 小程序里一律给登录入口（网页残留的过期 token 会把按钮藏掉，导致用户卡死无出口） -->
-        <button v-if="!isLoggedIn || inMiniProgram" class="btn primary big" @click="goLogin">登录开始创作</button>
-        <router-link v-else to="/bookshelf" class="btn primary big">进入书架</router-link>
-        <router-link v-if="!isLoggedIn && !inMiniProgram" to="/register" class="btn big">注册</router-link>
-      </div>
+  <div class="home" ref="homeRef">
+    <!-- sticky 交叉淡化：每屏各占一个 wrapper、sticky 钉住（兼容老内核），后屏滑入时淡入盖住前屏 -->
+    <div v-for="(s, i) in screens" :key="i" class="hs-wrap" :class="{ 'hs-wrap-last': i === screens.length - 1 }">
+      <section class="hs" :style="{ zIndex: i + 1 }">
+        <div class="hs-in">
+          <h2 class="hs-line" v-html="s.line"></h2>
+          <p class="hs-under" v-html="s.under"></p>
+          <div v-if="s.stats" class="hs-stats">
+            <div class="hs-stat"><b data-n="2041">2,041</b><span>今日字数</span></div>
+            <div class="hs-stat"><b data-n="23">23</b><span>连续天数</span></div>
+            <div class="hs-stat"><b data-n="412900">412,900</b><span>全书字数</span></div>
+          </div>
+          <div v-if="i === screens.length - 1" class="hs-cta">
+            <!-- 小程序里一律给登录入口（网页残留的过期 token 会把按钮藏掉，导致用户卡死无出口） -->
+            <button v-if="!isLoggedIn || inMiniProgram" class="btn primary big" @click="goLogin">开始写作</button>
+            <router-link v-else to="/bookshelf" class="btn primary big">进入书架</router-link>
+            <p class="hs-alt">
+              <template v-if="!isLoggedIn && !inMiniProgram">已有账号？<router-link to="/login">登录</router-link> · </template>网页 / 手机 / 鸿蒙同步
+            </p>
+          </div>
+        </div>
+        <footer v-if="i === screens.length - 1" class="hs-icp">
+          <a href="https://beian.mps.gov.cn/#/query/webSearch" target="_blank" rel="noopener">苏ICP备2026036211号-4</a>
+        </footer>
+      </section>
     </div>
-
-    <div class="features">
-      <div class="feature">
-        <div class="feature-icon">
-          <!-- 钢笔尖 · 写作 -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14.4 3.9 20.1 9.6"/>
-            <path d="M17.3 7 4.3 20 3 21l1-1.3L17 6.7"/>
-            <path d="m15 5 4 4"/>
-            <path d="M6 18l-1.5-1.5"/>
-          </svg>
-        </div>
-        <h3>纯粹写作</h3>
-        <p>沉浸式编辑器，干净的页面，让你专注于文字</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">
-          <!-- 闪光星 · 辅助 -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3v3"/>
-            <path d="M12 18v3"/>
-            <path d="M3 12h3"/>
-            <path d="M18 12h3"/>
-            <path d="M12 8.5c0 1.9 1.6 3.5 3.5 3.5-1.9 0-3.5 1.6-3.5 3.5 0-1.9-1.6-3.5-3.5-3.5 1.9 0 3.5-1.6 3.5-3.5Z" fill="currentColor" fill-opacity="0.15"/>
-            <path d="m18.5 4.5.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5.5-1.5Z"/>
-            <path d="m5 16 .4 1.2L6.6 17.6l-1.2.4L5 19.2l-.4-1.2L3.4 17.6l1.2-.4L5 16Z"/>
-          </svg>
-        </div>
-        <h3>写作辅助</h3>
-        <p>续写、改写、润色、扩写，智能辅助你的创作</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">
-          <!-- 书本 · 章节 -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4.5A2 2 0 0 1 6 2.5h13v16H6a2 2 0 0 0-2 2V4.5Z"/>
-            <path d="M4 20.5A2 2 0 0 1 6 18.5h13"/>
-            <path d="M8 7h7"/>
-            <path d="M8 11h5"/>
-          </svg>
-        </div>
-        <h3>章节管理</h3>
-        <p>大纲、人物、世界观，结构清晰</p>
-      </div>
-    </div>
-
-    <footer class="home-footer">
-      <a href="https://beian.mps.gov.cn/#/query/webSearch" target="_blank" rel="noopener">苏ICP备2026036211号-4</a>
-    </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { isMiniProgramEnv, mpNavigate } from '../core/mp'
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
 const inMiniProgram = isMiniProgramEnv
 const router = useRouter()
-// 小程序里登录走壳原生页（微信一键登录），浏览器里走网页登录
+const homeRef = ref<HTMLElement | null>(null)
+// 小程序里登录走壳原生页（微信一键登录），浏览器里未登录直达注册
 function goLogin() {
   if (inMiniProgram) mpNavigate('/pages/login/login')
-  else router.push('/login')
+  else router.push('/register')
 }
+
+const screens = [
+  { line: '每个故事，<br>都从<em>一句</em>开始。<span class="hs-caret"></span>',
+    under: '「雨下到第三天，巷口的灯笼终于灭了。」——一位作者的第一章第一句。<br>别管写得好不好，先写下来。' },
+  { line: '卡住的时候，<br>让人物<em>自己走两步</em>。',
+    under: '翻翻人物卡，看看上一章的结尾——故事比你更知道往哪走。' },
+  { line: '<em>先写完</em>，<br>再写好。',
+    under: '别删，别回头，完稿是一切修改的前提。<br>码字锁帮你管住那只总想删字的手。' },
+  { line: '写下去，<br>是唯一的<em>捷径</em>。',
+    under: '每日目标、连续打卡；一天两千字，一年就是一本书。', stats: true },
+  { line: '深夜两点，<br>不止你<em>一盏灯</em>亮着。',
+    under: '搭子在，拼字房的对手也在。<br>写故事的人，从来不是一个人。' },
+  { line: '然后有一天，<br>它变成了<em>一本书</em>。',
+    under: '卷章、人物、伏笔，一整本书的秩序都在；写完，导出带走。' },
+]
+
+// sticky 交叉淡化驱动：钉住的当前屏恒不透明；后屏从底部滑入时同步淡入（带底色盖住前屏），
+// 盖满视口的瞬间恰好完全显形——任何时刻都是一幅完整画面
+let cleanup: (() => void) | null = null
+onMounted(() => {
+  const home = homeRef.value
+  if (!home) return
+  // 优雅降级：老内核/异常浏览器退回静态整屏堆叠（.no-anim），保证任何环境都有完整内容
+  const supportsSticky = typeof CSS !== 'undefined' && CSS.supports
+    && (CSS.supports('position', 'sticky') || CSS.supports('position', '-webkit-sticky'))
+  if (!supportsSticky || typeof requestAnimationFrame !== 'function') {
+    home.classList.add('no-anim')
+    return
+  }
+  try {
+    mountDriver(home)
+  } catch {
+    home.classList.add('no-anim')
+  }
+})
+
+function mountDriver(home: HTMLElement) {
+  const wraps = [...home.querySelectorAll<HTMLElement>('.hs-wrap')]
+  const clamp01 = (t: number) => Math.min(1, Math.max(0, t))
+  const eased = (t: number) => 1 - Math.pow(1 - t, 3)
+  let counted = false
+  let ticking = false
+  const update = () => {
+    ticking = false
+    const H = home.clientHeight
+    const homeTop = home.getBoundingClientRect().top
+    wraps.forEach((w) => {
+      const inn = w.querySelector<HTMLElement>('.hs-in')
+      const hs = w.querySelector<HTMLElement>('.hs')
+      if (!inn || !hs) return
+      const top = hs.getBoundingClientRect().top - homeTop // 滑入中 H→0；钉住 = 0；解钉后 <0
+      if (top >= 0) {
+        // 滑入阶段：进入后 70% 行程内淡入，盖满（top=0.3H 提前）时已完全不透明
+        const enter = eased(clamp01((H - top) / (H * 0.7)))
+        inn.style.opacity = String(enter)
+        inn.style.transform = `translateY(${(1 - enter) * 26}px) scale(${0.97 + 0.03 * enter})`
+      } else {
+        // 钉住/滑出阶段：恒不透明，被后屏盖住前轻微推近
+        const zoom = clamp01(-top / H)
+        inn.style.opacity = '1'
+        inn.style.transform = `scale(${1 + 0.06 * zoom})`
+      }
+    })
+    // 数字墙：该屏钉住后开始滚动递增（一次性）
+    if (!counted) {
+      const w3 = wraps[3]
+      const hs3 = w3?.querySelector<HTMLElement>('.hs')
+      if (hs3 && hs3.getBoundingClientRect().top - homeTop < 4) {
+        counted = true
+        w3.querySelectorAll<HTMLElement>('.hs-stat b').forEach((b) => {
+          const target = Number(b.dataset.n || '0')
+          const t0 = performance.now()
+          const dur = 900
+          const step = (now: number) => {
+            const k = Math.min(1, (now - t0) / dur)
+            b.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))).toLocaleString()
+            if (k < 1) requestAnimationFrame(step)
+          }
+          requestAnimationFrame(step)
+        })
+      }
+    }
+  }
+  const onScroll = () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(update) }
+  }
+  // 华为等老内核在内部滚动容器上可能不触发 scroll 事件——改用 rAF 常驻帧循环直接量位置驱动，
+  // 不依赖任何事件；每帧仅 6 个 getBoundingClientRect+style 写入，且值不变时跳过写入
+  const prev: string[] = []
+  const loop = () => {
+    let dirty = false
+    wraps.forEach((w, i) => {
+      const hs = w.querySelector<HTMLElement>('.hs')
+      if (!hs) return
+      const top = hs.getBoundingClientRect().top
+      const key = i + ':' + Math.round(top)
+      if (prev[i] !== key) { prev[i] = key; dirty = true }
+    })
+    if (dirty) update()
+    cleanupRaf = requestAnimationFrame(loop)
+  }
+  let cleanupRaf = requestAnimationFrame(loop)
+  home.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('resize', onScroll)
+  update()
+  cleanup = () => {
+    home.removeEventListener('scroll', onScroll)
+    window.removeEventListener('resize', onScroll)
+    cancelAnimationFrame(cleanupRaf)
+  }
+}
+onBeforeUnmount(() => cleanup?.())
 </script>
 
 <style scoped>
+/* sticky 交叉淡化（不用 fixed——华为等老内核浏览器在滚动容器内 fixed 不可靠） */
 .home {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 40px 32px 0;
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* 老 iOS 内部容器惯性滚动 */
   width: 100%;
+  position: relative;
 }
 
-.home-hero {
-  text-align: center;
-  padding: 32px 0 44px;
+/* 降级形态：不支持 sticky/rAF 的老浏览器 → 静态整屏堆叠，内容完整可读 */
+.home.no-anim .hs-wrap,
+.home.no-anim .hs-wrap-last { height: auto; }
+.home.no-anim .hs { position: relative; height: auto; min-height: calc(100vh - 56px); }
+.home.no-anim .hs-in { opacity: 1 !important; transform: none !important; }
+
+.hs-wrap {
+  height: 132vh;
+  position: relative;
 }
 
-.hero-title {
-  font-family: var(--font-serif);
-  font-size: 56px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 14px;
-  letter-spacing: 4px;
+.hs-wrap-last {
+  height: 120vh;
 }
 
-.hero-tagline {
-  font-size: 19px;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.hero-desc {
-  font-size: 15px;
-  color: var(--text-secondary);
-  margin-bottom: 30px;
-}
-
-.home-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.btn.big {
-  padding: 10px 26px;
-  font-size: 14px;
-  border-radius: var(--radius-md);
-}
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.feature {
-  background: var(--bg-secondary);
-  padding: 24px 22px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-sm);
-  text-align: center;
-  transition: all var(--transition-normal);
-}
-
-.feature:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.08), var(--shadow-sm);
-  border-color: rgba(0, 122, 255, 0.15);
-}
-
-.feature-icon {
-  width: 44px;
-  height: 44px;
-  margin: 0 auto 14px;
+.hs {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  /* 100vh 兜底在前、100dvh 在后：老内核吃到 vh，新内核吃到 dvh */
+  height: calc(100vh - var(--nav-height, 56px));
+  height: calc(100dvh - var(--nav-height, 56px));
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(0, 122, 255, 0.10) 0%, rgba(0, 122, 255, 0.04) 100%);
-  color: var(--accent, #007aff);
-}
-
-.feature-icon svg {
-  width: 22px;
-  height: 22px;
-}
-
-.feature h3 {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: var(--text-primary);
-  letter-spacing: 0.2px;
-}
-
-.feature p {
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-/* 大屏：1440px+ 放大标题和间距 */
-@media (min-width: 1440px) {
-  .home { max-width: 1200px; }
-  .hero-title { font-size: 64px; }
-  .hero-tagline { font-size: 21px; }
-  .home-hero { padding: 48px 0 56px; }
-  .features { gap: 20px; }
-  .feature { padding: 28px 24px; }
-}
-
-/* 2K 1920+ (含4K缩放150%) */
-@media (min-width: 1920px) {
-  .home { max-width: 1400px; }
-  .hero-title { font-size: 72px; }
-  .hero-tagline { font-size: 24px; }
-  .hero-desc { font-size: 17px; }
-  .home-hero { padding: 56px 0 64px; }
-  .features { gap: 24px; max-width: 1008px; margin: 0 auto; }
-  .feature { padding: 32px 28px; }
-  .feature-icon { width: 52px; height: 52px; }
-  .feature-icon svg { width: 26px; height: 26px; }
-  .feature h3 { font-size: 18px; }
-  .feature p { font-size: 15px; }
-  .btn.big { padding: 12px 30px; font-size: 16px; }
-}
-
-/* 4K 2560+ (原生4K或2K缩放125%) */
-@media (min-width: 2560px) {
-  .home { max-width: 1800px; padding: 80px 48px 0; }
-  .hero-title { font-size: 96px; letter-spacing: 6px; }
-  .hero-tagline { font-size: 28px; }
-  .hero-desc { font-size: 20px; margin-bottom: 40px; }
-  .home-hero { padding: 64px 0 72px; }
-  .btn.big { padding: 14px 36px; font-size: 18px; }
-  .features { gap: 28px; max-width: 1136px; margin: 0 auto; }
-  .feature { padding: 40px 32px; }
-  .feature-icon { width: 64px; height: 64px; border-radius: 18px; }
-  .feature-icon svg { width: 32px; height: 32px; }
-  .feature h3 { font-size: 22px; }
-  .feature p { font-size: 17px; line-height: 1.6; }
-  .home-footer { font-size: 14px; padding: 32px 0 28px; }
-}
-
-/* 中等屏：1024-1439px 微调 */
-@media (min-width: 1024px) and (max-width: 1439px) {
-  .hero-title { font-size: 52px; }
-  .home-hero { padding: 36px 0 40px; }
-}
-
-/* 平板：721-1023px 两列 */
-@media (min-width: 721px) and (max-width: 1023px) {
-  .features { grid-template-columns: repeat(2, 1fr); }
-  .hero-title { font-size: 48px; }
-}
-
-/* 手机：<=720px 单列 */
-@media (max-width: 720px) {
-  .hero-title { font-size: 36px; letter-spacing: 2px; }
-  .hero-tagline { font-size: 17px; }
-  .hero-desc { font-size: 14px; margin-bottom: 24px; }
-  .features { grid-template-columns: 1fr; gap: 12px; }
-  .home-hero { padding: 20px 0 28px; }
-  .home { padding: 24px 20px 0; }
-  .btn.big { padding: 9px 22px; font-size: 13px; }
-}
-
-/* 小手机：<=380px */
-@media (max-width: 380px) {
-  .hero-title { font-size: 30px; }
-  .home-actions { gap: 8px; }
-}
-
-.home-footer {
   text-align: center;
-  padding: 24px 0 20px;
-  font-size: 12px;
-  margin-top: auto;
+  padding: 0 32px;
+  overflow: hidden;
+  background: var(--bg-primary); /* 淡入的后屏必须带底色，才能盖住前屏文字 */
 }
-.home-footer a {
+
+.hs-in {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  will-change: transform, opacity;
+}
+
+/* JS 未跑/失败时首屏仍可见 */
+.hs-wrap:not(:first-child) .hs-in { opacity: 0; }
+
+.hs-line {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  /* clamp 老浏览器（Safari<13.1 等）不认：先给固定值兜底再上 clamp */
+  font-size: 42px;
+  font-size: clamp(30px, 5.4vw, 60px);
+  line-height: 1.6;
+  letter-spacing: 2px;
+  color: var(--text-primary);
+  margin-bottom: 28px;
+}
+
+.hs-line :deep(em) {
+  font-style: normal;
+  color: #6aa877;
+}
+
+.hs-caret {
+  display: inline-block;
+  width: 3px;
+  height: 0.82em;
+  background: #6aa877;
+  animation: hs-blink 1.1s step-end infinite;
+  vertical-align: -0.06em;
+  margin-left: 6px;
+}
+
+@keyframes hs-blink {
+  50% { opacity: 0; }
+}
+
+.hs-under {
+  /* clamp 兜底：老浏览器固定值在前 */
+  font-size: 15px;
+  font-size: clamp(13px, 1.5vw, 16px);
+  color: var(--text-secondary);
+  line-height: 2.1;
+  max-width: 560px;
+}
+
+.hs-stats {
+  display: flex;
+  gap: clamp(36px, 6vw, 76px);
+  margin-top: 42px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hs-stat b {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 38px;
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 700;
+  color: #6aa877;
+  line-height: 1.2;
+}
+
+.hs-stat span {
+  font-size: 13px;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+}
+
+.hs-cta {
+  margin-top: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hs-cta .btn.big {
+  width: auto;
+  padding: 13px 44px;
+  font-size: 16px;
+}
+
+.hs-alt {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.hs-alt a {
+  color: #6aa877;
+  text-decoration: none;
+}
+
+.hs-icp {
+  position: absolute;
+  bottom: 14px;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+}
+
+.hs-icp a {
   color: var(--text-secondary);
   text-decoration: none;
   opacity: 0.6;
 }
-.home-footer a:hover { opacity: 1; }
+
+.hs-icp a:hover { opacity: 1; }
+
+/* 手机/窄屏：长句不强制断行 */
+@media (max-width: 720px) {
+  .hs { padding: 0 22px; }
+  .hs-line { line-height: 1.7; }
+  .hs-under { line-height: 2; }
+  .hs-under :deep(br) { display: none; }
+}
+
+/* 减弱动态：只关光标闪烁（滚动淡入是联动效果不关，见 script 注释） */
+@media (prefers-reduced-motion: reduce) {
+  .hs-caret { animation: none; }
+}
 </style>
