@@ -1930,6 +1930,16 @@
   .editor-page .tiptap-container.has-ch-heading > :deep(div .ProseMirror) {
     padding-top: 66px;
   }
+  /* 角色卡排版（方案B 2026-11-12 拍板）：头部信息卡贴正文列（左24），小传去纸卡平铺与卡内文字同列
+     （PM padding-left 19=卡边1+卡内衬18）；右栏常驻时卡右侧同步让位，不吃容器那套 padding-right 324 */
+  .editor-page .char-card :deep(.cc-card) { margin: 14px 24px 0; }
+  .editor-page .editor-main.ai-panel-open .char-card :deep(.cc-card) { margin-right: 324px; }
+  .editor-page .char-card .tiptap-container { padding-top: 8px; }
+  .editor-page .char-card .tiptap-container > :deep(div .ProseMirror) {
+    max-width: none; margin: 0; min-height: 40vh;
+    padding: 0 24px calc(72px + var(--ds-bottom-pad, 0px)) 19px;
+    background: transparent; border: none; outline: none; border-radius: 0; box-shadow: none;
+  }
   /* 行号打开时 gutter 落在纸张左缘外(桌面色上)，数字色加深保可读 */
   .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > p::before,
   .editor-page .editor-wrapper.show-line-numbers :deep(.ProseMirror) > h1::before,

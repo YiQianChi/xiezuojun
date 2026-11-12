@@ -163,9 +163,10 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
 .char-card { padding: 4px 0 12px; }
 /* 方案B 信息卡壳：面板同底色浅卡，与右栏面板一个体系 */
 .cc-card {
-  margin: 14px 20px 0; background: rgba(248,243,232,.72);
+  margin: 14px 18px 0; background: rgba(248,243,232,.72);
   border: 1px solid #e2d8c2; border-radius: 14px; padding: 16px 18px 14px;
 }
+@media (min-width: 769px) { .cc-card { margin-left: 24px; margin-right: 24px; } }
 .cc-head { display: flex; align-items: flex-start; gap: 14px; }
 .cc-ava {
   width: 56px; height: 56px; border-radius: 16px; flex-shrink: 0; cursor: pointer;
@@ -231,13 +232,9 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
 .cc-rel-add { font-size: 11.5px; color: #9ab9a2; cursor: pointer; width: fit-content; padding: 2px 6px; border-radius: 6px; }
 .cc-rel-add:hover { background: #f7fbf8; color: #5c9670; }
 
-.cc-body { padding: 6px 20px 0; }
-/* 方案B：正文列对齐卡壳外缘（20px），纸张默认 52/60 的大内衬在卡里收紧；
-   底部垫高沿用编辑器的 --ds-bottom-pad 体系，别把打字区顶到屏幕底 */
-.cc-body :deep(.tiptap-container) { padding: 14px 20px var(--ds-bottom-pad, 96px); }
-@media (min-width: 769px) {
-  .cc-body :deep(.tiptap-container) { padding: 14px 20px calc(72px + var(--ds-bottom-pad, 0px)); }
-}
+.cc-body { padding: 0; }
+/* 手机档正文列对齐卡内文字列（19=卡边1+卡内衬18）；桌面纸张规则在 editor-page.css 角色卡块覆盖 */
+.cc-body :deep(.ProseMirror) { padding-left: 19px; }
 /* 小传里的标题（## 性格 / ## 能力…）：轻量绿色小标+左短横（方案B 定稿，替代旧 23px 大标题+下划线） */
 .cc-body :deep(.ProseMirror h2) {
   font-size: 15px;
@@ -255,5 +252,6 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
   flex-shrink: 0;
 }
 .cc-body :deep(.ProseMirror h1) { display: none; } /* 卡头已有大名字，正文 h1 冗余（老卡里已存在的也不显） */
-.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin: 0 0 4px; display: flex; }
+.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin: 0 0 4px 18px; display: flex; }
+@media (min-width: 769px) { .cc-body-label { margin-left: 24px; } }
 </style>
