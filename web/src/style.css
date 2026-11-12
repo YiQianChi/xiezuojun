@@ -366,3 +366,6 @@ html.dark.theme-ye {
   --ed-shadow: rgba(0, 0, 0, 0.45);
   --ed-float-shadow: 0 6px 22px rgba(0, 0, 0, 0.5), 0 0 0 1px #3a3e33;
 }
+
+/* lucide 图标与文字混排对齐（替代原 emoji 的基线） */
+svg.lucide { vertical-align: -0.18em; flex-shrink: 0; }

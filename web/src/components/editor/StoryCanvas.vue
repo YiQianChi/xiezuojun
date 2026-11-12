@@ -2,21 +2,21 @@
   <div class="sc-overlay" @keydown.esc="onClose">
     <!-- ── 顶栏 ── -->
     <div class="sc-topbar">
-      <div class="sc-brand">📐 设定画布</div>
+      <div class="sc-brand"><LayoutDashboard :size="15"/> 设定画布</div>
       <div class="sc-seg">
-        <button :class="{ on: view === 'board' }" @click="view = 'board'">🗂 白板</button>
-        <button :class="{ on: view === 'timeline' }" @click="switchTimeline">🧵 伏笔时间线</button>
+        <button :class="{ on: view === 'board' }" @click="view = 'board'"><SquareKanban :size="15"/> 白板</button>
+        <button :class="{ on: view === 'timeline' }" @click="switchTimeline"><GitBranch :size="15"/> 伏笔时间线</button>
       </div>
       <div class="sc-tools" v-if="view === 'board'">
         <button class="sc-tbtn" @click="paletteOpen = !paletteOpen">＋ 加卡片</button>
         <button class="sc-tbtn" @click="addZone">▦ 加分区</button>
-        <button class="sc-tbtn" @click="importGraph" :disabled="importing">{{ importing ? '引入中…' : '🔗 引入关系图' }}</button>
+        <button class="sc-tbtn" @click="importGraph" :disabled="importing">{{ importing ? '引入中…' : '引入关系图' }}</button>
         <button class="sc-tbtn" v-if="graphEdges.length" @click="$emit('open-graph')">查看关系图谱 ↗</button>
-        <button class="sc-tbtn" @click="addQuoteFromSelection" v-if="getSelection">❝ 摘录选中文字</button>
+        <button class="sc-tbtn" @click="addQuoteFromSelection" v-if="getSelection"><Quote :size="15"/> 摘录选中文字</button>
       </div>
       <div class="sc-spacer"></div>
       <span class="sc-status" :class="{ dirty: saveState !== 'saved' }" @click="flush(true)">{{
-        saveState === 'saved' ? '✓ 已保存' : saveState === 'saving' ? '保存中…' : '● 未保存'
+        saveState === 'saved' ? '已保存' : saveState === 'saving' ? '保存中…' : '● 未保存'
       }}</span>
       <div class="sc-zoom" v-if="view === 'board'">
         <button class="sc-tbtn" @click="zoomBy(0.84)">－</button>
@@ -24,7 +24,7 @@
         <button class="sc-tbtn" @click="zoomBy(1.2)">＋</button>
         <button class="sc-tbtn" @click="fitView">适应</button>
       </div>
-      <button class="sc-close" @click="onClose" title="收起画布（Esc）">✕</button>
+      <button class="sc-close" @click="onClose" title="收起画布（Esc）"><X :size="16"/></button>
     </div>
 
     <!-- ═══ 白板视图 ═══ -->
@@ -42,7 +42,7 @@
           <div class="sc-zone-bar" @pointerdown.stop="startZoneDrag($event, z)" :title="z.label + '（拖动移动分区）'">
             <span v-if="editingZone !== z.id" class="sc-zone-label" @pointerdown.stop @click.stop="editZoneLabel(z)">{{ z.label }}</span>
             <input v-else v-model="z.label" class="sc-zone-input" @pointerdown.stop @blur="editingZone = null" @keydown.enter="editingZone = null" ref="zoneInputEl" />
-            <button class="sc-zone-del" @pointerdown.stop @click.stop="delZone(z)" title="删除分区（卡片不动）">✕</button>
+            <button class="sc-zone-del" @pointerdown.stop @click.stop="delZone(z)" title="删除分区（卡片不动）"><X :size="12"/></button>
           </div>
         </div>
 
@@ -53,8 +53,8 @@
           <div class="sc-card-bar">
             <span class="sc-card-kind">{{ kindLabel(c) }}</span>
             <span class="sc-card-acts">
-              <button class="sc-act" :class="{ on: c.pinned }" title="钉到右栏「设定」页签置顶" @pointerdown.stop @click.stop="togglePin(c)">{{ c.pinned ? '📌' : '📍' }}</button>
-              <button class="sc-act" title="移出画布" @pointerdown.stop @click.stop="removeCard(c)">✕</button>
+              <button class="sc-act" :class="{ on: c.pinned }" title="钉到右栏「设定」页签置顶" @pointerdown.stop @click.stop="togglePin(c)"><Pin :size="13"/></button>
+              <button class="sc-act" title="移出画布" @pointerdown.stop @click.stop="removeCard(c)"><X :size="13"/></button>
             </span>
           </div>
 
@@ -78,14 +78,14 @@
             <div class="sc-card-text quote" v-if="editing !== c.id" @dblclick="startEdit(c)">{{ c.text || '双击填写…' }}</div>
             <textarea v-else v-model="c.text" class="sc-edit-textarea" @pointerdown.stop rows="4" placeholder="内容"
               @keydown.esc.stop="editing = null" @blur="editing = null" ref="editTa"></textarea>
-            <div v-if="c.src" class="sc-card-src">📜 {{ c.src }}</div>
+            <div v-if="c.src" class="sc-card-src"><ScrollText :size="12"/> {{ c.src }}</div>
           </template>
         </div>
       </div>
 
       <!-- 空状态 -->
       <div class="sc-empty" v-if="!cards.length && !loading">
-        <div class="sc-empty-icon">📐</div>
+        <div class="sc-empty-icon"><LayoutDashboard :size="28"/></div>
         <p>画布还空着——把<b>角色卡、设定文档</b>摆上来整理，或<b>引入关系图</b>。</p>
         <p class="sub">卡片可拖拽 / 双击看内容；右栏「设定」页签里钉选的卡会置顶对照。</p>
       </div>
@@ -94,20 +94,20 @@
       <div class="sc-palette" v-if="paletteOpen">
         <div class="sc-palette-head">
           <input v-model="palQuery" placeholder="搜索角色 / 设定…" />
-          <button class="sc-tbtn" @click="paletteOpen = false">✕</button>
+          <button class="sc-tbtn" @click="paletteOpen = false"><X :size="16"/></button>
         </div>
         <div class="sc-palette-body">
-          <div class="sc-pal-cap">👥 角色（点一下加到画布）</div>
+          <div class="sc-pal-cap"><Users :size="15"/> 角色（点一下加到画布）</div>
           <div v-for="d in palCharacters" :key="'pc' + d.id" class="sc-pal-item" @click="addDocCard(d)">
             <b>{{ d.title }}</b><small>{{ d.desc || d.type }}</small>
           </div>
           <div v-if="!palCharacters.length" class="sc-pal-none">左栏「作品相关」里还没建角色卡</div>
-          <div class="sc-pal-cap">📄 设定文档</div>
+          <div class="sc-pal-cap"><FileText :size="15"/> 设定文档</div>
           <div v-for="d in palDocs" :key="'pd' + d.id" class="sc-pal-item" @click="addDocCard(d)">
             <b>{{ d.title }}</b><small>{{ d.type }}</small>
           </div>
           <div v-if="!palDocs.length" class="sc-pal-none">还没有设定文档</div>
-          <div class="sc-pal-cap">✚ 其他</div>
+          <div class="sc-pal-cap"><Plus :size="15"/> 其他</div>
           <div class="sc-pal-item" @click="addFreeCard"><b>空白便签</b><small>自由记录</small></div>
         </div>
       </div>
@@ -140,7 +140,7 @@
       </div>
       <!-- 伏笔详情 -->
       <div class="sc-detail" v-if="selThread">
-        <button class="sc-detail-x" @click="selThread = null">✕</button>
+        <button class="sc-detail-x" @click="selThread = null"><X :size="16"/></button>
         <h5>{{ selThread.title }} <span class="tl-tag" :class="selThread.state">{{ tlStateLabel(selThread) }}</span></h5>
         <p v-if="selThread.description">{{ selThread.description }}</p>
         <p class="sub">埋：第 {{ selThread.planted }} 章{{ selThread.to != null ? ` · 收：第 ${selThread.resolved} 章` : ' · <b style="color:#c0504d">还没收</b>' }}</p>
@@ -152,6 +152,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { LayoutDashboard, SquareKanban, GitBranch, Quote, X, Pin, ScrollText, Users, FileText, Plus } from 'lucide-vue-next'
 import { documentApi, memoryApi, threadApi } from '../../core/api'
 import { toast } from '../../composables/useToast'
 

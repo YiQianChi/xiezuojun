@@ -41,14 +41,14 @@
         :class="{ active: editMode }"
         :title="editMode ? '退出编辑模式' : '编辑模式：拖动角色、手动连线'"
         @click="editMode = !editMode"
-      >✏ 编辑</button>
+      ><Pencil :size="15"/> 编辑</button>
       <span class="fab-divider"></span>
       <button
         class="fab-btn"
         :class="{ active: playMode }"
         :title="playMode ? '停止播放' : '播放：按章节回放关系演变'"
         @click="togglePlay"
-      >{{ playMode ? '⏸ 播放中' : '▶ 播放' }}</button>
+      ><component :is="playMode ? Pause : Play" :size="15"/>{{ playMode ? ' 播放中' : ' 播放' }}</button>
     </div>
 
     <!-- 图例 -->
@@ -62,7 +62,7 @@
       >
         <span class="legend-line" :style="legendStyle(t)"></span>
         {{ t.label }}
-        <span v-if="!PRESET_TYPES.has(t.key)" class="legend-del" @click.stop="deleteType(t.key)">✕</span>
+        <span v-if="!PRESET_TYPES.has(t.key)" class="legend-del" @click.stop="deleteType(t.key)"><X :size="12"/></span>
       </div>
     </div>
 
@@ -195,6 +195,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, shallowRef, watch } from 'vue'
+import { Pencil, Pause, Play, X } from 'lucide-vue-next'
 import { memoryApi } from '../../core/api'
 import { toast } from '../../composables/useToast'
 

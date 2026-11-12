@@ -7,7 +7,7 @@
       </router-link>
     </div>
     <div class="nav-right">
-      <button v-if="canInstall && !isMiniProgram" @click="installApp" class="nav-link install-link">⬇ 安装到桌面</button>
+      <button v-if="canInstall && !isMiniProgram" @click="installApp" class="nav-link install-link"><Download :size="15"/> 安装到桌面</button>
       <button v-if="!isMiniProgram" class="nav-link qq-link" data-label="反馈" @click="showQQModal = true">关于我们</button>
       <router-link to="/bookshelf" class="nav-link">书架</router-link>
       <button v-if="isLoggedIn" ref="profileBtnRef" class="nav-link profile-link" title="账号菜单" @click="profileRef?.openMenu($event.currentTarget as HTMLElement)">
@@ -39,7 +39,7 @@
       <div class="qq-modal" @click.stop>
         <div class="qq-head">
           <span>关于写作菌</span>
-          <button @click="showQQModal = false" class="qq-close">✕</button>
+          <button @click="showQQModal = false" class="qq-close"><X :size="16"/></button>
         </div>
         <div class="qq-body">
           <p class="qq-desc">遇到问题或建议？加入QQ群反馈：</p>
@@ -65,6 +65,7 @@ import OnboardingTour from './components/OnboardingTour.vue'
 import ProfileModal from './components/ProfileModal.vue'
 import QuickNote from './components/QuickNote.vue'
 import { isMiniProgramEnv } from './core/mp'
+import { Download, X } from 'lucide-vue-next'
 
 const route = useRoute()
 
@@ -141,7 +142,7 @@ watch(() => route.query.sprint, (code) => {
     const pw = String(route.query.pw || '').trim()
     if (pw) localStorage.setItem('xzj-sprint-invite-pw', pw)
   } catch {}
-  toast.info(`🏁 收到拼字邀请：房间 ${c}——登录/进编辑器后自动弹出加入面板`)
+  toast.info(`收到拼字邀请：房间 ${c}——登录/进编辑器后自动弹出加入面板`)
   router.replace({ path: route.path, query: { ...route.query, sprint: undefined, pw: undefined } }).catch(() => {})
 }, { immediate: true })
 

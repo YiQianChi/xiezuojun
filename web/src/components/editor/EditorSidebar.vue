@@ -7,7 +7,7 @@
          目标跟账号走（/buddy/goal，localStorage 兜底）；达标变绿 + 一键上码字锁冲刺剩余字数 -->
     <div class="goal-card" :class="{ done: goalDone }">
       <div class="row">
-        <span class="k">{{ goalDone ? '✓ 今日达标' : '今日码字' }}</span>
+        <span class="k"><Check v-if="goalDone" :size="15"/> {{ goalDone ? '今日达标' : '今日码字' }}</span>
         <span class="v">{{ todayDisplay }}<small> / {{ dailyGoal }}</small></span>
       </div>
       <div class="bar"><i :style="{ width: barWidth + '%' }"></i></div>
@@ -25,10 +25,10 @@
             @blur="saveGoal"
           />
         </span>
-        <span v-else-if="goalDone" class="goal-edit" @click="startGoalEdit" title="点此修改每日目标">🎉 已达标 ✎</span>
+        <span v-else-if="goalDone" class="goal-edit" @click="startGoalEdit" title="点此修改每日目标"><PartyPopper :size="15"/> 已达标 <Pencil :size="15"/></span>
         <span v-else class="goal-rush">
-          <a class="rush-link" title="还差这些字达标，点此上码字锁冲刺" @click.prevent="$emit('goal-lock', goalRemaining)">🔒 还差 {{ goalRemaining }} 字</a>
-          <a class="goal-edit" title="点此修改每日目标" @click.prevent="startGoalEdit">✎</a>
+          <a class="rush-link" title="还差这些字达标，点此上码字锁冲刺" @click.prevent="$emit('goal-lock', goalRemaining)"><Lock :size="15"/> 还差 {{ goalRemaining }} 字</a>
+          <a class="goal-edit" title="点此修改每日目标" @click.prevent="startGoalEdit"><Pencil :size="16"/></a>
         </span>
       </div>
     </div>
@@ -101,7 +101,7 @@
     </div>
 
     <!-- 回收站入口（原工具箱🗑挪到这里，紧贴书卡上方） -->
-    <div class="trash-entry" @click="$emit('open-trash')" title="回收站（恢复误删的章节/文档）">🗑 回收站</div>
+    <div class="trash-entry" @click="$emit('open-trash')" title="回收站（恢复误删的章节/文档）"><Trash2 :size="15"/> 回收站</div>
 
     <!-- 书卡：当前作品信息 -->
     <div class="book-card">
@@ -116,9 +116,9 @@
   <!-- 新建菜单：Teleport 到 body——原绝对定位弹层长在 .tree-list（overflow 滚动容器）里会被裁剪压住 -->
   <Teleport to="body">
     <div v-if="addMenuOpen" class="add-menu teleported" :style="addMenuStyle" @click.stop>
-      <div @click="$emit('add-volume'); addMenuOpen = false">📚 新建分卷</div>
-      <div @click="$emit('add-prologue'); addMenuOpen = false">🌙 新建楔子<span class="am-sub">插最前 · 不占章节号</span></div>
-      <div @click="$emit('add-extra'); addMenuOpen = false">🎁 新建番外<span class="am-sub">放最后 · 不占章节号</span></div>
+      <div @click="$emit('add-volume'); addMenuOpen = false"><BookCopy :size="15"/> 新建分卷</div>
+      <div @click="$emit('add-prologue'); addMenuOpen = false"><Moon :size="15"/> 新建楔子<span class="am-sub">插最前 · 不占章节号</span></div>
+      <div @click="$emit('add-extra'); addMenuOpen = false"><Gift :size="15"/> 新建番外<span class="am-sub">放最后 · 不占章节号</span></div>
     </div>
   </Teleport>
 </template>
@@ -131,6 +131,7 @@ export default { inheritAttrs: false }
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import DocTreeNode from '../DocTreeNode.vue'
+import { BookCopy, Check, Gift, Lock, Moon, PartyPopper, Pencil, Trash2 } from 'lucide-vue-next'
 import { buddyApi } from '../../core/api'
 
 const props = defineProps<{

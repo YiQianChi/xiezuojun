@@ -1,8 +1,8 @@
 <template>
   <div class="stats-panel">
     <div class="stats-header">
-      <span>📊 写作统计</span>
-      <button class="share-btn" @click="shareOpen = true">📢 战报</button>
+      <span><ChartNoAxesColumn :size="15"/> 写作统计</span>
+      <button class="share-btn" @click="shareOpen = true"><Megaphone :size="15"/> 战报</button>
     </div>
     <div v-if="loading" class="stats-loading">加载中...</div>
     <div v-else-if="!stats" class="stats-empty">暂无数据</div>
@@ -23,7 +23,7 @@
         </div>
         <div class="stat-card">
           <div class="stat-num streak">{{ stats.streak_days }}</div>
-          <div class="stat-label">连续🔥天</div>
+          <div class="stat-label">连续<Flame :size="15"/>天</div>
         </div>
       </div>
 
@@ -65,6 +65,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { ChartNoAxesColumn, Megaphone, Flame } from 'lucide-vue-next'
 import { projectApi, buddyApi } from '../../core/api'
 import ShareReportModal from './ShareReportModal.vue'
 

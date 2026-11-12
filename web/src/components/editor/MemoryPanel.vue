@@ -23,7 +23,7 @@
             :class="{ active: selectedSummary === sid }"
             @click="loadSummary(sid)"
           >
-            <span class="summary-icon">📋</span>
+            <span class="summary-icon"><ListTree :size="15"/></span>
             <span class="summary-name">章节 {{ sid }}</span>
           </div>
         </div>
@@ -45,7 +45,7 @@
             :class="{ active: selectedFile === f.path }"
             @click="loadFile(f.path)"
           >
-            <span class="file-icon">{{ fileIcon(f.path) }}</span>
+            <span class="file-icon"><component :is="fileIcon(f.path)" :size="15"/></span>
             <span class="file-name">{{ fileLabel(f.path) }}</span>
           </div>
         </div>
@@ -65,7 +65,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, markRaw, type Component } from 'vue'
+import { ListTree, Globe2, Calendar, Anchor, PenLine, Settings2, FilePen, Brain, FileText } from 'lucide-vue-next'
 import { memoryApi } from '../../core/api'
 import { toast } from '../../composables/useToast'
 
@@ -94,8 +95,17 @@ const memFiles = [
   { path: 'long_term.md', label: '长期记忆' },
 ]
 
-function fileIcon(path: string): string {
-  return { 'WORLD.md': '🌍', 'TIMELINE.md': '📅', 'HOOKS.md': '🪝', 'STYLE.md': '✍️', 'PREFERENCES.md': '⚙️', 'working_memory.md': '📝', 'long_term.md': '🧠' }[path] || '📄'
+const FILE_ICONS: Record<string, Component> = {
+  'WORLD.md': markRaw(Globe2),
+  'TIMELINE.md': markRaw(Calendar),
+  'HOOKS.md': markRaw(Anchor),
+  'STYLE.md': markRaw(PenLine),
+  'PREFERENCES.md': markRaw(Settings2),
+  'working_memory.md': markRaw(FilePen),
+  'long_term.md': markRaw(Brain),
+}
+function fileIcon(path: string): Component {
+  return FILE_ICONS[path] || FileText
 }
 function fileLabel(path: string): string {
   return memFiles.find(f => f.path === path)?.label || path

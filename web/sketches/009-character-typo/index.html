@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>角色卡排版优化 · 009</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#e8e2d4; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding:24px 20px 60px; }
+  .legend { max-width:860px; margin:0 auto 18px; background:#fdfaf3; border:1px solid #e2d8c2; border-radius:10px; padding:12px 18px; font-size:13px; color:#7a7263; }
+  .legend .chip { display:inline-block; border:1.5px dashed #c9a34e; border-radius:6px; padding:0 8px; margin-right:6px; color:#a8842e; }
+  .grid { display:flex; gap:26px; justify-content:center; align-items:flex-start; flex-wrap:wrap; }
+  .col { width:430px; }
+  .col h2 { font-size:14px; color:#7a7263; margin:0 0 10px 2px; font-weight:600; }
+  .col h2 .tag { font-weight:400; font-size:12px; color:#a39a86; }
+  /* ===== 纸张（三版共用，真实皮肤） ===== */
+  .paper { background:linear-gradient(165deg,#f2ebdb,#ece1cb); border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,.06); padding:16px 0 26px; min-height:640px; }
+  .gold { outline:2px dashed #c9a34e; outline-offset:2px; position:relative; }
+  .gold::after { content:"改"; position:absolute; top:-9px; right:-9px; background:#c9a34e; color:#fff; font-size:10px; padding:1px 7px; border-radius:99px; z-index:5; }
+
+  /* ===== 现状版（照抄 CharacterCardView 现行样式） ===== */
+  .cur .cc-head { display:flex; align-items:flex-start; gap:14px; padding:8px 4px 14px; }
+  .cur .cc-ava { width:56px; height:56px; border-radius:16px; flex-shrink:0; background:linear-gradient(135deg,#a8ceb2,#7fb28d); color:#fff; font-size:24px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .cur .cc-title-wrap { flex:1; min-width:0; }
+  .cur .cc-name { font-size:20px; font-weight:700; color:#33302a; }
+  .cur .cc-role-row { margin-top:4px; }
+  .cur .cc-role { font-size:10px; color:#fff; background:#81bb8e; border-radius:99px; padding:2px 11px; }
+  .cur .cc-sub { font-size:12px; color:#a39a86; margin-top:6px; }
+  .cur .cc-fields { display:flex; flex-direction:column; gap:10px; padding:0 4px 14px; }
+  .cur .cc-row { display:flex; align-items:flex-start; gap:10px; font-size:12.5px; }
+  .cur .cc-label { color:#a8b5ab; font-size:11.5px; width:38px; flex-shrink:0; padding-top:4px; }
+  .cur .cc-input { flex:1; color:#444; font-size:13px; }
+  .cur .cc-input.ghost { font-size:12px; color:#9ab9a2; }
+  .cur .cc-tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .cur .cc-tag { font-size:11px; color:#5c9670; background:rgba(129,187,142,.13); border-radius:99px; padding:2px 10px; }
+  .cur .cc-rel { display:flex; align-items:center; gap:8px; font-size:12.5px; margin-top:6px; }
+  .cur .cc-rel-name { color:#3f7a52; font-weight:600; }
+  .cur .cc-rel-desc { color:#8a9a8c; flex:1; }
+  .cur .cc-body { border-top:1px solid #f0f3f0; padding-top:14px; }
+  .cur .cc-body-label { font-size:11px; color:#a8b5ab; margin-bottom:8px; padding:0 4px; }
+  .cur .pm { padding:52px 60px; font-size:17px; line-height:1.9; color:#33302a; }
+  .cur .pm h3 { font-size:23px; font-weight:700; color:#3f7a52; margin:1.1em 0 .5em; padding-bottom:.25em; border-bottom:1px solid rgba(129,187,142,.25); }
+  .cur .pm p { min-height:1.9em; }
+
+  /* ===== 方案A：对齐收紧 ===== */
+  .a .cc-head { display:flex; align-items:flex-start; gap:14px; padding:10px 20px 16px; }
+  .a .cc-ava { width:56px; height:56px; border-radius:16px; flex-shrink:0; background:linear-gradient(135deg,#a8ceb2,#7fb28d); color:#fff; font-size:24px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .a .cc-title-wrap { flex:1; min-width:0; }
+  .a .cc-name { font-size:20px; font-weight:700; color:#33302a; }
+  .a .cc-role-row { margin-top:4px; }
+  .a .cc-role { font-size:10px; color:#fff; background:#81bb8e; border-radius:99px; padding:2px 11px; }
+  .a .cc-sub { font-size:12px; color:#a39a86; margin-top:6px; }
+  .a .cc-fields { display:flex; flex-direction:column; gap:10px; padding:0 20px 16px; }
+  .a .cc-row { display:flex; align-items:flex-start; gap:12px; font-size:12.5px; }
+  .a .cc-label { color:#a8b5ab; font-size:11.5px; width:38px; flex-shrink:0; padding-top:4px; }
+  .a .cc-input { flex:1; color:#444; font-size:13px; }
+  .a .cc-input.ghost { font-size:12px; color:#9ab9a2; }
+  .a .cc-tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .a .cc-tag { font-size:11px; color:#5c9670; background:rgba(129,187,142,.13); border-radius:99px; padding:2px 10px; }
+  .a .cc-rel { display:flex; align-items:center; gap:8px; font-size:12.5px; margin-top:6px; }
+  .a .cc-rel-name { color:#3f7a52; font-weight:600; }
+  .a .cc-rel-desc { color:#8a9a8c; flex:1; }
+  .a .cc-body { border-top:1px solid #e2d8c2; padding-top:12px; }
+  .a .cc-body-label { font-size:11px; color:#a8b5ab; margin:0 0 4px 20px; }
+  .a .pm { padding:14px 20px 0; font-size:16px; line-height:1.9; color:#33302a; }
+  .a .pm h3 { font-size:15px; font-weight:600; color:#3f7a52; margin:1.3em 0 .4em; display:flex; align-items:center; gap:8px; }
+  .a .pm h3::before { content:""; width:14px; height:3px; border-radius:2px; background:rgba(106,168,119,.55); }
+  .a .pm p { min-height:1.9em; }
+
+  /* ===== 方案B：头部信息卡 ===== */
+  .b .card { margin:14px 20px 0; background:rgba(248,243,232,.72); border:1px solid #e2d8c2; border-radius:14px; padding:16px 18px 14px; }
+  .b .cc-head { display:flex; align-items:flex-start; gap:14px; }
+  .b .cc-ava { width:56px; height:56px; border-radius:16px; flex-shrink:0; background:linear-gradient(135deg,#a8ceb2,#7fb28d); color:#fff; font-size:24px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .b .cc-title-wrap { flex:1; min-width:0; }
+  .b .cc-name { font-size:20px; font-weight:700; color:#33302a; }
+  .b .cc-role-row { margin-top:4px; }
+  .b .cc-role { font-size:10px; color:#fff; background:#81bb8e; border-radius:99px; padding:2px 11px; }
+  .b .cc-sub { font-size:12px; color:#a39a86; margin-top:6px; }
+  .b .cc-fields { display:flex; flex-direction:column; gap:10px; padding:14px 0 2px; }
+  .b .cc-row { display:flex; align-items:flex-start; gap:12px; font-size:12.5px; }
+  .b .cc-label { color:#a8b5ab; font-size:11.5px; width:38px; flex-shrink:0; padding-top:4px; }
+  .b .cc-input { flex:1; color:#444; font-size:13px; }
+  .b .cc-input.ghost { font-size:12px; color:#9ab9a2; }
+  .b .cc-tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .b .cc-tag { font-size:11px; color:#5c9670; background:rgba(129,187,142,.13); border-radius:99px; padding:2px 10px; }
+  .b .cc-rel { display:flex; align-items:center; gap:8px; font-size:12.5px; margin-top:6px; }
+  .b .cc-rel-name { color:#3f7a52; font-weight:600; }
+  .b .cc-rel-desc { color:#8a9a8c; flex:1; }
+  .b .cc-body { padding:6px 20px 0; }
+  .b .cc-body-label { font-size:11px; color:#a8b5ab; margin-bottom:4px; }
+  .b .pm { padding-top:14px; font-size:16px; line-height:1.9; color:#33302a; }
+  .b .pm h3 { font-size:15px; font-weight:600; color:#3f7a52; margin:1.3em 0 .4em; display:flex; align-items:center; gap:8px; }
+  .b .pm h3::before { content:""; width:14px; height:3px; border-radius:2px; background:rgba(106,168,119,.55); }
+  .b .pm p { min-height:1.9em; }
+</style>
+</head>
+<body>
+<div class="legend"><span class="chip">金色虚线框</span>= 相对现状的改动点。三版内容相同（虚构角色），看排版手感。</div>
+<div class="grid">
+
+  <div class="col cur">
+    <h2>现状 <span class="tag">· 180 上现在的样子</span></h2>
+    <div class="paper">
+      <div class="cc-head">
+        <div class="cc-ava">沈</div>
+        <div class="cc-title-wrap">
+          <div class="cc-name">沈青梧</div>
+          <div class="cc-role-row"><span class="cc-role">主角</span></div>
+          <div class="cc-sub">临安城绸缎庄二小姐 · 19岁 · 白日算账夜里写话本</div>
+        </div>
+      </div>
+      <div class="cc-fields">
+        <div class="cc-row"><span class="cc-label">身份</span><div class="cc-input">绸缎庄账房先生家的养女，实为旧盐商遗孤</div></div>
+        <div class="cc-row"><span class="cc-label">标签</span><div class="cc-tags"><span class="cc-tag">心细</span><span class="cc-tag">嘴硬</span><span class="cc-tag">怕水</span></div></div>
+        <div class="cc-row"><span class="cc-label">关系</span><div>
+          <div class="cc-rel"><span class="cc-rel-name">沈崇文</span><span class="cc-rel-desc">养父 · 绸缎庄东家</span></div>
+          <div class="cc-rel"><span class="cc-rel-name">陆小满</span><span class="cc-rel-desc">跑堂伙计 · 唯一知道她夜里写话本的人</span></div>
+        </div></div>
+      </div>
+      <div class="cc-body">
+        <div class="cc-body-label">小传</div>
+        <div class="pm">
+          <h3>性格</h3><p>面上和气，账目上寸步不让；被戳穿身世时会突然很安静。</p>
+          <h3>能力</h3><p>过目不忘的账目心算；能模仿七种笔迹。</p>
+          <h3>经历</h3><p>六岁被沈家从码头捡回；十四岁接管账房；今年开始夜写话本。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col a">
+    <h2>方案A <span class="tag">· 对齐收紧（改动最小）</span></h2>
+    <div class="paper">
+      <div class="cc-head">
+        <div class="cc-ava">沈</div>
+        <div class="cc-title-wrap">
+          <div class="cc-name">沈青梧</div>
+          <div class="cc-role-row"><span class="cc-role">主角</span></div>
+          <div class="cc-sub">临安城绸缎庄二小姐 · 19岁 · 白日算账夜里写话本</div>
+        </div>
+      </div>
+      <div class="cc-fields">
+        <div class="cc-row"><span class="cc-label">身份</span><div class="cc-input">绸缎庄账房先生家的养女，实为旧盐商遗孤</div></div>
+        <div class="cc-row"><span class="cc-label">标签</span><div class="cc-tags"><span class="cc-tag">心细</span><span class="cc-tag">嘴硬</span><span class="cc-tag">怕水</span></div></div>
+        <div class="cc-row"><span class="cc-label">关系</span><div>
+          <div class="cc-rel"><span class="cc-rel-name">沈崇文</span><span class="cc-rel-desc">养父 · 绸缎庄东家</span></div>
+          <div class="cc-rel"><span class="cc-rel-name">陆小满</span><span class="cc-rel-desc">跑堂伙计 · 唯一知道她夜里写话本的人</span></div>
+        </div></div>
+      </div>
+      <div class="cc-body">
+        <div class="cc-body-label">小传</div>
+        <div class="pm">
+          <h3>性格</h3><p>面上和气，账目上寸步不让；被戳穿身世时会突然很安静。</p>
+          <h3>能力</h3><p>过目不忘的账目心算；能模仿七种笔迹。</p>
+          <h3>经历</h3><p>六岁被沈家从码头捡回；十四岁接管账房；今年开始夜写话本。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col b">
+    <h2>方案B <span class="tag">· 头部信息卡 + 轻标题</span></h2>
+    <div class="paper">
+      <div class="card">
+        <div class="cc-head">
+          <div class="cc-ava">沈</div>
+          <div class="cc-title-wrap">
+            <div class="cc-name">沈青梧</div>
+            <div class="cc-role-row"><span class="cc-role">主角</span></div>
+            <div class="cc-sub">临安城绸缎庄二小姐 · 19岁 · 白日算账夜里写话本</div>
+          </div>
+        </div>
+        <div class="cc-fields">
+          <div class="cc-row"><span class="cc-label">身份</span><div class="cc-input">绸缎庄账房先生家的养女，实为旧盐商遗孤</div></div>
+          <div class="cc-row"><span class="cc-label">标签</span><div class="cc-tags"><span class="cc-tag">心细</span><span class="cc-tag">嘴硬</span><span class="cc-tag">怕水</span></div></div>
+          <div class="cc-row"><span class="cc-label">关系</span><div>
+            <div class="cc-rel"><span class="cc-rel-name">沈崇文</span><span class="cc-rel-desc">养父 · 绸缎庄东家</span></div>
+            <div class="cc-rel"><span class="cc-rel-name">陆小满</span><span class="cc-rel-desc">跑堂伙计 · 唯一知道她夜里写话本的人</span></div>
+          </div></div>
+        </div>
+      </div>
+      <div class="cc-body">
+        <div class="cc-body-label">小传</div>
+        <div class="pm">
+          <h3>性格</h3><p>面上和气，账目上寸步不让；被戳穿身世时会突然很安静。</p>
+          <h3>能力</h3><p>过目不忘的账目心算；能模仿七种笔迹。</p>
+          <h3>经历</h3><p>六岁被沈家从码头捡回；十四岁接管账房；今年开始夜写话本。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  // 给 A/B 的改动点打金色框
+  document.querySelectorAll('.a .pm, .a .cc-body-label, .a .cc-body, .b .card, .b .pm').forEach(el => el.classList.add('gold'));
+</script>
+</body>
+</html>

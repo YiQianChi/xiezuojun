@@ -17,7 +17,7 @@
     <div v-if="loading" class="loading">加载中...</div>
 
     <div v-else-if="projects.length === 0" class="empty-state">
-      <div class="empty-icon">📚</div>
+      <div class="empty-icon"><BookCopy :size="32"/></div>
       <h3>还没有书籍</h3>
       <p>开始你的第一本书吧</p>
       <button class="btn primary" @click="openCreateModal">创建第一本书</button>
@@ -81,12 +81,12 @@
             class="mode-tab"
             :class="{ active: createMode === 'blank' }"
             @click="createMode = 'blank'"
-          >✨ 空白新书</button>
+          ><FilePlus2 :size="15"/> 空白新书</button>
           <button
             class="mode-tab"
             :class="{ active: createMode === 'import' }"
             @click="createMode = 'import'"
-          >📥 导入 TXT</button>
+          ><FileUp :size="15"/> 导入 TXT</button>
         </div>
 
         <template v-if="createMode === 'blank'">
@@ -160,10 +160,10 @@
     <!-- 确认彻底删除/清空 弹窗 -->
     <div v-if="confirmModal" class="modal-overlay" @click="closeConfirm">
       <div class="modal confirm-modal-box" @click.stop>
-        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-icon"><TriangleAlert :size="28"/></div>
         <h3>{{ confirmModal.title }}</h3>
         <p class="confirm-desc">{{ confirmModal.desc }}</p>
-        <p class="confirm-warn">⚠️ 删除后不可恢复</p>
+        <p class="confirm-warn"><TriangleAlert :size="15"/> 删除后不可恢复</p>
         <p class="confirm-hint">请输入 <strong>确认删除</strong> 以继续</p>
         <input v-model="confirmText" class="input" placeholder="确认删除" />
         <div class="modal-actions">
@@ -218,6 +218,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { projectApi, trashApi, userApi } from '../core/api'
 import { toast } from '../composables/useToast'
+import { BookCopy, FilePlus2, FileUp, TriangleAlert } from 'lucide-vue-next'
 import ImportBookPanel from '../components/ImportBookPanel.vue'
 
 const router = useRouter()
@@ -271,7 +272,7 @@ async function loadProjects() {
     // 拼字邀请落地闭环：已登录收卡/点链接落在书架时，自动进最近一本书——编辑器 init 会弹「加入房间」
     if (localStorage.getItem('xzj-sprint-invite') && projects.value.length) {
       const p = projects.value[0]
-      toast.info('🏁 收到拼字邀请，正在带你去加入')
+      toast.info('收到拼字邀请，正在带你去加入')
       router.push(`/editor/${p.public_id || p.id}`)
     }
   } catch (e: any) {

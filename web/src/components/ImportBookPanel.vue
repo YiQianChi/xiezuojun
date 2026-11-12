@@ -10,7 +10,7 @@
         @dragleave="dragover = false"
         @drop.prevent="onDrop"
       >
-        <div class="drop-icon">📄</div>
+        <div class="drop-icon"><FileText :size="32"/></div>
         <p>点击选择或拖入 .txt 文件</p>
         <p class="drop-hint">自动识别 UTF-8 / GBK 编码，按「第X章」分章，全程不经过 AI</p>
       </div>
@@ -46,7 +46,7 @@
         </div>
         <!-- 标题格式不一致 → 询问是否统一（默认保留原格式，确认后才统一） -->
         <div v-if="needsNormalize" class="unify-box">
-          <div class="unify-title">⚠️ 检测到章节标题格式不一致</div>
+          <div class="unify-title"><TriangleAlert :size="15"/> 检测到章节标题格式不一致</div>
           <div v-for="ex in normalizeExamples" :key="ex.raw" class="unify-ex">
             <span class="ex-raw">{{ ex.raw }}</span> → <span class="ex-norm">{{ ex.norm }}</span>
           </div>
@@ -61,9 +61,9 @@
         </div>
         <div class="chapter-preview">
           <div v-for="(v, vi) in effectiveVolumes" :key="vi" class="pv-vol">
-            <div class="pv-vol-title">📁 {{ v.title || '第一卷' }}</div>
+            <div class="pv-vol-title"><Folder :size="15"/> {{ v.title || '第一卷' }}</div>
             <div v-for="(ch, ci) in v.chapters" :key="ci" class="pv-ch">
-              <span class="pv-ch-title">📄 {{ ch.title }}</span>
+              <span class="pv-ch-title"><FileText :size="15"/> {{ ch.title }}</span>
               <span class="pv-ch-words">{{ countChars(ch.content) }} 字</span>
             </div>
           </div>
@@ -100,6 +100,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { FileText, TriangleAlert, Folder } from 'lucide-vue-next'
 import { projectApi } from '../core/api'
 import { toast } from '../composables/useToast'
 

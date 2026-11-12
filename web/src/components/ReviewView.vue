@@ -11,7 +11,7 @@
         <button class="run-btn" @click="runReview" :disabled="running">
           {{ running ? '检查中...' : '开始体检' }}
         </button>
-        <button v-if="history.length > 0" class="clear-btn" @click="clearHistory" title="清空历史报告">🗑</button>
+        <button v-if="history.length > 0" class="clear-btn" @click="clearHistory" title="清空历史报告"><Trash2 :size="16"/></button>
       </div>
 
       <div v-if="history.length > 0" class="review-history">
@@ -29,19 +29,19 @@
       </div>
 
       <div v-if="issues.length === 0 && !running && !error" class="empty-state">
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon"><Search :size="32"/></div>
         <div class="empty-title">还没有体检报告</div>
         <div class="empty-desc">点上面「开始体检」，AI 会当读者/责编，替你查一致性、伏笔、节奏。</div>
       </div>
 
       <div v-if="error" class="empty-state">
-        <div class="empty-icon">⚠️</div>
+        <div class="empty-icon"><TriangleAlert :size="32"/></div>
         <div class="empty-title">检查失败</div>
         <div class="empty-desc">{{ error }}</div>
       </div>
 
       <div v-if="running" class="empty-state">
-        <div class="empty-icon">⏳</div>
+        <div class="empty-icon"><Hourglass :size="32"/></div>
         <div class="empty-title">AI 正在审阅你的小说...</div>
         <div class="empty-desc">逐章检查中，请稍候</div>
       </div>
@@ -59,11 +59,11 @@
             <div class="title">
               {{ issue.title }}
               <span class="severity" :class="issue.severity">{{ severityLabel(issue.severity) }}</span>
-              <span v-if="issue.resolved === 'resolved'" class="status-tag resolved">✓ 已解决</span>
+              <span v-if="issue.resolved === 'resolved'" class="status-tag resolved"><Check :size="15"/> 已解决</span>
               <span v-else-if="issue.resolved === 'ignored'" class="status-tag ignored">− 已忽略</span>
             </div>
             <div class="desc">{{ issue.desc }}</div>
-            <div class="locus">📄 {{ issue.locus }}</div>
+            <div class="locus"><FileText :size="15"/> {{ issue.locus }}</div>
           </div>
         </template>
       </template>
@@ -71,14 +71,14 @@
 
     <div class="review-detail">
       <div v-if="!activeIssue" class="detail-placeholder">
-        <div class="ph-icon">📋</div>
+        <div class="ph-icon"><ListTree :size="28"/></div>
         <div>选一条问题查看详细分析</div>
       </div>
       <template v-else>
         <h3>{{ activeIssue.title }}</h3>
         <div class="meta">
           <span class="badge" :class="activeIssue.severity">{{ activeIssue.category }} · {{ severityLabel(activeIssue.severity) }}</span>
-          <span>📄 {{ activeIssue.locus }}</span>
+          <span><FileText :size="15"/> {{ activeIssue.locus }}</span>
         </div>
         <div class="summary">{{ activeIssue.desc }}</div>
 
@@ -90,7 +90,7 @@
         <div class="action-row">
           <button class="btn" @click="activeIssue && emit('jump-to-source', activeIssue)">跳到原文</button>
           <button class="btn primary" @click="activeIssue && emit('ai-fix', activeIssue)">让 AI 帮我改</button>
-          <button class="btn" :class="{ toggle: activeIssue?.resolved === 'resolved' }" @click="activeIssue && setIssueStatus(activeIssue.id, 'resolved')">✓ 已解决</button>
+          <button class="btn" :class="{ toggle: activeIssue?.resolved === 'resolved' }" @click="activeIssue && setIssueStatus(activeIssue.id, 'resolved')"><Check :size="15"/> 已解决</button>
           <button class="btn" :class="{ toggle: activeIssue?.resolved === 'ignored' }" @click="activeIssue && setIssueStatus(activeIssue.id, 'ignored')">忽略</button>
         </div>
       </template>
@@ -100,6 +100,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { Check, FileText, Hourglass, ListTree, Search, Trash2, TriangleAlert } from 'lucide-vue-next'
 import { aiApi, documentApi } from '../core/api'
 
 const emit = defineEmits<{

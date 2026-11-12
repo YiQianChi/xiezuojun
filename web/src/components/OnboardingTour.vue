@@ -3,7 +3,7 @@
     <!-- ====== Welcome prompt ====== -->
     <div v-if="showPrompt" class="tour-overlay" @click.self="dismissPrompt">
       <div class="welcome-card" @click.stop>
-        <div class="welcome-icon">🎓</div>
+        <div class="welcome-icon"><GraduationCap :size="32"/></div>
         <div class="welcome-title">欢迎来到写作菌</div>
         <div class="welcome-desc">花 1 分钟了解编辑器的核心功能，快速上手。</div>
         <div class="welcome-actions">
@@ -22,7 +22,7 @@
         <div class="tour-desc">{{ currentStepData.desc }}</div>
         <div v-if="currentStepData.features?.length" class="tour-features">
           <div v-for="f in currentStepData.features" :key="f.name" class="tour-feature">
-            <div class="tf-icon" :style="{ background: f.bg }">{{ f.icon }}</div>
+            <div class="tf-icon" :style="{ background: f.bg }"><component :is="f.icon" :size="15"/></div>
             <div class="tf-body"><div class="tf-name">{{ f.name }}</div><div class="tf-desc">{{ f.desc }}</div></div>
           </div>
         </div>
@@ -52,14 +52,14 @@
           <div class="demo-branch"><span>故事线</span><span class="demo-branch-name">主线</span></div>
           <div class="demo-tree">
             <div class="demo-zone-label warm">设定</div>
-            <div class="demo-tree-item"><span class="dt-icon">📋</span> 大纲</div>
-            <div class="demo-tree-item"><span class="dt-icon">👤</span> 人物</div>
-            <div class="demo-tree-item"><span class="dt-icon">🌍</span> 世界观</div>
+            <div class="demo-tree-item"><span class="dt-icon"><ListTree :size="14"/></span> 大纲</div>
+            <div class="demo-tree-item"><span class="dt-icon"><User :size="14"/></span> 人物</div>
+            <div class="demo-tree-item"><span class="dt-icon"><Globe2 :size="14"/></span> 世界观</div>
             <div class="demo-zone-divider"></div>
             <div class="demo-zone-label">文章</div>
-            <div class="demo-tree-item active"><span class="dt-icon">📖</span> 第一章 · 雨夜</div>
-            <div class="demo-tree-item"><span class="dt-icon">📖</span> 第二章 · 迷踪</div>
-            <div class="demo-tree-item"><span class="dt-icon">📖</span> 第三章 · 真相</div>
+            <div class="demo-tree-item active"><span class="dt-icon"><BookOpen :size="14"/></span> 第一章 · 雨夜</div>
+            <div class="demo-tree-item"><span class="dt-icon"><BookOpen :size="14"/></span> 第二章 · 迷踪</div>
+            <div class="demo-tree-item"><span class="dt-icon"><BookOpen :size="14"/></span> 第三章 · 真相</div>
           </div>
         </div>
         <div class="demo-main">
@@ -72,7 +72,7 @@
               <span class="demo-mode active">写作</span>
             </div>
             <div class="demo-header-actions">
-              <span class="demo-icon-btn">🌙</span><span class="demo-icon-btn">📖</span><span class="demo-icon-btn">⬜</span><span class="demo-icon-btn">⏱</span>
+              <span class="demo-icon-btn"><Moon :size="16"/></span><span class="demo-icon-btn"><BookOpen :size="16"/></span><span class="demo-icon-btn"><Square :size="16"/></span><span class="demo-icon-btn"><History :size="16"/></span>
             </div>
           </div>
           <div class="demo-editor">
@@ -88,15 +88,16 @@
       </div>
       <div v-show="aiBottombarShow" class="demo-ai-bottombar" v-html="aiBottombarHTML"></div>
       <div v-if="demoPulseStyle" class="pulse-ring" :style="demoPulseStyle"></div>
-      <div v-if="demoPointerStyle" class="click-pointer" :style="demoPointerStyle">👆</div>
-      <div v-if="fakeCursorShow" class="fake-cursor" :style="fakeCursorStyle">🖱️</div>
+      <div v-if="demoPointerStyle" class="click-pointer" :style="demoPointerStyle"><Pointer :size="28"/></div>
+      <div v-if="fakeCursorShow" class="fake-cursor" :style="fakeCursorStyle"><MousePointer2 :size="20"/></div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, markRaw, type Component } from 'vue'
 import { useRoute } from 'vue-router'
+import { GraduationCap, ListTree, User, Globe2, BookOpen, Moon, Square, History, Pointer, MousePointer2 } from 'lucide-vue-next'
 
 const route = useRoute()
 const STORAGE_KEY = 'xiezuojun_onboarded'
@@ -112,7 +113,7 @@ const tooltipStyle = ref({})
 const tourArrow = ref('')
 const spotRect = ref({ x: 0, y: 0, w: 0, h: 0 })
 
-interface Feature { icon: string; bg: string; name: string; desc: string }
+interface Feature { icon: Component; bg: string; name: string; desc: string }
 interface Step {
   badge: string; title: string; desc: string;
   selector?: string; placement?: string;
@@ -123,10 +124,10 @@ interface Step {
 const allSteps: Step[] = [
   { badge: '第 1 步 / 共 2 步', title: '左侧栏：设定 + 文章', desc: '左侧分两个区域，所有创作素材和正文章节都在这里管理。',
     selector: '.doc-tree', placement: 'right',
-    features: [{ icon:'📋', bg:'#f7f4f1', name:'设定区', desc:'放创作素材：大纲、人物设定、世界观' },{ icon:'📖', bg:'#fff', name:'文章区', desc:'按章节组织的正文，点击即写' }] },
+    features: [{ icon: markRaw(ListTree), bg:'#f7f4f1', name:'设定区', desc:'放创作素材：大纲、人物设定、世界观' },{ icon: markRaw(BookOpen), bg:'#fff', name:'文章区', desc:'按章节组织的正文，点击即写' }] },
   { badge: '第 2 步 / 共 2 步', title: '顶栏工具：专注 · 更多(⋯)', desc: '绿色按钮进入专注；主题/分屏/版本功能都在 ⋯ 菜单里。',
     selector: '.header-actions', placement: 'bottom', isLast: true,
-    features: [{ icon:'⬜', bg:'#007aff15', name:'专注模式', desc:'隐藏侧栏，全屏写作' },{ icon:'📖', bg:'#007aff15', name:'分屏', desc:'⋯ 菜单里：左边写正文，右边开另一章对照，两边都能编辑' },{ icon:'⏱', bg:'#007aff15', name:'版本历史', desc:'⋯ 菜单里：随时回到任意历史版本' }] },
+    features: [{ icon: markRaw(Square), bg:'#007aff15', name:'专注模式', desc:'隐藏侧栏，全屏写作' },{ icon: markRaw(BookOpen), bg:'#007aff15', name:'分屏', desc:'⋯ 菜单里：左边写正文，右边开另一章对照，两边都能编辑' },{ icon: markRaw(History), bg:'#007aff15', name:'版本历史', desc:'⋯ 菜单里：随时回到任意历史版本' }] },
 ]
 
 const currentStepData = computed(() => allSteps[currentStep.value] || {})
@@ -332,7 +333,7 @@ function startSelectPhase() {
         moveFakeCursor(startX + (endX - startX) * (step/steps), r.top - s.top + r.height/2 - 10)
         if (step >= steps) {
           clearInterval(dragT)
-          demoCaption.value = '✓ 选中文字后，上方弹出 AI 工具栏'
+          demoCaption.value = '选中文字后，上方弹出 AI 工具栏'
           hideFakeCursor()
           const t2 = setTimeout(() => startAIToolbarPhase(), 600)
           timers.push(t2 as unknown as number)
@@ -369,9 +370,9 @@ function demoActionClick(action: string) {
   aiHighlightBtn.value = ''
   const selEl = document.getElementById('selText')
   if (selEl) { selEl.classList.remove('active'); selEl.classList.add('strike') }
-  demoCaption.value = '✓ 原文加了删除线，底部出现方向输入框'
+  demoCaption.value = '原文加了删除线，底部出现方向输入框'
   aiBottombarShow.value = true
-  aiBottombarHTML.value = '<button class="bar-btn">✕</button><input class="bar-input" placeholder="改写方向（可选），按回车生成" /><button class="bar-btn primary" id="demoGen">▶ 生成</button>'
+  aiBottombarHTML.value = '<button class="bar-btn">×</button><input class="bar-input" placeholder="改写方向（可选），按回车生成" /><button class="bar-btn primary" id="demoGen">生成</button>'
 
   const t = setTimeout(() => {
     demoCaption.value = '输入改写方向后点「生成」（不输也行，直接回车）'
@@ -389,14 +390,14 @@ function demoActionClick(action: string) {
     function doGenerate() {
       unguide(); demoSpotOff()
       demoCaption.value = '④ AI 正在生成…'
-      aiBottombarHTML.value = '<span class="bar-hint">AI 生成中…</span><button class="bar-btn danger">⏹ 停止</button>'
+      aiBottombarHTML.value = '<span class="bar-hint">AI 生成中…</span><button class="bar-btn danger">停止</button>'
       let j = 0
       const genT = setInterval(() => {
         if (j >= aiResult.length) {
           clearInterval(genT)
-          demoCaption.value = '⑤ 点击「✓ 采用」替换原文'
+          demoCaption.value = '点击「采用」替换原文'
           demoOutput.value = '<span class="demo-text-ai">' + aiResult + '</span>'
-          aiBottombarHTML.value = '<span class="bar-hint">已生成</span><button class="bar-btn">↻ 重试</button><button class="bar-btn danger" id="demoDiscard">🗑 丢弃</button><button class="bar-btn success" id="demoAccept">✓ 采用</button>'
+          aiBottombarHTML.value = '<span class="bar-hint">已生成</span><button class="bar-btn">重试</button><button class="bar-btn danger" id="demoDiscard">丢弃</button><button class="bar-btn success" id="demoAccept">采用</button>'
           const t3 = setTimeout(() => {
             const bb2 = document.querySelector('.demo-ai-bottombar') as HTMLElement
             demoSpotOn(bb2)
@@ -406,7 +407,7 @@ function demoActionClick(action: string) {
             if (discardBtn) {
               waitForClick(discardBtn, () => {
                 unguide(); demoSpotOff()
-                demoCaption.value = '✅ 已丢弃，原文保留。演示完毕！'
+                demoCaption.value = '已丢弃，原文保留。演示完毕！'
                 const sel = document.getElementById('selText')
                 if (sel) sel.classList.remove('strike')
                 demoOutput.value = ''
@@ -416,7 +417,7 @@ function demoActionClick(action: string) {
             }
             waitForClick(acceptBtn, () => {
               unguide(); demoSpotOff()
-              demoCaption.value = '✅ 已采用！AI 文本替换了原文。演示完毕！'
+              demoCaption.value = '已采用！AI 文本替换了原文。演示完毕！'
               const sel = document.getElementById('selText')
               if (sel) {
                 sel.classList.add('fade-out')

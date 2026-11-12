@@ -3,21 +3,38 @@
     <div class="modal" @click.stop>
       <div class="modal-head">
         <h3>{{ isFolder ? '文件夹属性' : '文件属性' }}</h3>
-        <button class="close-btn" @click="close">✕</button>
+        <button class="close-btn" @click="close"><X :size="16"/></button>
       </div>
 
       <div class="modal-body">
+        <!-- 基础信息：名称（可改） -->
+        <div class="prop-row">
+          <label class="prop-label">名称</label>
+          <input
+            v-model="title"
+            class="prop-input"
+            :placeholder="doc && doc.type === 'chapter' ? '留空 = 自动「第N章」编号' : '输入名称'"
+          />
+        </div>
+
+        <!-- 基础信息：类型/创建/修改（只读，单列不换行） -->
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-k">类型</span><span class="meta-v">{{ typeLabel }}</span></div>
+          <div class="meta-item" v-if="doc"><span class="meta-k">创建</span><span class="meta-v">{{ fmtDate(doc.created_at) }}</span></div>
+          <div class="meta-item" v-if="doc"><span class="meta-k">最后修改</span><span class="meta-v">{{ fmtDate(doc.updated_at) }}</span></div>
+        </div>
+
         <!-- 图标（文件和文件夹都有） -->
         <div class="prop-row">
           <label class="prop-label">图标</label>
           <div class="icon-picker">
             <button
-              v-for="ic in iconChoices"
-              :key="ic"
+              v-for="ic in NODE_ICONS"
+              :key="ic.key"
               class="icon-chip"
-              :class="{ active: selectedIcon === ic }"
-              @click="selectedIcon = ic"
-            >{{ ic }}</button>
+              :class="{ active: selectedIcon === ic.key || EMOJI_TO_KEY[selectedIcon] === ic.key }"
+              @click="selectedIcon = ic.key"
+            ><component :is="ic.icon" :size="16"/></button>
           </div>
         </div>
 
@@ -70,6 +87,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { X } from 'lucide-vue-next'
+import { NODE_ICONS, EMOJI_TO_KEY } from '../nodeIcons'
 
 const props = defineProps<{
   modelValue: boolean
@@ -78,7 +97,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [v: boolean]
-  save: [data: { icon?: string; doc_status?: string; word_goal?: number }]
+  save: [data: { icon?: string; title?: string; doc_status?: string; word_goal?: number }]
 }>()
 
 const isFolder = computed(() => {
@@ -90,6 +109,32 @@ const isFolder = computed(() => {
 const selectedIcon = ref('')
 const selectedStatus = ref('draft')
 const wordGoal = ref(0)
+const title = ref('')
+
+const TYPE_LABELS: Record<string, string> = {
+  volume: '卷', folder: '文件夹', chapter: '章节', note: '笔记', outline: '大纲',
+  characters: '人物', character: '角色卡', worldbuilding: '世界观', storyline: '故事线',
+  chapter_outline: '章节大纲',
+}
+const typeLabel = computed(() => TYPE_LABELS[props.doc?.type] || props.doc?.type || '—')
+
+function fmtDate(s?: string) {
+  if (!s) return '—'
+  const d = new Date(s)
+  if (isNaN(+d)) return '—'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const now = new Date()
+  const sameDay = d.toDateString() === now.toDateString()
+  if (sameDay) {
+    const min = Math.floor((now.getTime() - d.getTime()) / 60000)
+    if (min < 1) return '刚刚'
+    if (min < 60) return `${min} 分钟前`
+    return `今天 ${hm}`
+  }
+  if (d.getFullYear() === now.getFullYear()) return `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
 const statusOptions = [
   { value: 'draft', label: '草稿', color: '#8e8e93' },
@@ -97,18 +142,13 @@ const statusOptions = [
   { value: 'final', label: '定稿', color: '#34c759' },
 ]
 
-const iconChoices = [
-  '📁', '📋', '👥', '🌍', '📖', '📑', '📝', '📄',
-  '🗂️', '🏷️', '⭐', '💡', '🔒', '⚔️', '🏰', '🗺️',
-  '✒️', '✏️', '🖊️', '📚', '🎨', '🎬', '🎵', '💎',
-  '🔥', '❄️', '🌙', '☀️', '⚡', '🌟', '🎭', '🧩',
-]
 
 watch(() => props.modelValue, (v) => {
   if (v && props.doc) {
     selectedIcon.value = props.doc.icon || ''
     selectedStatus.value = props.doc.doc_status || 'draft'
     wordGoal.value = props.doc.word_goal || 0
+    title.value = props.doc.title || ''
   }
 })
 
@@ -117,8 +157,11 @@ function close() {
 }
 
 function save() {
+  const trimmed = title.value.trim()
   const data: any = {
     icon: selectedIcon.value,
+    // 章节允许空名（自动「第N章」编号）；其他类型空则保留原名
+    title: trimmed || (props.doc?.type === 'chapter' ? '' : (props.doc?.title || '')),
   }
   if (!isFolder.value) {
     data.doc_status = selectedStatus.value
@@ -201,6 +244,26 @@ function save() {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+/* 基础信息明细行 */
+.meta-list {
+  margin-bottom: 16px;
+  border: 1px solid var(--border, #e5e5ea);
+  border-radius: 10px;
+  padding: 4px 12px;
+}
+.meta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.meta-item + .meta-item { border-top: 1px dashed var(--border, #e5e5ea); }
+.meta-k { color: var(--text-secondary, #86868b); }
+.meta-v { color: var(--text-primary, #1d1d1f); font-variant-numeric: tabular-nums; }
+
 /* icon picker */
 .icon-picker {
   display: grid;
@@ -290,6 +353,7 @@ function save() {
   color: var(--text-primary, #1d1d1f);
   font-variant-numeric: tabular-nums;
 }
+.stat-val.sm { font-size: 13px; font-weight: 500; }
 .stat-pct {
   font-size: 12px;
   color: var(--text-secondary, #86868b);

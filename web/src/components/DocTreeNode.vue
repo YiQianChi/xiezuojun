@@ -20,7 +20,7 @@
 
       <!-- 章节不显示序号——标题自带「第X章」，数字是冗余噪音 -->
       <span v-if="node.type !== 'chapter'" class="node-index">{{ index }}</span>
-      <span class="node-icon" :class="{ 'char-avatar': node.type === 'character' }">{{ nodeIcon }}</span>
+      <span class="node-icon" :class="{ 'char-avatar': node.type === 'character' }"><component v-if="nodeIconComp" :is="nodeIconComp" :size="15"/>{{ nodeIconComp ? '' : nodeIconText }}</span>
       <span v-if="charRole" class="char-role-tag" :style="{ background: charRole.bg }">{{ charRole.label }}</span>
       <span
         v-if="!isFolder"
@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { chapterDisplayTitle } from '../core/chapterTitle'
+import { resolveNodeIcon } from './nodeIcons'
 
 const props = defineProps<{
   node: any
@@ -97,23 +98,15 @@ const children = computed(() => {
 // chapter_outline（章节大纲）是第三个容器——章纲文件（note 类型）挂它下面（2026-11-09）
 const isFolder = computed(() => props.node.type === 'volume' || props.node.type === 'characters' || props.node.type === 'chapter_outline')
 
-const nodeIcon = computed(() => {
-  // ponytail: 用户自选图标优先，否则按 type 默认
-  if (props.node.icon) return props.node.icon
-  // 角色卡：meta.avatar（首字或 emoji）优先
+const nodeIconComp = computed(() => {
+  // 角色卡：meta.avatar（首字或 emoji）是用户内容，不走矢量
+  if (!props.node.icon && props.node.type === 'character') return null
+  return resolveNodeIcon(props.node.icon, props.node.type)
+})
+const nodeIconText = computed(() => {
+  // 兜底文本：角色卡头像，或老数据里映射表没覆盖的自选 emoji
   if (props.node.type === 'character') return charAvatar.value
-  const map: Record<string, string> = {
-    volume: '📁',
-    folder: '📂',
-    outline: '📋',
-    characters: '👥',
-    worldbuilding: '🌍',
-    storyline: '📖',
-    chapter_outline: '📑',
-    chapter: '📄',
-    note: '📄',
-  }
-  return map[props.node.type] || '📄'
+  return props.node.icon || ''
 })
 
 // 角色卡 meta（无则空对象）

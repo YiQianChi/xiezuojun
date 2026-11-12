@@ -44,7 +44,7 @@
       </form>
 
       <p class="legal-note agree-row" @click="toggleAgree">
-        <span class="agree-box" :class="{ on: agreed }">{{ agreed ? '✓' : '' }}</span>
+        <span class="agree-box" :class="{ on: agreed }"><Check v-if="agreed" :size="12"/></span>
         <span class="agree-text">我已阅读并同意</span>
         <router-link to="/agreement" target="_blank" @click.stop>《用户服务协议》</router-link>与
         <router-link to="/privacy" target="_blank" @click.stop>《隐私政策》</router-link>
@@ -58,6 +58,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { userApi } from '../core/api'
+import { Check } from 'lucide-vue-next'
 
 const router = useRouter()
 // 微信审核：协议默认不同意，用户自主勾选后才能注册/发码

@@ -1,7 +1,7 @@
 <template>
   <div class="trash-panel">
     <div class="trash-header">
-      <span class="trash-title">🗑 回收站</span>
+      <span class="trash-title"><Trash2 :size="15"/> 回收站</span>
       <span class="trash-count">{{ items.length }}/{{ MAX }}</span>
       <button v-if="items.length" class="trash-empty-btn" @click="emptyAll">清空</button>
     </div>
@@ -9,7 +9,7 @@
       <div v-if="loading" class="trash-empty">加载中...</div>
       <div v-else-if="items.length === 0" class="trash-empty">回收站为空</div>
       <div v-for="item in items" :key="item.id" class="trash-item">
-        <span class="trash-icon">{{ typeIcon(item.type) }}</span>
+        <span class="trash-icon"><component :is="typeIcon(item.type)" :size="16"/></span>
         <div class="trash-info">
           <div class="trash-name">{{ item.title }}</div>
           <div class="trash-meta">
@@ -28,12 +28,12 @@
     <!-- 确认彻底删除弹窗 -->
     <div v-if="confirmDestroy" class="confirm-overlay" @click="confirmDestroy = null">
       <div class="confirm-modal" @click.stop>
-        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-icon"><TriangleAlert :size="28"/></div>
         <h3 class="confirm-title">彻底删除</h3>
         <p class="confirm-desc">
           确定要彻底删除「{{ confirmDestroy.title }}」吗？
         </p>
-        <p class="confirm-warn">⚠️ 删除后不可恢复</p>
+        <p class="confirm-warn"><TriangleAlert :size="15"/> 删除后不可恢复</p>
         <p class="confirm-hint">请输入 <strong>确认删除</strong> 以继续</p>
         <input v-model="confirmText" class="confirm-input" placeholder="确认删除" />
         <div class="confirm-buttons">
@@ -46,10 +46,10 @@
     <!-- 确认清空回收站弹窗 -->
     <div v-if="confirmEmpty" class="confirm-overlay" @click="cancelEmpty">
       <div class="confirm-modal" @click.stop>
-        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-icon"><TriangleAlert :size="28"/></div>
         <h3 class="confirm-title">清空回收站</h3>
         <p class="confirm-desc">确定要清空回收站吗？将删除全部 {{ items.length }} 个项目。</p>
-        <p class="confirm-warn">⚠️ 删除后不可恢复</p>
+        <p class="confirm-warn"><TriangleAlert :size="15"/> 删除后不可恢复</p>
         <p class="confirm-hint">请输入 <strong>确认删除</strong> 以继续</p>
         <input v-model="confirmText" class="confirm-input" placeholder="确认删除" />
         <div class="confirm-buttons">
@@ -62,7 +62,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, markRaw } from 'vue'
+import { BookOpen, FilePen, FileText, Folder, Globe2, ListOrdered, ListTree, Trash2, TriangleAlert, Users } from 'lucide-vue-next'
 import { trashApi } from '../../core/api'
 import { toast } from '../../composables/useToast'
 
@@ -139,9 +140,12 @@ async function doDestroy() {
   }
 }
 
-function typeIcon(t: string) {
-  return { volume: '📁', chapter: '📄', note: '📝', outline: '📋', characters: '👥', worldbuilding: '🌍', storyline: '📖', chapter_outline: '📑' }[t] || '📄'
+// UI 图标映射：type → lucide 组件（配置数组规则，markRaw 防响应式开销）
+const TYPE_ICONS: Record<string, any> = {
+  volume: markRaw(Folder), chapter: markRaw(FileText), note: markRaw(FilePen), outline: markRaw(ListTree),
+  characters: markRaw(Users), worldbuilding: markRaw(Globe2), storyline: markRaw(BookOpen), chapter_outline: markRaw(ListOrdered),
 }
+function typeIcon(t: string) { return TYPE_ICONS[t] || FileText }
 function typeLabel(t: string) {
   return { volume: '文件夹', chapter: '章节', note: '笔记', outline: '大纲', characters: '人物', worldbuilding: '世界观', storyline: '故事主线', chapter_outline: '章节大纲' }[t] || '文档'
 }

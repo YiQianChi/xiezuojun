@@ -3,14 +3,14 @@
     <div v-if="open" class="report-overlay" @click.self="$emit('update:open', false)">
       <div class="report-modal">
         <div class="rm-head">
-          <span class="rm-title">📢 今日战报</span>
-          <button class="rm-close" @click="$emit('update:open', false)">✕</button>
+          <span class="rm-title"><Megaphone :size="15"/> 今日战报</span>
+          <button class="rm-close" @click="$emit('update:open', false)"><X :size="16"/></button>
         </div>
         <div v-if="loading" class="rm-loading">生成中…</div>
         <template v-else>
           <canvas ref="canvasRef" class="rm-canvas" :width="750" :height="1100"></canvas>
           <div class="rm-tip">长按或右键保存图片 · 发朋友圈晒一晒</div>
-          <button class="rm-save" @click="download">⬇ 保存图片</button>
+          <button class="rm-save" @click="download"><Download :size="15"/> 保存图片</button>
         </template>
       </div>
     </div>
@@ -19,6 +19,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { Megaphone, X, Download } from 'lucide-vue-next'
 import { buddyApi } from '../../core/api'
 
 const props = defineProps<{ open: boolean }>()
@@ -88,7 +89,7 @@ function draw() {
   // 连续天数
   ctx.fillStyle = '#5c9670'
   ctx.font = '500 34px "PingFang SC", sans-serif'
-  ctx.fillText(`🔥 连续写作 ${d.streak_days} 天`, 60, 340)
+  ctx.fillText(`连续写作 ${d.streak_days} 天`, 60, 340)
 
   // 两枚统计卡
   const cards = [

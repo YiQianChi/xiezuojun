@@ -86,7 +86,7 @@
 
       <p v-if="!showReset" class="switch-text">还没有账号？ <router-link to="/register">立即注册</router-link></p>
       <p class="legal-note agree-row" @click="toggleAgree">
-        <span class="agree-box" :class="{ on: agreed }">{{ agreed ? '✓' : '' }}</span>
+        <span class="agree-box" :class="{ on: agreed }"><Check v-if="agreed" :size="12"/></span>
         <span class="agree-text">我已阅读并同意</span>
         <router-link to="/agreement" target="_blank" @click.stop>《用户服务协议》</router-link>与
         <router-link to="/privacy" target="_blank" @click.stop>《隐私政策》</router-link>
@@ -95,7 +95,7 @@
       <!-- 防刷点选验证（当日发送超阈值时触发）：弹窗，按提示条字的顺序点击大图 -->
       <div v-if="captcha" class="cap-overlay" @click.self="captcha = null">
         <div class="cap-dialog">
-          <div class="cap-head"><span>安全验证</span><button class="cap-close" @click="captcha = null">✕</button></div>
+          <div class="cap-head"><span>安全验证</span><button class="cap-close" @click="captcha = null"><X :size="16"/></button></div>
           <div class="cap-body">
             <p class="sl-tip">按顺序点击大图中与<b>上方小条一致</b>的字</p>
             <div class="sl-stage">
@@ -127,6 +127,7 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { userApi, projectApi } from '../core/api'
 import { mpNavigate } from '../core/mp'
+import { Check, X } from 'lucide-vue-next'
 
 type LoginMode = 'password' | 'code'
 type AccountType = 'email' | 'phone'

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>写作菌 · emoji → 矢量图标 三方案对比</title>
+<script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f6f2; color: #2c3a2e; padding: 32px 16px 80px; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  .sub { font-size: 13px; color: #9aa89c; margin-bottom: 28px; }
+  .plan { background: #fff; border-radius: 16px; box-shadow: 0 12px 40px rgba(60,90,66,.10); margin-bottom: 26px; overflow: hidden; }
+  .plan-head { display: flex; align-items: baseline; gap: 10px; padding: 18px 24px 14px; border-bottom: 1px solid #eef2ec; }
+  .plan-head .tag { font-size: 12px; color: #6aa877; font-weight: 700; }
+  .plan-head .note { font-size: 12px; color: #9aa89c; margin-left: auto; }
+  .plan-body { padding: 20px 24px 24px; }
+  .sec-title { font-size: 12px; color: #9aa89c; margin: 18px 0 8px; }
+  .sec-title:first-child { margin-top: 0; }
+
+  /* ===== 复刻写作菌真实 UI 的演示壳 ===== */
+  .tabs { display: inline-flex; gap: 4px; background: #eef2ec; padding: 4px; border-radius: 10px; }
+  .tabs button {
+    display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; cursor: pointer;
+    padding: 6px 12px; font-size: 13px; border-radius: 7px; color: #7a8a7e; transition: all .15s;
+  }
+  .tabs button.on { background: #fff; color: #2c3a2e; font-weight: 600; box-shadow: 0 1px 4px rgba(60,90,66,.12); }
+
+  .rail { display: inline-flex; flex-direction: column; gap: 2px; background: #f8faf6; border: 1px solid #e6ede2; border-radius: 12px; padding: 6px; }
+  .rail button {
+    display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+    border: 0; background: none; border-radius: 9px; cursor: pointer; color: #7a8a7e;
+  }
+  .rail button.on { background: #fff; color: #4a8a5c; box-shadow: 0 1px 4px rgba(60,90,66,.14); }
+  .rail button:hover { color: #4a8a5c; }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px;
+    border: 1px solid #dde7da; border-radius: 9px; background: #fff; cursor: pointer; color: #2c3a2e;
+  }
+  .btn.primary { background: #6aa877; border-color: #6aa877; color: #fff; }
+  .btn.ghost { border-style: dashed; color: #7a8a7e; }
+  .btn:active { transform: translateY(1px); }
+
+  .toast { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; padding: 10px 16px;
+    border-radius: 10px; color: #fff; margin: 4px 6px 4px 0; box-shadow: 0 6px 20px rgba(40,60,45,.18); }
+  .toast.ok { background: #4a8a5c; } .toast.warn { background: #d99a2b; } .toast.err { background: #c2564f; }
+
+  .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 40px;
+    background: #f8faf6; border-radius: 12px; width: fit-content; }
+  .empty .t { font-size: 13px; color: #9aa89c; }
+
+  .confirm { display: flex; gap: 12px; align-items: flex-start; background: #fff8f0; border: 1px solid #f0e0c8;
+    border-radius: 12px; padding: 14px 18px; width: fit-content; font-size: 13px; }
+
+  .modal-x { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+    border: 0; background: #eef2ec; border-radius: 8px; cursor: pointer; color: #7a8a7e; }
+  .modal-x:hover { background: #dde7da; color: #2c3a2e; }
+
+  iconify-icon { font-size: 16px; vertical-align: -3px; }
+  .rail iconify-icon { font-size: 19px; vertical-align: 0; }
+  .empty iconify-icon { font-size: 30px; }
+  .confirm iconify-icon { font-size: 20px; color: #d99a2b; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>emoji → 矢量图标 · 三方案对比</h1>
+  <p class="sub">下面的界面片段全部取自真实页面（右栏页签 / 左侧竖排工具栏 / 按钮组 / toast / 空态 / 确认弹窗），只是图标换了风格。</p>
+
+  <!-- 方案 A -->
+  <div class="plan" id="a">
+    <div class="plan-head"><span class="tag">方案 A · 细线条</span> Lucide 风格（1.5~2px 描边）<span class="note">推荐 · 干净现代，iOS/Notion/Linear 同款气质，与现有扁平 UI 最搭</span></div>
+    <div class="plan-body">
+      <div class="sec-title">右栏页签（AIContextPanel）</div>
+      <div class="tabs">
+        <button class="on"><iconify-icon icon="lucide:list-tree"></iconify-icon>大纲</button>
+        <button><iconify-icon icon="lucide:globe-2"></iconify-icon>世界观</button>
+        <button><iconify-icon icon="lucide:lightbulb"></iconify-icon>灵感</button>
+        <button><iconify-icon icon="lucide:git-branch"></iconify-icon>伏笔</button>
+        <button><iconify-icon icon="lucide:shield-check"></iconify-icon>自检</button>
+        <button><iconify-icon icon="lucide:handshake"></iconify-icon>陪伴</button>
+      </div>
+      <div class="sec-title">左侧工具栏（编辑器竖排）</div>
+      <div class="rail">
+        <button class="on" title="目录"><iconify-icon icon="lucide:book-open"></iconify-icon></button>
+        <button title="码字锁"><iconify-icon icon="lucide:lock"></iconify-icon></button>
+        <button title="手机预览"><iconify-icon icon="lucide:smartphone"></iconify-icon></button>
+        <button title="听写"><iconify-icon icon="lucide:mic"></iconify-icon></button>
+        <button title="设置"><iconify-icon icon="lucide:settings-2"></iconify-icon></button>
+        <button title="回收站"><iconify-icon icon="lucide:trash-2"></iconify-icon></button>
+      </div>
+      <div class="sec-title">按钮组</div>
+      <div class="toolbar">
+        <button class="btn primary"><iconify-icon icon="lucide:sparkles"></iconify-icon>AI 续写</button>
+        <button class="btn"><iconify-icon icon="lucide:pen-line"></iconify-icon>编辑</button>
+        <button class="btn ghost"><iconify-icon icon="lucide:download"></iconify-icon>导入 TXT</button>
+        <button class="btn"><iconify-icon icon="lucide:layout-dashboard"></iconify-icon>画布</button>
+        <button class="btn"><iconify-icon icon="lucide:pin"></iconify-icon>钉选</button>
+        <button class="modal-x"><iconify-icon icon="lucide:x"></iconify-icon></button>
+      </div>
+      <div class="sec-title">Toast / 空态 / 确认弹窗</div>
+      <div>
+        <span class="toast ok"><iconify-icon icon="lucide:party-popper"></iconify-icon>码字锁达成：+500 字！已自动解锁</span>
+        <span class="toast warn"><iconify-icon icon="lucide:flag"></iconify-icon>收到拼字邀请，正在带你去加入</span>
+        <span class="toast err"><iconify-icon icon="lucide:triangle-alert"></iconify-icon>本章有 3 处风险词</span>
+      </div>
+      <div style="display:flex; gap:14px; margin-top:12px; align-items:center; flex-wrap:wrap;">
+        <div class="empty"><iconify-icon icon="lucide:search-x"></iconify-icon><span class="t">没有找到相关设定</span></div>
+        <div class="confirm"><iconify-icon icon="lucide:triangle-alert"></iconify-icon>删除后可在回收站恢复，确认删除「第三章」？</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方案 B -->
+  <div class="plan" id="b">
+    <div class="plan-head"><span class="tag">方案 B · 圆润填充</span> Material Symbols 风格<span class="note">饱满显眼、点击目标更清楚，但 16px 下略糊，气质偏 Google 系</span></div>
+    <div class="plan-body">
+      <div class="sec-title">右栏页签</div>
+      <div class="tabs">
+        <button class="on"><iconify-icon icon="mdi:file-tree-outline"></iconify-icon>大纲</button>
+        <button><iconify-icon icon="mdi:earth"></iconify-icon>世界观</button>
+        <button><iconify-icon icon="mdi:lightbulb-on-outline"></iconify-icon>灵感</button>
+        <button><iconify-icon icon="mdi:source-branch"></iconify-icon>伏笔</button>
+        <button><iconify-icon icon="mdi:shield-check-outline"></iconify-icon>自检</button>
+        <button><iconify-icon icon="mdi:handshake-outline"></iconify-icon>陪伴</button>
+      </div>
+      <div class="sec-title">左侧工具栏</div>
+      <div class="rail">
+        <button class="on"><iconify-icon icon="mdi:book-open-variant"></iconify-icon></button>
+        <button><iconify-icon icon="mdi:lock"></iconify-icon></button>
+        <button><iconify-icon icon="mdi:cellphone"></iconify-icon></button>
+        <button><iconify-icon icon="mdi:microphone"></iconify-icon></button>
+        <button><iconify-icon icon="mdi:cog-outline"></iconify-icon></button>
+        <button><iconify-icon icon="mdi:trash-can-outline"></iconify-icon></button>
+      </div>
+      <div class="sec-title">按钮组</div>
+      <div class="toolbar">
+        <button class="btn primary"><iconify-icon icon="mdi:auto-fix"></iconify-icon>AI 续写</button>
+        <button class="btn"><iconify-icon icon="mdi:pencil-outline"></iconify-icon>编辑</button>
+        <button class="btn ghost"><iconify-icon icon="mdi:tray-arrow-down"></iconify-icon>导入 TXT</button>
+        <button class="btn"><iconify-icon icon="mdi:view-dashboard-outline"></iconify-icon>画布</button>
+        <button class="btn"><iconify-icon icon="mdi:pin-outline"></iconify-icon>钉选</button>
+        <button class="modal-x"><iconify-icon icon="mdi:close"></iconify-icon></button>
+      </div>
+      <div class="sec-title">Toast / 空态 / 确认弹窗</div>
+      <div>
+        <span class="toast ok"><iconify-icon icon="mdi:party-popper"></iconify-icon>码字锁达成：+500 字！已自动解锁</span>
+        <span class="toast warn"><iconify-icon icon="mdi:flag-outline"></iconify-icon>收到拼字邀请，正在带你去加入</span>
+        <span class="toast err"><iconify-icon icon="mdi:alert"></iconify-icon>本章有 3 处风险词</span>
+      </div>
+      <div style="display:flex; gap:14px; margin-top:12px; align-items:center; flex-wrap:wrap;">
+        <div class="empty"><iconify-icon icon="mdi:magnify-remove-outline"></iconify-icon><span class="t">没有找到相关设定</span></div>
+        <div class="confirm"><iconify-icon icon="mdi:alert"></iconify-icon>删除后可在回收站恢复，确认删除「第三章」？</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方案 C -->
+  <div class="plan" id="c">
+    <div class="plan-head"><span class="tag">方案 C · 双色</span> IconPark 风格<span class="note">彩色最接近原来 emoji 的活泼感，但彩色图标和小字号文字混排时显花</span></div>
+    <div class="plan-body">
+      <div class="sec-title">右栏页签</div>
+      <div class="tabs">
+        <button class="on"><iconify-icon icon="icon-park-outline:tree-list"></iconify-icon>大纲</button>
+        <button><iconify-icon icon="icon-park-outline:earth"></iconify-icon>世界观</button>
+        <button><iconify-icon icon="icon-park-outline:lightning"></iconify-icon>灵感</button>
+        <button><iconify-icon icon="icon-park-outline:branch"></iconify-icon>伏笔</button>
+        <button><iconify-icon icon="icon-park-outline:shield"></iconify-icon>自检</button>
+        <button><iconify-icon icon="icon-park-outline:shake-hands"></iconify-icon>陪伴</button>
+      </div>
+      <div class="sec-title">左侧工具栏</div>
+      <div class="rail">
+        <button class="on"><iconify-icon icon="icon-park-outline:open-book"></iconify-icon></button>
+        <button><iconify-icon icon="icon-park-outline:lock"></iconify-icon></button>
+        <button><iconify-icon icon="icon-park-outline:phone-one"></iconify-icon></button>
+        <button><iconify-icon icon="icon-park-outline:microphone-one"></iconify-icon></button>
+        <button><iconify-icon icon="icon-park-outline:setting-two"></iconify-icon></button>
+        <button><iconify-icon icon="icon-park-outline:delete"></iconify-icon></button>
+      </div>
+      <div class="sec-title">按钮组</div>
+      <div class="toolbar">
+        <button class="btn primary"><iconify-icon icon="icon-park-outline:magic"></iconify-icon>AI 续写</button>
+        <button class="btn"><iconify-icon icon="icon-park-outline:write"></iconify-icon>编辑</button>
+        <button class="btn ghost"><iconify-icon icon="icon-park-outline:download-two"></iconify-icon>导入 TXT</button>
+        <button class="btn"><iconify-icon icon="icon-park-outline:dashboard-car"></iconify-icon>画布</button>
+        <button class="btn"><iconify-icon icon="icon-park-outline:pin"></iconify-icon>钉选</button>
+        <button class="modal-x"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+      </div>
+      <div class="sec-title">Toast / 空态 / 确认弹窗</div>
+      <div>
+        <span class="toast ok"><iconify-icon icon="icon-park-outline:celebrate"></iconify-icon>码字锁达成：+500 字！已自动解锁</span>
+        <span class="toast warn"><iconify-icon icon="icon-park-outline:flag"></iconify-icon>收到拼字邀请，正在带你去加入</span>
+        <span class="toast err"><iconify-icon icon="icon-park-outline:remind"></iconify-icon>本章有 3 处风险词</span>
+      </div>
+      <div style="display:flex; gap:14px; margin-top:12px; align-items:center; flex-wrap:wrap;">
+        <div class="empty"><iconify-icon icon="icon-park-outline:search"></iconify-icon><span class="t">没有找到相关设定</span></div>
+        <div class="confirm"><iconify-icon icon="icon-park-outline:remind"></iconify-icon>删除后可在回收站恢复，确认删除「第三章」？</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="sub" style="margin-top:8px">注：演示用 CDN 渲染；正式实现会把用到的图标内联成 SVG 组件（零外部请求、离线可用，鸿蒙/小程序壳同样生效）。头像选择器 🧑👩🧓、卡片贴纸 🌙🔥 这类<b>用户存数据</b>的 emoji 默认保留不动。</p>
+</div>
+</body>
+</html>

@@ -4,7 +4,7 @@
       <h1>写作菌 · 后台管理</h1>
       <nav class="admin-tabs">
         <button v-for="t in TABS" :key="t.id" class="admin-tab" :class="{ active: tab === t.id }" @click="tab = t.id">
-          {{ t.icon }} {{ t.label }}
+          <component :is="t.icon" :size="15"/> {{ t.label }}
         </button>
       </nav>
       <button class="btn-exit" @click="router.push('/bookshelf')">← 回书架</button>
@@ -13,7 +13,7 @@
     <main class="admin-main">
       <!-- 看板 -->
       <template v-if="tab === 'dashboard'">
-        <div v-if="!isAdmin" class="no-perm">⛔ 无管理员权限（{{ userEmail }}）</div>
+        <div v-if="!isAdmin" class="no-perm"><Ban :size="15"/> 无管理员权限（{{ userEmail }}）</div>
         <template v-else>
           <div class="stat-cards">
             <div class="stat-card"><div class="sc-num">{{ ov.user_total }}</div><div class="sc-label">注册用户</div></div>
@@ -92,7 +92,7 @@
           <div class="drawer wide">
             <div class="drawer-head">
               <span>用户详情</span>
-              <button @click="detail = null">✕</button>
+              <button @click="detail = null"><X :size="16"/></button>
             </div>
             <div class="drawer-body">
               <!-- 统计条 -->
@@ -180,7 +180,7 @@
           <div class="drawer">
             <div class="drawer-head">
               <span>《{{ docsProject.name }}》章节</span>
-              <button @click="docsProject = null">✕</button>
+              <button @click="docsProject = null"><X :size="16"/></button>
             </div>
             <div class="drawer-body">
               <div v-for="d in docs" :key="d.id" class="doc-row" @click="openDocContent(d)">
@@ -196,7 +196,7 @@
           <div class="drawer wide">
             <div class="drawer-head">
               <span>{{ viewDoc.title }}</span>
-              <button @click="viewDoc = null">✕</button>
+              <button @click="viewDoc = null"><X :size="16"/></button>
             </div>
             <div class="drawer-body"><pre class="doc-content">{{ viewDoc.content }}</pre></div>
           </div>
@@ -244,17 +244,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminApi, userApi } from '../core/api'
+import { Ban, BookCopy, ChartNoAxesColumn, Megaphone, Users, X } from 'lucide-vue-next'
 import { toast } from '../composables/useToast'
 
 const router = useRouter()
 const TABS = [
-  { id: 'dashboard', icon: '📊', label: '看板' },
-  { id: 'users', icon: '👥', label: '用户' },
-  { id: 'content', icon: '📚', label: '内容' },
-  { id: 'ops', icon: '📢', label: '运营' },
+  { id: 'dashboard', icon: markRaw(ChartNoAxesColumn), label: '看板' },
+  { id: 'users', icon: markRaw(Users), label: '用户' },
+  { id: 'content', icon: markRaw(BookCopy), label: '内容' },
+  { id: 'ops', icon: markRaw(Megaphone), label: '运营' },
 ] as const
 type TabId = typeof TABS[number]['id']
 const tab = ref<TabId>('dashboard')

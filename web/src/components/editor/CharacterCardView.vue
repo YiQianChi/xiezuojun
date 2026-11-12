@@ -1,5 +1,7 @@
 <template>
   <div class="char-card">
+    <!-- 头部信息卡（2026-11-12 Boss 拍板方案B）：头像+字段包浅色圆角卡，小传裸在纸上 -->
+    <div class="cc-card">
     <!-- 头部：头像 + 名字 + 角色徽标 + 一句话简介（全部就地编辑） -->
     <div class="cc-head">
       <div class="cc-ava" :title="'点击换头像'" @click="cycleAvatar">{{ meta.avatar || '友' }}</div>
@@ -41,6 +43,7 @@
           <div class="cc-rel-add" @click="addRel">＋ 关系</div>
         </div>
       </div>
+    </div>
     </div>
 
     <!-- 小传：就是文档正文，走同一个编辑器（demo 形态：干净无按钮） -->
@@ -158,7 +161,12 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
 
 <style scoped>
 .char-card { padding: 4px 0 12px; }
-.cc-head { display: flex; align-items: flex-start; gap: 14px; padding: 8px 4px 14px; }
+/* 方案B 信息卡壳：面板同底色浅卡，与右栏面板一个体系 */
+.cc-card {
+  margin: 14px 20px 0; background: rgba(248,243,232,.72);
+  border: 1px solid #e2d8c2; border-radius: 14px; padding: 16px 18px 14px;
+}
+.cc-head { display: flex; align-items: flex-start; gap: 14px; }
 .cc-ava {
   width: 56px; height: 56px; border-radius: 16px; flex-shrink: 0; cursor: pointer;
   background: linear-gradient(135deg, #a8ceb2, #7fb28d); color: #fff;
@@ -182,7 +190,7 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
 .cc-sub:focus { background: #f4f8f5; box-shadow: 0 0 0 2px rgba(129,187,142,.35); }
 .cc-sub:empty::before { content: attr(data-ph); color: #c3cfc5; }
 
-.cc-fields { display: flex; flex-direction: column; gap: 10px; padding: 0 4px 14px; }
+.cc-fields { display: flex; flex-direction: column; gap: 10px; padding: 14px 0 2px; }
 .cc-row { display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px; }
 .cc-label { color: var(--text-tertiary, #a8b5ab); font-size: 11.5px; width: 38px; flex-shrink: 0; padding-top: 4px; }
 .cc-input {
@@ -223,16 +231,29 @@ function onRelBlur(i: any, field: 'name' | 'desc', e: FocusEvent) {
 .cc-rel-add { font-size: 11.5px; color: #9ab9a2; cursor: pointer; width: fit-content; padding: 2px 6px; border-radius: 6px; }
 .cc-rel-add:hover { background: #f7fbf8; color: #5c9670; }
 
-.cc-body { border-top: 1px solid var(--border-subtle, #f0f3f0); padding-top: 14px; }
-/* 小传里的标题（## 性格 / ## 能力…）：绿色强调+足够对比（正文17px→标题23px），和卡片头部呼应 */
+.cc-body { padding: 6px 20px 0; }
+/* 方案B：正文列对齐卡壳外缘（20px），纸张默认 52/60 的大内衬在卡里收紧；
+   底部垫高沿用编辑器的 --ds-bottom-pad 体系，别把打字区顶到屏幕底 */
+.cc-body :deep(.tiptap-container) { padding: 14px 20px var(--ds-bottom-pad, 96px); }
+@media (min-width: 769px) {
+  .cc-body :deep(.tiptap-container) { padding: 14px 20px calc(72px + var(--ds-bottom-pad, 0px)); }
+}
+/* 小传里的标题（## 性格 / ## 能力…）：轻量绿色小标+左短横（方案B 定稿，替代旧 23px 大标题+下划线） */
 .cc-body :deep(.ProseMirror h2) {
-  font-size: 1.35em;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: #3f7a52;
-  margin: 1.1em 0 0.5em;
-  padding-bottom: 0.25em;
-  border-bottom: 1px solid rgba(129, 187, 142, 0.25);
+  margin: 1.3em 0 0.4em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-body :deep(.ProseMirror h2)::before {
+  content: "";
+  width: 14px; height: 3px; border-radius: 2px;
+  background: rgba(106,168,119,.55);
+  flex-shrink: 0;
 }
 .cc-body :deep(.ProseMirror h1) { display: none; } /* 卡头已有大名字，正文 h1 冗余（老卡里已存在的也不显） */
-.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin-bottom: 8px; display: flex; }
+.cc-body-label { font-size: 11px; color: var(--text-tertiary, #a8b5ab); margin: 0 0 4px; display: flex; }
 </style>

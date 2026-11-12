@@ -3,9 +3,9 @@
     <div v-if="open" class="phone-preview-overlay" @click="$emit('close')">
       <div class="phone-preview-drawer" @click.stop>
         <div class="pp-head">
-          <b>📱 读者视角</b>
+          <b><Smartphone :size="15"/> 读者视角</b>
           <span class="pp-sub">正文实时同步 · 点外部关闭</span>
-          <button class="pp-close" @click="$emit('close')" title="关闭">✕</button>
+          <button class="pp-close" @click="$emit('close')" title="关闭"><X :size="16"/></button>
         </div>
 
         <div class="pp-ctrl">
@@ -24,7 +24,7 @@
         <div class="pp-stage">
           <div class="pp-phone">
             <div class="pp-screen" :class="theme">
-              <div class="pp-status"><span>9:41</span><span>📶 🔋</span></div>
+              <div class="pp-status"><span>9:41</span><span><Signal :size="12"/> <BatteryFull :size="12"/></span></div>
               <div class="pp-rhead"><span>‹ 书架</span><b>{{ bookName }}</b><span>⇪</span></div>
               <div class="pp-rbody" ref="bodyRef">
                 <div class="pp-rtitle">{{ title || '未命名章节' }}</div>
@@ -48,6 +48,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { Smartphone, X, Signal, BatteryFull } from 'lucide-vue-next'
 
 const props = defineProps<{
   open: boolean

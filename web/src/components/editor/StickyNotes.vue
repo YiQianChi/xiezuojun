@@ -14,12 +14,12 @@
         <div class="sk-tools">
           <button v-for="c in ['y', 'b', 'g']" :key="c" class="sk-dot" :class="[c, { on: editColor === c }]" @click.stop="editColor = c"></button>
           <button class="sk-save" @click.stop="saveEdit(n)">保存</button>
-          <button class="sk-del" title="撕掉" @click.stop="removeNote(n)">🗑</button>
+          <button class="sk-del" title="撕掉" @click.stop="removeNote(n)"><Trash2 :size="16"/></button>
         </div>
       </template>
       <template v-else>
         <div class="sk-t">{{ n.content }}</div>
-        <span class="sk-x" title="撕掉" @click.stop="removeNote(n)">✕</span>
+        <span class="sk-x" title="撕掉" @click.stop="removeNote(n)"><X :size="12"/></span>
       </template>
     </div>
     <button class="sk-add" title="贴一张新便签" @click="openDraft">＋</button>
@@ -30,7 +30,7 @@
       <div class="sk-tools">
         <button v-for="c in ['y', 'b', 'g']" :key="c" class="sk-dot" :class="[c, { on: draftColor === c }]" @click.stop="draftColor = c"></button>
         <button class="sk-save" @click.stop="saveDraft">贴上</button>
-        <button class="sk-del" @click.stop="draftOpen = false">✕</button>
+        <button class="sk-del" @click.stop="draftOpen = false"><X :size="16"/></button>
       </div>
     </div>
   </div>
@@ -38,6 +38,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Trash2, X } from 'lucide-vue-next'
 import { stickyApi } from '../../core/api'
 import { toast } from '../../composables/useToast'
 

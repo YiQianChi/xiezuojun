@@ -3,7 +3,7 @@
     <!-- 消息列表 -->
     <div ref="msgListRef" class="chat-messages">
       <div v-if="messages.length === 0" class="chat-empty">
-        <div class="chat-empty-icon">💬</div>
+        <div class="chat-empty-icon"><MessageCircle :size="32"/></div>
         <p>向 AI 提问关于你的小说</p>
         <p class="hint">角色设定、情节推演、灵感碰撞…</p>
       </div>
@@ -47,6 +47,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
+import { MessageCircle } from 'lucide-vue-next'
 import { streamChat } from '../../core/sse'
 import { toast } from '../../composables/useToast'
 

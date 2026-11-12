@@ -7,7 +7,7 @@
           <svg class="ic" viewBox="0 0 19 19"><path d="M3 4c2-1 4.5-1 6.5.5C11.5 3 14 3 16 4v10.5c-2-1-4.5-1-6.5.5-2-1.5-4.5-1.5-6.5-.5z"/><path d="M9.5 4.5v10.5"/></svg>
           <b>拆书库</b>
           <span class="dl-sub">{{ books.length }}/5 本 · 只做参考，不写入你的创作内容</span>
-          <button class="dl-x" @click="close">✕</button>
+          <button class="dl-x" @click="close"><X :size="16"/></button>
         </div>
         <div class="dl-tabs">
           <button :class="{ on: tab === 'lib' }" @click="tab = 'lib'">书库</button>
@@ -71,7 +71,7 @@
         <div class="dl-head">
           <button class="dl-back" @click="reportBook = null">‹ 返回</button>
           <b>{{ reportBook.title }} · 拆解报告</b>
-          <button class="dl-x" @click="close">✕</button>
+          <button class="dl-x" @click="close"><X :size="16"/></button>
         </div>
         <div class="dl-body">
           <div class="dl-out-tabs">
@@ -93,6 +93,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
+import { X } from 'lucide-vue-next'
 import { dismantleApi } from '../../core/api'
 
 const props = defineProps<{ modelValue: boolean; projectId: number }>()

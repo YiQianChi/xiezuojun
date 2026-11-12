@@ -13,7 +13,7 @@
     <!-- 修改信息/起笔名 弹窗（极简版：大头像+笔名，头像后续接上传） -->
     <div v-if="editOpen" class="pdlg-overlay" @click.self="editOpen = false">
       <div class="pdlg">
-        <div class="pdlg-head"><span>{{ penNameMode ? '起个笔名' : '修改信息' }}</span><button @click="editOpen = false">✕</button></div>
+        <div class="pdlg-head"><span>{{ penNameMode ? '起个笔名' : '修改信息' }}</span><button @click="editOpen = false"><X :size="16"/></button></div>
         <div class="pdlg-body">
           <!-- 大头像（居中，点击=随机换 emoji；后续这里接上传） -->
           <div class="big-avatar-wrap">
@@ -26,7 +26,7 @@
             <input v-model="form.nickname" class="input" placeholder="给自己起个笔名" maxlength="20" @keyup.enter="saveProfile" />
           </label>
           <div class="pen-ops">
-            <button class="btn reroll" @click="reroll">🎲 笔名</button>
+            <button class="btn reroll" @click="reroll"><Dices :size="15"/> 笔名</button>
             <button class="btn primary" @click="saveProfile" :disabled="saving">{{ saving ? '保存中…' : (penNameMode ? '就用这个' : '保存') }}</button>
           </div>
           <button v-if="penNameMode" class="btn skip" @click="editOpen = false">先跳过</button>
@@ -38,7 +38,7 @@
     <!-- 修改密码弹窗（无密码用户=首次设置密码，免旧密码；无邮箱用户引导去设置邮箱——密码登录需要邮箱做账号） -->
     <div v-if="pwdOpen" class="pdlg-overlay" @click.self="pwdOpen = false">
       <div class="pdlg">
-        <div class="pdlg-head"><span>{{ pwdHas ? '修改密码' : '设置密码' }}</span><button @click="pwdOpen = false">✕</button></div>
+        <div class="pdlg-head"><span>{{ pwdHas ? '修改密码' : '设置密码' }}</span><button @click="pwdOpen = false"><X :size="16"/></button></div>
         <div class="pdlg-body">
           <p v-if="!pwdHas" class="pwd-hint">你还没有密码（微信/手机号登录建的号）。设置后可用邮箱 + 密码登录电脑版。</p>
           <p v-if="!pwdHas && pwdNoEmail" class="pwd-hint">提示：密码登录还需要邮箱做账号，建议之后在「账号与安全」里绑定邮箱。</p>
@@ -56,12 +56,12 @@
     <!-- 账号与安全：绑定状态一览 + 补绑 -->
     <div v-if="secOpen" class="pdlg-overlay" @click.self="secOpen = false">
       <div class="pdlg sec-dlg">
-        <div class="pdlg-head"><span>账号与安全</span><button @click="secOpen = false">✕</button></div>
+        <div class="pdlg-head"><span>账号与安全</span><button @click="secOpen = false"><X :size="16"/></button></div>
         <div class="pdlg-body">
           <p class="sec-desc">以下方式都可登录同一个账号，建议至少保留两种</p>
 
           <div class="sec-card" :class="{ bound: sec.email_bound }">
-            <div class="sec-ico">✉️</div>
+            <div class="sec-ico"><Mail :size="18"/></div>
             <div class="sec-info">
               <b>邮箱</b>
               <span>{{ sec.email_bound ? (me.email || '已绑定') : '未绑定，可补一个用于登录和找回' }}</span>
@@ -82,7 +82,7 @@
           </div>
 
           <div class="sec-card" :class="{ bound: sec.phone_bound }">
-            <div class="sec-ico">📱</div>
+            <div class="sec-ico"><Smartphone :size="18"/></div>
             <div class="sec-info">
               <b>手机号</b>
               <span>{{ sec.phone_bound ? (me.phone || '已绑定') : '未绑定，验证短信后可手机号登录' }}</span>
@@ -102,7 +102,7 @@
           </div>
 
           <div class="sec-card" :class="{ bound: sec.wechat_bound }">
-            <div class="sec-ico">💬</div>
+            <div class="sec-ico"><MessageCircle :size="18"/></div>
             <div class="sec-info">
               <b>微信</b>
               <span>{{ sec.wechat_bound ? '扫码 / 小程序登录同一账号' : '未绑定，扫码后微信登录即本账号' }}</span>
@@ -137,7 +137,7 @@
     <!-- 微信扫码绑定浮层 -->
     <div v-if="wxBindQr" class="pdlg-overlay">
       <div class="pdlg" style="text-align:center">
-        <div class="pdlg-head"><span>微信扫码绑定</span><button @click="wxBindQr = false">✕</button></div>
+        <div class="pdlg-head"><span>微信扫码绑定</span><button @click="wxBindQr = false"><X :size="16"/></button></div>
         <div class="pdlg-body">
           <iframe class="wxbind-frame" :src="wxBindSrc" frameborder="0" scrolling="no"></iframe>
           <p class="bind-hint">用微信扫一扫，确认后自动绑定到当前账号</p>
@@ -153,6 +153,7 @@ import { useRouter } from 'vue-router'
 import { userApi } from '../core/api'
 import { toast } from '../composables/useToast'
 import { mpNavigate, isMiniProgramEnv } from '../core/mp'
+import { X, Dices, Mail, Smartphone, MessageCircle } from 'lucide-vue-next'
 
 const router = useRouter()
 const EMOJIS = ['✍️', '📖', '🐉', '🗡️', '🌸', '🌙', '⭐', '🔥', '🦊', '🐱', '🐼', '🧙']

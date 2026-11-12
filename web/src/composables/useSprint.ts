@@ -153,14 +153,14 @@ const countdownText = computed(() => {
   if (!r) return ''
   if (r.mode === 'words') {
     const lead = leaderP.value?.words || 0
-    return `🎯 ${Math.min(lead, r.target)}/${r.target}`
+    return `${Math.min(lead, r.target)}/${r.target}`
   }
   const s = timeLeftSec.value
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 })
 const leadText = computed(() => {
   if (!leaderP.value) return ''
-  return iAmLeader.value ? '我领先！' : `🏅 ${leaderP.value.nickname} ${leaderP.value.words} 字`
+  return iAmLeader.value ? '我领先！' : `${leaderP.value.nickname} ${leaderP.value.words} 字`
 })
 const amHost = computed(() => room.value?.host_uid === room.value?.me)
 const autoStartLeft = computed(() => {

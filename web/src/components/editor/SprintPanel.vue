@@ -3,7 +3,7 @@
     <!-- 拼字房结算榜（入口/建房/加入/大厅已深度融合进搭子悬浮窗「拼字」页签） -->
     <div v-if="sprint.showResult && sprint.room && sprint.room.state === 'finished'" class="sp-overlay solid" @click.self="sprint.showResult = false">
       <div class="sp-card">
-        <div class="sp-cup">{{ iWon ? '🏆' : '🏁' }}</div>
+        <div class="sp-cup"><component :is="iWon ? Trophy : Flag" :size="32"/></div>
         <div class="sp-title">{{ resultTitle }}</div>
         <div class="sp-sub">{{ sprint.room.target_label }} · 我第 {{ sprint.myRank }} 名 / {{ sprint.room.players.length }} 人</div>
         <div class="sp-members">
@@ -27,12 +27,13 @@
 <script setup lang="ts">
 // 「再来一局」回搭子窗拼字页签的建房表单：openPanel 触发开窗事件（表单记忆上一局配置）
 import { computed } from 'vue'
+import { Trophy, Flag } from 'lucide-vue-next'
 import { useSprint } from '../../composables/useSprint'
 
 const sprint = useSprint()
 
 const iWon = computed(() => sprint.myRank === 1)
-const resultTitle = computed(() => (iWon.value ? '你赢了这局！' : `🏅 ${sprint.room?.players[0]?.nickname || '菌友'} 拿下本局`))
+const resultTitle = computed(() => (iWon.value ? '你赢了这局！' : `${sprint.room?.players[0]?.nickname || '菌友'} 拿下本局`))
 
 function medal(r: number) {
   return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : String(r)
