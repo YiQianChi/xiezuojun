@@ -448,6 +448,10 @@
 .editor-page.focus-mode :deep(.context-panel) {
   display: none;
 }
+/* 右栏已 display:none 但 ai-panel-open 类还在，让位 padding 没退——纸张左偏不居中（Boss 2026-11-13 报） */
+.editor-page.focus-mode .editor-main.ai-panel-open .tiptap-container {
+  padding-right: 24px;
+}
 
 /* 专注模式下右上角显示一个退出提示 */
 .focus-exit-hint {
