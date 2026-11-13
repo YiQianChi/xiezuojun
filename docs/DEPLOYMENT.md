@@ -20,6 +20,7 @@
   - **改完必须重启才生效**（env 只在进程启动时读）：`sudo systemctl restart xiezuojun-server`
 - **前端**：rsync `web/dist/` → `/opt/xiezuojun-web/dist/`
 - **SEO 静态页**：`/opt/xzj-seo`，爬虫 UA 分流，独立于 dist（防 rsync 覆盖）；nginx 备份 `~/nginx-bak-xiezuojun.com.*.conf`
+- **转发卡片图**：`https://xiezuojun.com/share-card.jpg` 必须常驻——源图 `weapp/src/images/share-card-54.jpg`，部署到 `/opt/xzj-seo/share-card.jpg`，nginx 有 `location = /share-card.jpg` 精确匹配。放 dist 会被前端构建冲掉 → 微信拿不到图转发卡片变灰图（2026-11-13 已踩）
 - **DB**（生产本地）：`127.0.0.1:3306`，`xiezuojun:Xzj2026Test@tcp(127.0.0.1:3306)/xiezuojun`
 - **测试账号**：test@oneon.com.cn（昵称「审核体验」，小程序提审用；密码在 mp 后台测试账号设置，183 不留明文）。旧 test0728 账号已删
 - **Samba 共享（Z 盘）**：`\\10.10.30.183\xzj`，账号 **`xzjshare`**（一个 z！）/ `Xzj2026Share`。2026-11-04 踩坑：Boss 敲成 xzzjshare 被映射 guest 报"拒绝访问"，排查靠把 smb.conf log level 调 3 看 `log.<机器名>`。Z 盘只当传送带，DevTools/构建用 D:\xiezuojun（git pull 到最新）
