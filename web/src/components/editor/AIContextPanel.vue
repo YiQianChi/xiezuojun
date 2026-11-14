@@ -155,6 +155,7 @@
                       <span class="th-title">{{ t.title }}</span>
                       <span v-if="t.resolved_chapter" class="th-ch">第{{ t.resolved_chapter }}章收</span>
                       <span v-else class="th-ch">已放弃</span>
+                      <button class="th-resolve" title="误点了？一键恢复成埋设中" @click.stop="restoreThread(t)"><Undo2 :size="14"/> 恢复</button>
                     </div>
                     <div v-if="threadEditingId === t.id" class="th-edit">
                       <select v-model="threadForm.type" class="th-edit-select">
@@ -297,7 +298,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { documentApi, threadApi, stickyApi, aiApi, memoryApi, dismantleApi, type StoryThread } from '../../core/api'
 import { streamChat, friendlyAIError } from '../../core/sse'
 import { toast } from '../../composables/useToast'
-import { BookOpen, Lightbulb, ShieldCheck, LayoutDashboard, Hourglass, Pin, Check, GitBranch, ArrowRightToLine, X, Sparkles, Pencil, CircleCheckBig, Crosshair, Plus } from 'lucide-vue-next'
+import { BookOpen, Lightbulb, ShieldCheck, LayoutDashboard, Hourglass, Pin, Check, GitBranch, ArrowRightToLine, X, Sparkles, Pencil, CircleCheckBig, Crosshair, Plus, Undo2 } from 'lucide-vue-next'
 
 interface CharCard { id: number; title: string; avatar: string; roleKey: string; roleLabel: string; desc: string; tags: string[] }
 interface InspNote { id: number; content: string; created_at: string }
@@ -529,12 +530,24 @@ async function loadPrevTail() {
 }
 watch(() => props.prevChapterId, () => { loadPrevTail(); expanded.value = new Set() }, { immediate: true })
 
+async function restoreThread(t: StoryThread) {
+  if (!t.id) return
+  try {
+    await threadApi.update(t.id, { status: 'open', resolved_chapter: null })
+    threads.value = threads.value.map(x => x.id === t.id ? { ...x, status: 'open' as const, resolved_chapter: null } : x)
+    toast.success(`已恢复埋设中：「${t.title}」`)
+  } catch {
+    toast.error('恢复失败，请重试')
+  }
+}
+
 async function resolveThread(t: StoryThread) {
   if (!t.id) return
   const id = t.id
   try {
     await threadApi.update(t.id, { status: 'resolved', resolved_chapter: props.currentChapter || null })
     threads.value = threads.value.map(x => x.id === id ? { ...x, status: 'resolved' as const, resolved_chapter: props.currentChapter || null } : x)
+    showDoneThreads.value = true // 回收即展开已回收区：误点当场能看到「恢复」
     toast.withAction(`已回收：「${t.title}」` + (props.currentChapter ? ` · 第${props.currentChapter}章` : ''), {
       label: '撤回',
       onClick: async () => {
