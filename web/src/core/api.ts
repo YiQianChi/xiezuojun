@@ -387,7 +387,10 @@ export interface StoryThread {
   description?: string
   status: 'open' | 'resolved' | 'abandoned'
   planted_chapter?: number | null
+  planned_chapter?: number | null
   resolved_chapter?: number | null
+  doc_id?: number | null
+  quote?: string
   urgency?: number
   sort_order?: number
 }

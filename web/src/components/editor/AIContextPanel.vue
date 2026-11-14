@@ -84,13 +84,31 @@
 
             <!-- 伏笔（点条目就地编辑；原工具箱伏笔面板已并入这里） -->
             <div class="quick-section">
-              <div class="quick-cap">伏笔 · 埋设中<span class="cap-sub">{{ quickQuery ? (filteredThreads.length ? filteredThreads.length + ' 命中' : '无命中') : openThreads.length }}</span></div>
+              <div class="quick-cap">伏笔 · 埋设中<span class="cap-sub">{{ quickQuery ? (filteredThreads.length ? filteredThreads.length + ' 命中' : '无命中') : openThreads.length }}</span><button class="th-add" title="直接记一条（埋设章=当前章）" @click="startThreadNew"><Plus :size="13"/> 记一条</button></div>
+              <div v-if="threadEditingId === 0" class="th-edit">
+                <select v-model="threadForm.type" class="th-edit-select">
+                  <option v-for="(label, key) in THREAD_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
+                </select>
+                <input v-model="threadForm.title" class="th-edit-input" placeholder="标题（一句话说清这条伏笔）">
+                <div class="th-edit-row">
+                  <label>埋设章</label>
+                  <input v-model.number="threadForm.planted_chapter" type="number" class="th-edit-num">
+                  <label>预计收</label>
+                  <input v-model.number="threadForm.planned_chapter" type="number" class="th-edit-num" placeholder="选填">
+                </div>
+                <div class="th-edit-actions">
+                  <button class="th-edit-cancel" @click="threadEditingId = null">取消</button>
+                  <button class="th-edit-save" @click="saveThreadEdit">记下</button>
+                </div>
+              </div>
               <template v-if="filteredThreads.length">
                 <div v-for="t in filteredThreads" :key="t.id">
                   <div class="qc-thread" title="点开编辑" @click="startThreadEdit(t)">
                     <span class="th-type" :class="t.type">{{ THREAD_TYPE_LABELS[t.type] || t.type }}</span>
                     <span class="th-title">{{ t.title }}</span>
                     <span v-if="t.planted_chapter" class="th-ch">第{{ t.planted_chapter }}章埋</span>
+                    <span v-if="t.planned_chapter" class="th-ch plan" :class="{ overdue: (currentChapter || 0) > t.planned_chapter }">计划第{{ t.planned_chapter }}章收</span>
+                    <button v-if="t.doc_id" class="th-resolve th-loc" title="跳回埋设处并高亮" @click.stop="emit('thread-locate', t)"><Crosshair :size="14"/></button>
                     <button class="th-resolve" title="在当前章回收这条伏笔" @click.stop="resolveThread(t)"><Check :size="15"/> 回收</button>
                   </div>
                   <div v-if="threadEditingId === t.id" class="th-edit">
@@ -110,6 +128,10 @@
                         <option value="abandoned">已放弃</option>
                       </select>
                     </div>
+                    <div class="th-edit-row">
+                      <label>预计回收章</label>
+                      <input v-model.number="threadForm.planned_chapter" type="number" class="th-edit-num" style="width:auto;flex:1" placeholder="选填，不填按 15 章提醒">
+                    </div>
                     <div class="th-edit-actions">
                       <button class="th-edit-del" @click="deleteThreadEdit">删除</button>
                       <button class="th-edit-cancel" @click="threadEditingId = null">取消</button>
@@ -119,7 +141,7 @@
                 </div>
               </template>
               <div v-else-if="!quickQuery" class="th-empty">
-                <GitBranch :size="15"/> 还没有埋设中的伏笔<br><b>选中正文 → 右键「记伏笔」</b>随手埋一条
+                <GitBranch :size="15"/> 还没有埋设中的伏笔<br><b>选中正文右键/长按「记伏笔」，或点上方「记一条」</b>随手埋
               </div>
               <!-- 已回收/已放弃（默认收起） -->
               <template v-if="!quickQuery && doneThreads.length">
@@ -275,7 +297,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { documentApi, threadApi, stickyApi, aiApi, memoryApi, dismantleApi, type StoryThread } from '../../core/api'
 import { streamChat, friendlyAIError } from '../../core/sse'
 import { toast } from '../../composables/useToast'
-import { BookOpen, Lightbulb, ShieldCheck, LayoutDashboard, Hourglass, Pin, Check, GitBranch, ArrowRightToLine, X, Sparkles, Pencil, CircleCheckBig } from 'lucide-vue-next'
+import { BookOpen, Lightbulb, ShieldCheck, LayoutDashboard, Hourglass, Pin, Check, GitBranch, ArrowRightToLine, X, Sparkles, Pencil, CircleCheckBig, Crosshair, Plus } from 'lucide-vue-next'
 
 interface CharCard { id: number; title: string; avatar: string; roleKey: string; roleLabel: string; desc: string; tags: string[] }
 interface InspNote { id: number; content: string; created_at: string }
@@ -294,6 +316,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [v: boolean]
   jump: [docId: number]
+  'thread-locate': [t: StoryThread]
   'open-canvas': []
   'open-dismantle': []
   'insp-insert': [text: string]
@@ -375,13 +398,22 @@ function startThreadEdit(t: StoryThread) {
   threadEditingId.value = threadEditingId.value === t.id ? null : t.id!
   threadForm.value = { ...t }
 }
+function startThreadNew() {
+  threadEditingId.value = 0 // 0 = 新建
+  threadForm.value = { type: 'foreshadowing', title: '', status: 'open', planted_chapter: props.currentChapter || null }
+}
 async function saveThreadEdit() {
   const f = threadForm.value
   const id = threadEditingId.value
-  if (!id || !f.title?.trim()) return
+  if (id === null || !f.title?.trim()) return
   try {
-    await threadApi.update(id, f)
-    threads.value = threads.value.map(x => x.id === id ? { ...x, ...f } as StoryThread : x)
+    if (id === 0) {
+      const res = await threadApi.create(props.projectId, { ...f, project_id: props.projectId })
+      threads.value.unshift(res.data?.data ?? { ...f, id: Date.now() } as StoryThread)
+    } else {
+      await threadApi.update(id, f)
+      threads.value = threads.value.map(x => x.id === id ? { ...x, ...f } as StoryThread : x)
+    }
     threadEditingId.value = null
     toast.success('已保存')
   } catch {
@@ -815,12 +847,18 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 .prev-tail { margin-top: 2px; font-size: 12px; line-height: 1.8; max-height: 150px; overflow-y: auto; }
 .quick-section { margin-bottom: 10px; }
 .quick-cap {
+  display: flex;
+  align-items: center;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary, #86868b);
   padding: 6px 2px 4px;
   letter-spacing: 1px;
 }
+.th-add { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; font-size: 10px; font-weight: 500; letter-spacing: 0; color: var(--text-tertiary, #aeaeb2); background: none; border: 1px dashed var(--border, #d9d9de); border-radius: 6px; padding: 1px 6px; cursor: pointer; }
+.th-add:hover { color: var(--accent, #6aa877); border-color: var(--accent, #6aa877); }
+.th-ch.plan.overdue { color: #c0563e; font-weight: 600; }
+.th-loc { padding: 2px 4px; }
 .quick-cap .cap-sub {
   font-weight: 400;
   font-size: 10px;

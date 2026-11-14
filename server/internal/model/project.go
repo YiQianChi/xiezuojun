@@ -89,7 +89,10 @@ type StoryThread struct {
 	Description     string    `gorm:"type:text" json:"description"`
 	Status          string    `gorm:"size:20;default:open" json:"status"` // open | resolved | abandoned
 	PlantedChapter  *int      `json:"planted_chapter"`
+	PlannedChapter  *int      `json:"planned_chapter"` // 预计回收章（选填，作者规划）
 	ResolvedChapter *int      `json:"resolved_chapter"`
+	DocID           *uint     `json:"doc_id"`                 // 埋设所在章节文档（定位跳回）
+	Quote           string    `gorm:"type:text" json:"quote"` // 埋设选区原文（找回高亮）
 	Urgency         int       `gorm:"default:50" json:"urgency"` // 0-100
 	SortOrder       int       `gorm:"default:0" json:"sort_order"`
 	CreatedAt       time.Time `json:"created_at"`

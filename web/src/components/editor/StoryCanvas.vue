@@ -144,7 +144,7 @@
         <h5>{{ selThread.title }} <span class="tl-tag" :class="selThread.state">{{ tlStateLabel(selThread) }}</span></h5>
         <p v-if="selThread.description">{{ selThread.description }}</p>
         <p class="sub">埋：第 {{ selThread.planted }} 章{{ selThread.to != null ? ` · 收：第 ${selThread.resolved} 章` : ' · <b style="color:#c0504d">还没收</b>' }}</p>
-        <p class="sub" v-if="selThread.state === 'late'">埋下已超过 15 章未回收——读者要忘了。</p>
+        <p class="sub" v-if="selThread.state === 'late'">{{ selThread.planned_chapter ? '已过计划回收章（第' + selThread.planned_chapter + '章）' : '埋下已超过 15 章' }}未回收——读者要忘了。</p>
       </div>
     </div>
   </div>
@@ -466,7 +466,7 @@ const threadRows = computed(() => {
     const from = Math.max(0, (t.planted_chapter || 1) - 1)
     const to = t.status === 'resolved' ? Math.min(n - 1, Math.max(0, (t.resolved_chapter || 1) - 1)) : null
     const open = t.status !== 'resolved'
-    const late = open && cur - (t.planted_chapter || 1) > 15
+    const late = open && cur > (t.planned_chapter || (t.planted_chapter || 1) + 15) // 计划回收章优先，没规划按 15 章老规矩
     return {
       ...t, idx, from, to,
       left: (from / n) * 100,

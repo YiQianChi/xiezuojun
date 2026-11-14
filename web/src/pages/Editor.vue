@@ -242,6 +242,7 @@
           :sensitive-total="sensitiveTotal"
           @update:open="contextPanelOpen = $event"
           @jump="jumpToSetting"
+          @thread-locate="handleThreadLocate"
           @insp-insert="insertInspToEditor"
           @open-canvas="canvasOpen = true"
           @open-dismantle="dismantleLibOpen = true"
@@ -296,14 +297,17 @@
 
       <!-- AI 选区工具栏（选择时）。AI 全线暂下线（2026-11-09 Boss 指令），恢复=ENABLE_AI 改 true -->
       <div
-        v-if="ENABLE_AI && aiToolbar.visible"
+        v-if="aiToolbar.visible && (ENABLE_AI || isCoarse)"
         class="ai-toolbar"
         :style="{ left: aiToolbar.x + 'px', top: aiToolbar.y + 'px' }"
       >
+        <button class="ai-tb-thread" @mousedown.prevent @click="toolbarThread"><GitBranch :size="13"/> 记伏笔</button>
+        <template v-if="ENABLE_AI">
         <button @mousedown.prevent @click="prepareAIAction('continue')">续写</button>
         <button @mousedown.prevent @click="prepareAIAction('rewrite')">改写</button>
         <button @mousedown.prevent @click="prepareAIAction('polish')">润色</button>
         <button @mousedown.prevent @click="prepareAIAction('expand')">扩写</button>
+        </template>
       </div>
 
       <!-- AI 底部固定栏（方向输入 / 生成中 / 结果预览）。AI 暂下线，同上 -->
@@ -632,6 +636,8 @@
           <span v-for="t in THREAD_TYPES" :key="t.value" class="thread-chip" :class="[t.value, { on: threadModal.type === t.value }]" @click="threadModal.type = t.value">{{ t.label }}</span>
         </div>
         <div class="thread-quote">「{{ threadModal.quote }}」</div>
+        <label class="si-steps" style="margin-top:10px;display:block">预计回收章 <span style="font-weight:400;opacity:.55">（可选）</span></label>
+        <input class="si-input" v-model.number="threadModal.planned" type="number" min="1" placeholder="不填则按 15 章提醒" @keyup.enter="saveThreadFromSelection">
         <div class="si-actions">
           <button class="si-btn" @click="threadModal.visible = false">取消</button>
           <button class="si-btn primary" @click="saveThreadFromSelection">记下</button>
@@ -916,6 +922,8 @@ const draftBanner = ref<{ docId: number; text: string } | null>(null)
 
 // AI 全线暂下线（2026-11-09 Boss 指令：暂时不接入 AI，润色/改写/续写/自检/AI对话/记忆全藏，代码保留可恢复）
 const ENABLE_AI = false
+// 手机没有右键——粗指针设备用选区浮动工具条给「记伏笔」入口
+const isCoarse = typeof matchMedia !== 'undefined' && matchMedia('(hover: none) and (pointer: coarse)').matches
 const contextMenu = ref({ visible: false, x: 0, y: 0 })
 // ponytail: 右键时编辑器会失焦丢选区，打开菜单前缓存
 let cachedSelection: { text: string; start: number; end: number } | null = null
@@ -1078,7 +1086,45 @@ const THREAD_TYPES = [
 ] as const
 
 const ctxHasSelection = ref(false)
-const threadModal = ref({ visible: false, title: '', type: 'foreshadowing', quote: '' })
+const threadModal = ref({ visible: false, title: '', type: 'foreshadowing', quote: '', planned: null as number | null })
+
+/* 手机选区工具条「记伏笔」——与右键菜单同一条路，实时读选区（点按钮不丢选区靠 mousedown.prevent） */
+function toolbarThread() {
+  const sel = getSelection()
+  const quote = (sel.text || '').trim().slice(0, 120)
+  aiToolbar.value.visible = false
+  if (!quote) return
+  threadModal.value = { visible: true, title: quote.slice(0, 16), type: 'foreshadowing', quote, planned: null }
+}
+
+/* 速查「定位」：跳回埋设章节并高亮选区原文。去空白逐字映射 PM 位置（跨段也精确）；
+   原文被改过找不到就只落到章，不报错 */
+async function handleThreadLocate(t: { doc_id?: number | null; quote?: string }) {
+  if (!t.doc_id) return
+  await jumpToSetting(t.doc_id)
+  await nextTick()
+  const ed = editor.value
+  if (!ed || !t.quote) return
+  const want = t.quote.replace(/\s+/g, '')
+  if (want.length < 4) return
+  let flat = ''
+  const posOf: number[] = []
+  ed.state.doc.descendants((node: any, pos: number) => {
+    if (node.isText && node.text) {
+      for (let i = 0; i < node.text.length; i++) {
+        if (!/\s/.test(node.text[i])) { flat += node.text[i]; posOf.push(pos + i) }
+      }
+    }
+    return true
+  })
+  const idx = flat.indexOf(want.slice(0, 24))
+  if (idx < 0) return
+  const from = posOf[idx]
+  const to = posOf[Math.min(idx + want.length, posOf.length) - 1] + 1
+  ed.chain().setTextSelection({ from, to }).run()
+  const coords = ed.view.coordsAtPos(from)
+  document.elementFromPoint(coords.left, coords.top)?.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
 
 async function saveThreadFromSelection() {
   const m = threadModal.value
@@ -1090,6 +1136,9 @@ async function saveThreadFromSelection() {
       description: m.quote ? `「${m.quote.slice(0, 60)}${m.quote.length > 60 ? '…' : ''}」` : '',
       status: 'open',
       planted_chapter: currentChapterIndex.value || null,
+      planned_chapter: m.planned || null,
+      doc_id: activeDocId.value || null,
+      quote: m.quote || '',
     })
     threadModal.value.visible = false
     window.dispatchEvent(new CustomEvent('xzj-threads-changed'))
@@ -2710,8 +2759,8 @@ function contextAction(action: string, color?: string) {
     case 'thread': {
       // 记伏笔：预填选中文本，弹确认框
       contextMenu.value.visible = false
-      const quote = (sel.text || '').trim().slice(0, 80)
-      threadModal.value = { visible: true, title: quote.slice(0, 16), type: 'foreshadowing', quote }
+      const quote = (sel.text || '').trim().slice(0, 120)
+      threadModal.value = { visible: true, title: quote.slice(0, 16), type: 'foreshadowing', quote, planned: null }
       break
     }
     case 'highlight':
