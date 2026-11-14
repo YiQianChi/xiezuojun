@@ -708,7 +708,7 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   top: 12px;
   right: 12px;
   bottom: 12px;
-  width: 280px;
+  width: 340px;
   background: var(--bg-secondary, #ffffff);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
@@ -768,7 +768,7 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px 10px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 /* ponytail-mobile: 底部抽屉抓手+关闭钮——桌面端隐藏，窄屏显示 */
@@ -787,7 +787,7 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 }
 .context-header h4 {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-tertiary, #aeaeb2);
   letter-spacing: 0.5px;
   font-weight: 600;
@@ -795,16 +795,16 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 /* 页签 */
 .panel-tabs {
   display: flex;
-  gap: 4px;
-  padding: 8px 12px 6px;
+  gap: 6px;
+  padding: 10px 14px 8px;
 }
 .panel-tabs button {
   flex: 1;
   border: none;
   background: rgba(0, 0, 0, 0.045);
   color: var(--text-secondary, #86868b);
-  font-size: 12px;
-  padding: 6px 0;
+  font-size: 13px;
+  padding: 8px 0;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
@@ -817,17 +817,17 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 .context-body {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 12px 12px;
+  padding: 8px 16px 16px;
 }
 .context-empty {
   padding: 30px 12px;
   text-align: center;
   color: var(--text-tertiary, #aeaeb2);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 .context-empty .ctx-icon { font-size: 24px; margin-bottom: 8px; opacity: 0.6; }
-.context-empty .hint { color: var(--text-tertiary, #aeaeb2); opacity: 0.8; font-size: 11px; }
+.context-empty .hint { color: var(--text-tertiary, #aeaeb2); opacity: 0.8; font-size: 12px; }
 /* ─── 设定页签 ─── */
 .quick-search { padding: 2px 0 6px; display: flex; gap: 6px; }
 .quick-search input {
@@ -836,8 +836,8 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.03);
-  font-size: 12px;
-  padding: 6px 10px;
+  font-size: 13px;
+  padding: 8px 12px;
   color: var(--text-primary, #1d1d1f);
   outline: none;
   transition: all 0.15s;
@@ -847,9 +847,9 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   border-radius: 8px;
   background: rgba(106, 168, 119, 0.1);
   color: var(--accent, #5a9668);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 700;
-  padding: 0 10px;
+  padding: 0 12px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -857,43 +857,43 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 .qc-ava.pin { background: linear-gradient(160deg, #e8d89a, #c9a34e); }
 .quick-search input:focus { border-color: var(--accent, #6aa877); background: #fff; }
 .quick-search input::placeholder { color: var(--text-tertiary, #aeaeb2); }
-.prev-tail { margin-top: 2px; font-size: 12px; line-height: 1.8; max-height: 150px; overflow-y: auto; }
-.quick-section { margin-bottom: 10px; }
+.prev-tail { margin-top: 2px; font-size: 13px; line-height: 1.8; max-height: 150px; overflow-y: auto; }
+.quick-section { margin-bottom: 14px; }
 .quick-cap {
   display: flex;
   align-items: center;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary, #86868b);
-  padding: 6px 2px 4px;
+  padding: 10px 2px 6px;
   letter-spacing: 1px;
 }
-.th-add { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; font-size: 10px; font-weight: 500; letter-spacing: 0; color: var(--text-tertiary, #aeaeb2); background: none; border: 1px dashed var(--border, #d9d9de); border-radius: 6px; padding: 1px 6px; cursor: pointer; }
+.th-add { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--text-tertiary, #aeaeb2); background: none; border: 1px dashed var(--border, #d9d9de); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
 .th-add:hover { color: var(--accent, #6aa877); border-color: var(--accent, #6aa877); }
 .th-ch.plan.overdue { color: #c0563e; font-weight: 600; }
 .th-loc { padding: 2px 4px; }
 .quick-cap .cap-sub {
   font-weight: 400;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-tertiary, #aeaeb2);
   margin-left: 6px;
   letter-spacing: 0;
 }
-.qc-char { display: flex; gap: 9px; padding: 7px 2px; border-bottom: 1px dashed rgba(0, 0, 0, 0.06); }
+.qc-char { display: flex; gap: 12px; padding: 12px 2px; border-bottom: 1px dashed rgba(0, 0, 0, 0.06); }
 .qc-char:last-child { border-bottom: none; }
 .qc-ava {
-  width: 32px; height: 32px;
-  border-radius: 9px;
+  width: 40px; height: 40px;
+  border-radius: 12px;
   flex-shrink: 0;
   background: linear-gradient(160deg, #8fc59b, #6aa877);
   color: #fff;
-  font-size: 13px;
+  font-size: 15px;
   display: flex; align-items: center; justify-content: center;
 }
 .qc-ava.villain { background: linear-gradient(160deg, #d8987a, #b3593f); }
 .qc-main { flex: 1; min-width: 0; }
 .qc-name {
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--text-primary, #1d1d1f);
   display: flex;
@@ -903,25 +903,25 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   line-height: 1.4;
 }
 .qc-role {
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: 11.5px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: rgba(106, 168, 119, 0.14);
   color: #4d8a5c;
   flex-shrink: 0;
 }
 .qc-role.villain { background: rgba(190, 90, 60, 0.12); color: #b3593f; }
-.qc-desc { font-size: 11.5px; color: var(--text-secondary, #86868b); margin-top: 3px; line-height: 1.5; }
+.qc-desc { font-size: 13px; color: var(--text-secondary, #86868b); margin-top: 3px; line-height: 1.5; }
 .qc-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
 .qc-tag {
-  font-size: 10px;
-  padding: 1px 7px;
+  font-size: 11.5px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.045);
   color: var(--text-tertiary, #86868b);
 }
 .qc-bio {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--text-primary, #1d1d1f);
   background: rgba(0, 0, 0, 0.03);
@@ -934,9 +934,9 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 .qc-thread {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 4px;
-  font-size: 12px;
+  gap: 10px;
+  padding: 10px 6px;
+  font-size: 14px;
   border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
   cursor: pointer;
 }
@@ -954,10 +954,10 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   border: 1px solid var(--ed-line, rgba(0, 0, 0, 0.07));
 }
 .th-edit-select, .th-edit-input, .th-edit-num {
-  padding: 4px 6px;
+  padding: 6px 8px;
   border: 1px solid var(--ed-line, rgba(0, 0, 0, 0.12));
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   background: var(--ed-paper, #fff);
   color: var(--ed-ink, inherit);
   outline: none;
@@ -968,18 +968,18 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 .th-edit-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 12.5px;
   color: var(--text-secondary, #86868b);
 }
 .th-edit-row label { flex-shrink: 0; }
-.th-edit-num { width: 56px; flex: none; }
+.th-edit-num { width: 64px; flex: none; }
 .th-edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .th-edit-actions button {
   border: none;
   border-radius: 6px;
-  font-size: 11px;
-  padding: 3px 10px;
+  font-size: 12.5px;
+  padding: 5px 12px;
   cursor: pointer;
 }
 .th-edit-save { background: var(--accent, #6aa877); color: #fff; }
@@ -987,8 +987,8 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
 .th-edit-del { background: transparent; color: #d05656; }
 .qc-thread:last-child { border-bottom: none; }
 .th-type {
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: 12px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: rgba(175, 140, 60, 0.13);
   color: #8a6a2a;
@@ -1002,13 +1002,13 @@ watch(() => props.projectId, () => { loadSettings(); loadInspirations(); loadPin
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--text-primary, #1d1d1f);
 }
-.th-ch { font-size: 10px; color: var(--text-tertiary, #aeaeb2); flex-shrink: 0; }
+.th-ch { font-size: 12px; color: var(--text-tertiary, #aeaeb2); flex-shrink: 0; }
 .th-resolve {
   border: 1px solid rgba(0, 0, 0, 0.1);
   background: transparent;
   border-radius: 6px;
-  font-size: 10px;
-  padding: 2px 7px;
+  font-size: 12px;
+  padding: 4px 9px;
   color: var(--text-tertiary, #86868b);
   cursor: pointer;
   flex-shrink: 0;
