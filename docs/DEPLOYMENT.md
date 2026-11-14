@@ -8,7 +8,7 @@
 |------|------|------|------|
 | 开发机 | 本机（Hermes 宿主 183） | - | 代码 canonical `/root/workspace/projects/xiezuojun`，改完 push 再部署 |
 | 旧开发机 | 10.10.30.182 | root/Le199789 (sshpass) | 历史源码树参考；hermes default agent 所在机 |
-| 测试服 | 10.10.30.180 | root（公钥直连） | 前端 dist rsync 到 `/opt/xiezuojun-web/dist/`；DB `mysql -unimingben -pNb2026Admin xiezuojun` |
+| 测试服 | 10.10.30.180 | root（公钥直连） | 前端 dist rsync 到 `/opt/xiezuojun-web/dist/`；后端 systemd `xiezuojun-server`，二进制 `/opt/xiezuojun-server/xiezuojun-server`（scp 成 .new 再 mv -f 原子换 + restart，同生产）；DB `mysql -unimingben -pNb2026Admin xiezuojun` |
 | 生产 | 124.222.138.209 | ubuntu（systemctl 需 sudo） | xiezuojun.com |
 
 ## 生产环境（124.222.138.209）
